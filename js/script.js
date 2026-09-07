@@ -1,39 +1,39 @@
 document.addEventListener("DOMContentLoaded", () => {
 
+    const header = document.querySelector(".site-header");
 
-    const header =
-        document.querySelector(".site-header");
+    const navToggle = document.querySelector(".nav-toggle");
+    const navPanel = document.querySelector(".nav-panel");
+    const navLinks = document.querySelectorAll(".nav-links a");
 
-    const navToggle =
-        document.querySelector(".nav-toggle");
+    const searchModal = document.querySelector(".search-modal");
+    const searchTrigger = document.querySelector(".search-trigger");
+    const searchClose = document.querySelector(".search-close");
+    const searchBackdrop = document.querySelector(".search-backdrop");
 
-    const navPanel =
-        document.querySelector(".nav-panel");
+    const searchForm = document.querySelector(".search-form");
+    const searchInput = document.querySelector("#site-search");
+    const searchResult = document.querySelector(".search-result");
 
-    const navLinks =
-        document.querySelectorAll(".nav-links a");
+    const mapView = document.querySelector(".map-view");
+    const locationToast = document.querySelector("#mapLocationToast");
+    const selectedLocation = document.querySelector("#selectedLocation");
 
-    const searchModal =
-        document.querySelector(".search-modal");
+    const mapSearch = document.querySelector("#mapSearch");
+    const municipalityFilter =
+        document.querySelector("#municipalityFilter");
 
-    const searchTrigger =
-        document.querySelector(".search-trigger");
+    const soilFilter =
+        document.querySelector("#soilFilter");
 
-    const searchClose =
-        document.querySelector(".search-close");
+    const capacityFilter =
+        document.querySelector("#capacityFilter");
 
-    const searchBackdrop =
-        document.querySelector(".search-backdrop");
+    const markers =
+        [...document.querySelectorAll(".gis-marker")];
 
-    const searchForm =
-        document.querySelector(".search-form");
-
-    const searchInput =
-        document.querySelector("#site-search");
-
-    const searchResult =
-        document.querySelector(".search-result");
-
+    const tableRows =
+        [...document.querySelectorAll(".records-table-card tbody tr")];
 
     const updateHeader = () => {
 
@@ -43,6 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
             "scrolled",
             window.scrollY > 20
         );
+
     };
 
     updateHeader();
@@ -53,58 +54,58 @@ document.addEventListener("DOMContentLoaded", () => {
         { passive: true }
     );
 
+    //mob nav
+    navToggle?.addEventListener("click", () => {
 
-    navToggle?.addEventListener(
-        "click",
-        () => {
+        const open =
+            navPanel.classList.toggle("open");
 
-            const open =
-                navPanel.classList.toggle("open");
-
-            navToggle.setAttribute(
-                "aria-expanded",
-                String(open)
-            );
-
-            const icon =
-                navToggle.querySelector("i");
-
-            if (icon) {
-
-                icon.className = open
-                    ? "fa-solid fa-xmark"
-                    : "fa-solid fa-bars";
-            }
-        }
-    );
-
-
-    navLinks.forEach(link => {
-
-        link.addEventListener(
-            "click",
-            () => {
-
-                navPanel?.classList.remove("open");
-
-                navToggle?.setAttribute(
-                    "aria-expanded",
-                    "false"
-                );
-
-                const icon =
-                    navToggle?.querySelector("i");
-
-                if (icon) {
-
-                    icon.className =
-                        "fa-solid fa-bars";
-                }
-            }
+        navToggle.setAttribute(
+            "aria-expanded",
+            String(open)
         );
+
+        const icon =
+            navToggle.querySelector("i");
+
+        if (icon) {
+
+            icon.className = open
+                ? "fa-solid fa-xmark"
+                : "fa-solid fa-bars";
+
+        }
 
     });
 
+
+
+    /* Close mobile navigation */
+
+    navLinks.forEach(link => {
+
+        link.addEventListener("click", () => {
+
+            navPanel?.classList.remove("open");
+
+            navToggle?.setAttribute(
+                "aria-expanded",
+                "false"
+            );
+
+            const icon =
+                navToggle?.querySelector("i");
+
+            if (icon) {
+                icon.className =
+                    "fa-solid fa-bars";
+            }
+
+        });
+
+    });
+
+    //act nav
     const sections =
         document.querySelectorAll(
             "main section[id], footer[id]"
@@ -139,19 +140,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 },
                 {
                     rootMargin:
-                        "-30% 0px -60% 0px",
+                        "-25% 0px -65% 0px",
                     threshold: 0
                 }
             );
 
         sections.forEach(section => {
-
             sectionObserver.observe(section);
-
         });
+
     }
 
-
+    //reveal animate
     const revealItems =
         document.querySelectorAll(".reveal");
 
@@ -174,6 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             revealObserver.unobserve(
                                 entry.target
                             );
+
                         }
 
                     });
@@ -185,21 +186,16 @@ document.addEventListener("DOMContentLoaded", () => {
             );
 
         revealItems.forEach(item => {
-
             revealObserver.observe(item);
-
         });
 
     } else {
 
         revealItems.forEach(item => {
-
             item.classList.add("visible");
-
         });
 
     }
-
 
     const counterSection =
         document.querySelector(".stats-section");
@@ -208,7 +204,6 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(".counter");
 
     let countersStarted = false;
-
 
     const animateCounter = element => {
 
@@ -219,7 +214,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const start =
             performance.now();
-
 
         const tick = now => {
 
@@ -240,18 +234,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     target * eased
                 ).toLocaleString();
 
-
             if (progress < 1) {
-
                 requestAnimationFrame(tick);
-
             }
 
         };
 
         requestAnimationFrame(tick);
-    };
 
+    };
 
     if (
         counterSection &&
@@ -274,6 +265,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         );
 
                         counterObserver.disconnect();
+
                     }
 
                 },
@@ -282,141 +274,329 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             );
 
-        counterObserver.observe(
-            counterSection
-        );
+        counterObserver.observe(counterSection);
+
     }
 
-
-    const fakeMap =
-        document.querySelector(".map-view");
-
-    const locationToast =
-        document.querySelector(
-            "#mapLocationToast"
-        );
-
-    const selectedLocation =
-        document.querySelector(
-            "#selectedLocation"
-        );
+    //map toast
 
     let mapToastTimer;
-
 
     const showMapToast = message => {
 
         if (!locationToast)
             return;
 
-        locationToast.querySelector(
-            "span"
-        ).textContent = message;
+        const text =
+            locationToast.querySelector("span");
 
-        locationToast.classList.add(
-            "show"
-        );
+        if (text) {
+            text.textContent = message;
+        }
 
-        clearTimeout(
-            mapToastTimer
-        );
+        locationToast.classList.add("show");
+
+        clearTimeout(mapToastTimer);
 
         mapToastTimer =
-            setTimeout(
-                () => {
+            setTimeout(() => {
 
-                    locationToast.classList.remove(
-                        "show"
-                    );
+                locationToast.classList.remove(
+                    "show"
+                );
 
-                },
-                1800
-            );
+            }, 1800);
+
     };
 
-
-    /* Map controls */
-
+    //map controls
     document
-        .querySelectorAll(
-            "[data-map-action]"
-        )
+        .querySelectorAll("[data-map-action]")
         .forEach(button => {
 
-            button.addEventListener(
-                "click",
-                () => {
+            button.addEventListener("click", () => {
 
-                    const action =
-                        button.dataset.mapAction;
+                const action =
+                    button.dataset.mapAction;
 
-                    if (!fakeMap)
-                        return;
+                if (!mapView)
+                    return;
 
+                if (action === "zoom-in") {
 
-                    if (
-                        action === "zoom-in"
-                    ) {
+                    mapView.classList.remove(
+                        "zoom-out"
+                    );
 
-                        fakeMap.classList.remove(
-                            "zoom-out"
-                        );
+                    mapView.classList.toggle(
+                        "zoom-in"
+                    );
 
-                        fakeMap.classList.toggle(
-                            "zoom-in"
-                        );
-
-                        showMapToast(
-                            "Map zoomed in"
-                        );
-                    }
-
-
-                    else if (
-                        action === "zoom-out"
-                    ) {
-
-                        fakeMap.classList.remove(
-                            "zoom-in"
-                        );
-
-                        fakeMap.classList.toggle(
-                            "zoom-out"
-                        );
-
-                        showMapToast(
-                            "Map zoomed out"
-                        );
-                    }
-
-
-                    else if (
-                        action === "reset"
-                    ) {
-
-                        fakeMap.classList.remove(
-                            "zoom-in",
-                            "zoom-out"
-                        );
-
-                        showMapToast(
-                            "Map view reset"
-                        );
-                    }
+                    showMapToast(
+                        "Map zoomed in"
+                    );
 
                 }
-            );
+
+                else if (action === "zoom-out") {
+
+                    mapView.classList.remove(
+                        "zoom-in"
+                    );
+
+                    mapView.classList.toggle(
+                        "zoom-out"
+                    );
+
+                    showMapToast(
+                        "Map zoomed out"
+                    );
+
+                }
+
+                else if (action === "reset") {
+
+                    mapView.classList.remove(
+                        "zoom-in",
+                        "zoom-out"
+                    );
+
+                    showMapToast(
+                        "Map view reset"
+                    );
+
+                }
+
+            });
 
         });
 
+    const getMarkerData = marker => {
 
-    /* Map markers */
+        return {
 
-    const markers =
-        document.querySelectorAll(
-            ".gis-marker"
+            id: marker.dataset.id,
+
+            location:
+                marker.dataset.location || "",
+
+            municipality:
+                marker.dataset.municipality || "",
+
+            soil:
+                marker.dataset.soil || "",
+
+            capacity:
+                marker.dataset.capacity || "",
+
+            test:
+                marker.dataset.test || "SPT",
+
+            bearing:
+                marker.dataset.bearing || "N/A",
+
+            date:
+                marker.dataset.date || "N/A",
+
+            coordinates:
+                marker.dataset.coordinates || "N/A"
+
+        };
+
+    };
+
+    const capacityLabel = capacity => {
+
+        const labels = {
+
+            "very-high":
+                "Very High",
+
+            "high":
+                "High",
+
+            "medium":
+                "Medium",
+
+            "low":
+                "Low",
+
+            "very-low":
+                "Very Low"
+
+        };
+
+        return labels[capacity] || "Available";
+
+    };
+
+    const soilLabel = soil => {
+
+        const labels = {
+
+            clay:
+                "Clay",
+
+            gravelly_sand:
+                "Gravelly Sand",
+
+            sand:
+                "Sand",
+
+            sandy_clay:
+                "Sandy Clay",
+
+            silty_sand:
+                "Silty Sand"
+
+        };
+
+        return labels[soil] || "Not specified";
+
+    };
+
+    //display loc details
+    const showLocationDetails = marker => {
+
+        if (!selectedLocation)
+            return;
+
+        const data =
+            getMarkerData(marker);
+
+        selectedLocation.innerHTML = `
+
+            <div class="location-details">
+
+                <div class="location-title">
+
+                    <i class="fa-solid fa-location-dot"></i>
+
+                    <strong>
+                        ${data.location}
+                    </strong>
+
+                </div>
+
+                <p class="location-subtitle">
+                    ${formatMunicipality(data.municipality)}
+                </p>
+
+                <div class="location-value">
+
+                    <span>
+                        Soil Type
+                    </span>
+
+                    <strong>
+                        ${soilLabel(data.soil)}
+                    </strong>
+
+                </div>
+
+                <div class="location-value">
+
+                    <span>
+                        Investigation
+                    </span>
+
+                    <strong>
+                        ${data.test}
+                    </strong>
+
+                </div>
+
+                <div class="location-value">
+
+                    <span>
+                        Bearing Capacity
+                    </span>
+
+                    <strong>
+                        ${data.bearing} kPa
+                    </strong>
+
+                </div>
+
+                <div class="location-value">
+
+                    <span>
+                        Classification
+                    </span>
+
+                    <strong>
+                        ${capacityLabel(data.capacity)}
+                    </strong>
+
+                </div>
+
+                <div class="location-value">
+
+                    <span>
+                        Test Date
+                    </span>
+
+                    <strong>
+                        ${data.date}
+                    </strong>
+
+                </div>
+
+                <div class="location-value">
+
+                    <span>
+                        Coordinates
+                    </span>
+
+                    <strong>
+                        ${data.coordinates}
+                    </strong>
+
+                </div>
+
+            </div>
+
+        `;
+
+        markers.forEach(item => {
+            item.classList.remove("selected");
+        });
+
+        marker.classList.add("selected");
+
+        showMapToast(
+            data.location
         );
 
+    };
+
+    const formatMunicipality = value => {
+
+        const names = {
+
+            sogod:
+                "Sogod, Southern Leyte",
+
+            maasin:
+                "Maasin City, Southern Leyte",
+
+            "san-juan":
+                "San Juan, Southern Leyte",
+
+            hinunangan:
+                "Hinunangan, Southern Leyte",
+
+            macrohon:
+                "Macrohon, Southern Leyte"
+
+        };
+
+        return names[value] ||
+            "Southern Leyte";
+
+    };
+
+    //marker click
 
     markers.forEach(marker => {
 
@@ -424,340 +604,144 @@ document.addEventListener("DOMContentLoaded", () => {
             "click",
             () => {
 
-                const location =
-                    marker.dataset.location;
-
-                if (!selectedLocation)
-                    return;
-
-
-                let data = {
-
-                    title:
-                        "Soil Investigation Location",
-
-                    municipality:
-                        "Southern Leyte",
-
-                    test:
-                        "SPT",
-
-                    capacity:
-                        "Available",
-
-                    date:
-                        "Available"
-
-                };
-
-
-                if (
-                    location.includes(
-                        "Luyang"
-                    )
-                ) {
-
-                    data = {
-
-                        title:
-                            "Barangay Luyang",
-
-                        municipality:
-                            "Sogod, Southern Leyte",
-
-                        test:
-                            "SPT Test",
-
-                        capacity:
-                            "250 kPa",
-
-                        date:
-                            "June 20, 2024"
-
-                    };
-
-                }
-
-
-                else if (
-                    location.includes(
-                        "Guindapunan"
-                    )
-                ) {
-
-                    data = {
-
-                        title:
-                            "Barangay Guindapunan",
-
-                        municipality:
-                            "Maasin City, Southern Leyte",
-
-                        test:
-                            "SPT Test",
-
-                        capacity:
-                            "180 kPa",
-
-                        date:
-                            "June 18, 2024"
-
-                    };
-
-                }
-
-
-                else if (
-                    location.includes(
-                        "An-per"
-                    )
-                ) {
-
-                    data = {
-
-                        title:
-                            "Barangay An-per",
-
-                        municipality:
-                            "San Juan, Southern Leyte",
-
-                        test:
-                            "SPT Test",
-
-                        capacity:
-                            "120 kPa",
-
-                        date:
-                            "June 15, 2024"
-
-                    };
-
-                }
-
-
-                else if (
-                    location.includes(
-                        "Hibaga-an"
-                    )
-                ) {
-
-                    data = {
-
-                        title:
-                            "Barangay Hibaga-an",
-
-                        municipality:
-                            "Hinunangan, Southern Leyte",
-
-                        test:
-                            "SPT Test",
-
-                        capacity:
-                            "210 kPa",
-
-                        date:
-                            "June 10, 2024"
-
-                    };
-
-                }
-
-
-                else if (
-                    location.includes(
-                        "San Roque"
-                    )
-                ) {
-
-                    data = {
-
-                        title:
-                            "Barangay San Roque",
-
-                        municipality:
-                            "Macrohon, Southern Leyte",
-
-                        test:
-                            "SPT Test",
-
-                        capacity:
-                            "95 kPa",
-
-                        date:
-                            "June 05, 2024"
-
-                    };
-
-                }
-
-
-                selectedLocation.innerHTML = `
-
-                    <div class="location-details">
-
-                        <div class="location-title">
-
-                            <i class="fa-solid fa-location-dot"></i>
-
-                            <strong>
-                                ${data.title}
-                            </strong>
-
-                        </div>
-
-                        <p class="location-subtitle">
-                            ${data.municipality}
-                        </p>
-
-
-                        <div class="location-value">
-
-                            <span>
-                                Investigation
-                            </span>
-
-                            <strong>
-                                ${data.test}
-                            </strong>
-
-                        </div>
-
-
-                        <div class="location-value">
-
-                            <span>
-                                Bearing Capacity
-                            </span>
-
-                            <strong>
-                                ${data.capacity}
-                            </strong>
-
-                        </div>
-
-
-                        <div class="location-value">
-
-                            <span>
-                                Test Date
-                            </span>
-
-                            <strong>
-                                ${data.date}
-                            </strong>
-
-                        </div>
-
-
-                        <div class="location-value">
-
-                            <span>
-                                Coordinates
-                            </span>
-
-                            <strong>
-                                GIS Location
-                            </strong>
-
-                        </div>
-
-                    </div>
-
-                `;
-
-
-                showMapToast(
-                    data.title
-                );
+                showLocationDetails(marker);
 
             }
         );
 
     });
 
+    const applyMapFilters = () => {
 
-    const mapSearch =
-        document.querySelector(
-            "#mapSearch"
-        );
-
-    const municipalityFilter =
-        document.querySelector(
-            "#municipalityFilter"
-        );
-
-    const capacityFilter =
-        document.querySelector(
-            "#capacityFilter"
-        );
-
-
-    const runMapSearch = () => {
-
-        const searchValue =
+        const search =
             mapSearch?.value
                 .trim()
-                .toLowerCase();
+                .toLowerCase() || "";
 
         const municipality =
-            municipalityFilter?.value;
+            municipalityFilter?.value || "";
+
+        const soil =
+            soilFilter?.value || "";
 
         const capacity =
-            capacityFilter?.value;
+            capacityFilter?.value || "";
+
+        let visibleCount = 0;
+
+        markers.forEach(marker => {
+
+            const data =
+                getMarkerData(marker);
+
+            const searchableText =
+                `${data.location}
+                ${formatMunicipality(data.municipality)}
+                ${soilLabel(data.soil)}
+                ${data.test}
+                ${data.bearing}`.toLowerCase();
+
+            const matchesSearch =
+                !search ||
+                searchableText.includes(search);
+
+            const matchesMunicipality =
+                !municipality ||
+                data.municipality === municipality;
+
+            const matchesSoil =
+                !soil ||
+                data.soil === soil;
+
+            const matchesCapacity =
+                !capacity ||
+                data.capacity === capacity;
+
+            const visible =
+                matchesSearch &&
+                matchesMunicipality &&
+                matchesSoil &&
+                matchesCapacity;
+
+            marker.style.display =
+                visible ? "block" : "none";
+
+            if (visible) {
+                visibleCount++;
+            }
+
+        });
+
+
+
+        /* Filter table rows */
+
+        tableRows.forEach(row => {
+
+            const text =
+                row.textContent.toLowerCase();
+
+            const visible =
+                !search ||
+                text.includes(search);
+
+            row.style.display =
+                visible ? "" : "none";
+
+        });
+
 
 
         if (
-            searchValue ||
+            search ||
             municipality ||
+            soil ||
             capacity
         ) {
 
             showMapToast(
-                "Prototype filter applied"
+                `${visibleCount} location${visibleCount !== 1 ? "s" : ""} found`
+            );
+
+        } else {
+
+            showMapToast(
+                "Showing all soil locations"
             );
 
         }
 
     };
 
-
+    // map search
     mapSearch?.addEventListener(
-        "keydown",
-        event => {
-
-            if (
-                event.key === "Enter"
-            ) {
-
-                event.preventDefault();
-
-                runMapSearch();
-
-            }
-
-        }
+        "input",
+        applyMapFilters
     );
 
 
     municipalityFilter?.addEventListener(
         "change",
-        runMapSearch
+        applyMapFilters
+    );
+
+    soilFilter?.addEventListener(
+        "change",
+        applyMapFilters
     );
 
     capacityFilter?.addEventListener(
         "change",
-        runMapSearch
+        applyMapFilters
     );
 
-
+    //global s modal
     const openSearch = () => {
 
         if (!searchModal)
             return;
 
-        searchModal.classList.add(
-            "open"
-        );
+        searchModal.classList.add("open");
 
         searchModal.setAttribute(
             "aria-hidden",
@@ -768,15 +752,14 @@ document.addEventListener("DOMContentLoaded", () => {
             "modal-open"
         );
 
-        setTimeout(
-            () => {
+        setTimeout(() => {
 
-                searchInput?.focus();
+            searchInput?.focus();
 
-            },
-            100
-        );
+        }, 100);
+
     };
+
 
 
     const closeSearch = () => {
@@ -784,9 +767,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!searchModal)
             return;
 
-        searchModal.classList.remove(
-            "open"
-        );
+        searchModal.classList.remove("open");
 
         searchModal.setAttribute(
             "aria-hidden",
@@ -798,11 +779,11 @@ document.addEventListener("DOMContentLoaded", () => {
         );
 
         if (searchResult) {
-
-            searchResult.textContent =
-                "";
+            searchResult.textContent = "";
         }
+
     };
+
 
 
     searchTrigger?.addEventListener(
@@ -820,6 +801,7 @@ document.addEventListener("DOMContentLoaded", () => {
         closeSearch
     );
 
+    /* ESC closes search */
 
     document.addEventListener(
         "keydown",
@@ -838,8 +820,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         }
     );
-
-
+    //global search 
     searchForm?.addEventListener(
         "submit",
         event => {
@@ -848,54 +829,156 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const term =
                 searchInput?.value
-                    .trim();
+                    .trim()
+                    .toLowerCase();
 
             if (!term) {
 
                 searchResult.textContent =
-                    "Enter a municipality, barangay, or keyword.";
+                    "Enter a municipality, barangay, soil type, or keyword.";
 
                 return;
+
             }
+
+
+
+            const matches =
+                markers.filter(marker => {
+
+                    const data =
+                        getMarkerData(marker);
+
+                    const text =
+                        `${data.location}
+                        ${data.municipality}
+                        ${soilLabel(data.soil)}
+                        ${data.test}
+                        ${data.bearing}
+                        ${data.date}`.toLowerCase();
+
+                    return text.includes(term);
+
+                });
+
+
+
+            if (matches.length === 0) {
+
+                searchResult.innerHTML = `
+
+                    <i class="fa-solid fa-circle-exclamation"></i>
+
+                    No soil records found for
+                    <strong>"${escapeHTML(term)}"</strong>.
+
+                `;
+
+                return;
+
+            }
+
+
+
+            const firstMatch =
+                matches[0];
+
+            const data =
+                getMarkerData(firstMatch);
+
 
 
             searchResult.innerHTML = `
 
-                <i class="fa-solid fa-circle-info"></i>
+                <i class="fa-solid fa-circle-check"></i>
 
-                Prototype search:
-                <strong>"${term}"</strong>
-
-                would return matching soil
-                records here.
+                Found
+                <strong>${matches.length}</strong>
+                matching record${matches.length > 1 ? "s" : ""}.
 
             `;
 
+            /* Close modal */
+
+            setTimeout(() => {
+
+                closeSearch();
+
+                /* Apply search to map */
+
+                if (mapSearch) {
+                    mapSearch.value = term;
+                }
+
+                applyMapFilters();
+
+
+
+                /* Scroll to map */
+
+                document
+                    .querySelector("#map")
+                    ?.scrollIntoView({
+                        behavior: "smooth"
+                    });
+
+
+                /* Show first matching record */
+
+                setTimeout(() => {
+
+                    showLocationDetails(
+                        firstMatch
+                    );
+
+                }, 700);
+
+            }, 700);
+
         }
-    );
+    );  
 
+    const escapeHTML = value => {
 
-    searchInput?.addEventListener(
-        "search",
-        () => {
+        const div =
+            document.createElement("div");
 
-            if (
-                searchInput.value === ""
-            ) {
+        div.textContent = value;
 
-                searchResult.textContent =
-                    "";
+        return div.innerHTML;
 
-            }
+    };
 
-        }
-    );
+    // clear map filters
+    const clearMapFilters = () => {
 
+        if (mapSearch)
+            mapSearch.value = "";
 
+        if (municipalityFilter)
+            municipalityFilter.value = "";
+
+        if (soilFilter)
+            soilFilter.value = "";
+
+        if (capacityFilter)
+            capacityFilter.value = "";
+
+        applyMapFilters();
+
+    };
+
+    //reset
     document
-        .querySelectorAll(
-            'a[href^="#"]'
-        )
+        .querySelector("[data-clear-map-filters]")
+        ?.addEventListener(
+            "click",
+            clearMapFilters
+        );
+
+    //anchor nav
+    document
+        .querySelectorAll('a[href^="#"]')
         .forEach(link => {
 
             link.addEventListener(
@@ -903,9 +986,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 event => {
 
                     const targetId =
-                        link.getAttribute(
-                            "href"
-                        );
+                        link.getAttribute("href");
 
                     if (
                         !targetId ||
@@ -932,5 +1013,9 @@ document.addEventListener("DOMContentLoaded", () => {
             );
 
         });
+
+// initial map
+
+    applyMapFilters();
 
 });

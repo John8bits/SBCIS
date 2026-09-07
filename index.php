@@ -15,6 +15,7 @@
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="stylesheet" href="css/style.css">
+
 </head>
 
 <body>
@@ -80,12 +81,9 @@
 
           </button>
 
-          <a href="login.php" class="login-btn">
-
+          <a href="#" id="openLogin" class="login-btn">
             <i class="fa-solid fa-user-shield"></i>
-
-            <span>Admin Login</span>
-
+            Admin Login
           </a>
 
         </div>
@@ -95,7 +93,6 @@
     </nav>
 
   </header>
-
 
   <main>
 
@@ -108,14 +105,6 @@
       <div class="container hero-content">
 
         <div class="hero-copy reveal">
-
-          <!-- <div class="hero-badge">
-
-            <span class="status-dot"></span>
-
-            GIS-BASED SOIL INFORMATION SYSTEM
-
-          </div> -->
 
           <p class="eyebrow">
             DATA FOR A STRONGER SOUTHERN LEYTE
@@ -156,7 +145,6 @@
 
         </div>
 
-
         <div class="hero-visual reveal">
 
           <div class="hero-map-card">
@@ -174,11 +162,6 @@
                 </strong>
 
               </div>
-
-              <!-- <span class="live-indicator">
-                                <span></span>
-                                SYSTEM PREVIEW
-                            </span> -->
 
             </div>
 
@@ -215,26 +198,12 @@
 
           </div>
 
-          <!-- <div class="hero-floating-card">
-
-                        <div class="floating-icon">
-                            <i class="fa-solid fa-database"></i>
-                        </div>
-
-                        <div>
-                            <strong>Centralized Soil Data</strong>
-                            <span>GIS-ready information</span>
-                        </div>
-
-                    </div> -->
-
         </div>
 
       </div>
 
     </section>
 
-    <!-- qgis map -->
     <section class="section map-section" id="map">
 
       <div class="container">
@@ -260,13 +229,7 @@
 
           </div>
 
-          <!-- <span class="development-badge">
-            <i class="fa-solid fa-code"></i>
-            GIS MODULE PREVIEW
-          </span> -->
-
         </div>
-
 
         <div class="map-interface reveal">
 
@@ -280,88 +243,45 @@
 
             </div>
 
-
             <div class="map-filters">
 
               <select id="municipalityFilter">
-
-                <option value="">
-                  All Municipalities
-                </option>
-
-                <option value="sogod">
-                  Sogod
-                </option>
-
-                <option value="maasin">
-                  Maasin City
-                </option>
-
-                <option value="san-juan">
-                  San Juan
-                </option>
-
-                <option value="hinunangan">
-                  Hinunangan
-                </option>
-
-                <option value="macrohon">
-                  Macrohon
-                </option>
-
+                <option value="">All Municipalities</option>
+                <option value="sogod">Sogod</option>
+                <option value="maasin">Maasin City</option>
+                <option value="san-juan">San Juan</option>
+                <option value="hinunangan">Hinunangan</option>
+                <option value="macrohon">Macrohon</option>
               </select>
 
               <select id="soilFilter">
-
-                <option value="">
-                  All Soil Type
-                </option>
-
-                <option value="clay">
-                  Clay
-                </option>
-
-                <option value="gravelly_sand">
-                  Gravelly Sand
-                </option>
-
-                <option value="sand">
-                  Sand
-                </option>
-
-                <option value="sandy_claw">Sandy Clay</option>
+                <option value="">All Soil Types</option>
+                <option value="clay">Clay</option>
+                <option value="gravelly_sand">Gravelly Sand</option>
+                <option value="sand">Sand</option>
+                <option value="sandy_clay">Sandy Clay</option>
                 <option value="silty_sand">Silty Sand</option>
-
               </select>
-
 
               <select id="capacityFilter">
-
-                <option value="">
-                  All Bearing Capacity
-                </option>
-
-                <option value="very-high">
-                  Very High — >300 kPa
-                </option>
-
-                <option value="high">
-                  High — 200–300 kPa
-                </option>
-
-                <option value="medium">
-                  Medium — 100–200 kPa
-                </option>
-
+                <option value="">All Bearing Capacity</option>
+                <option value="very-high">Very High — &gt;300 kPa</option>
+                <option value="high">High — 200–300 kPa</option>
+                <option value="medium">Medium — 100–200 kPa</option>
                 <option value="low">Low — 50–100 kPa</option>
-                <option value="very-low">Very Low — 50 kPa </option>
-
+                <option value="very-low">Very Low — &lt;50 kPa</option>
               </select>
+
+              <button type="button" class="map-reset-filters" data-clear-map-filters title="Clear filters">
+
+                <!-- <i class="fa-solid fa-rotate-left"></i> -->
+                Reset
+
+              </button>
 
             </div>
 
           </div>
-
 
           <div class="map-body">
 
@@ -371,58 +291,55 @@
 
               <div class="map-overlay-gradient"></div>
 
-
-              <!-- Prototype markers -->
-
-              <button class="gis-marker high-marker" style="left: 36%; top: 32%;"
-                data-location="Barangay Luyang — Sogod" aria-label="Luyang soil data">
-
-                <span></span>
-
-              </button>
-
-
-              <button class="gis-marker medium-marker" style="left: 52%; top: 45%;"
-                data-location="Barangay Guindapunan — Maasin City" aria-label="Guindapunan soil data">
+              <button class="gis-marker high-marker" style="left: 36%; top: 32%;" data-id="1"
+                data-location="Barangay Luyang" data-municipality="sogod" data-soil="sand" data-capacity="high"
+                data-test="SPT" data-bearing="250" data-date="June 20, 2024" data-coordinates="10.3842, 125.1884"
+                aria-label="Luyang soil data">
 
                 <span></span>
 
               </button>
 
-
-              <button class="gis-marker low-marker" style="left: 62%; top: 58%;"
-                data-location="Barangay An-per — San Juan" aria-label="An-per soil data">
-
-                <span></span>
-
-              </button>
-
-
-              <button class="gis-marker high-marker" style="left: 45%; top: 67%;"
-                data-location="Barangay Hibaga-an — Hinunangan" aria-label="Hibaga-an soil data">
+              <button class="gis-marker medium-marker" style="left: 52%; top: 45%;" data-id="2"
+                data-location="Barangay Guindapunan" data-municipality="maasin" data-soil="clay" data-capacity="medium"
+                data-test="SPT" data-bearing="180" data-date="June 18, 2024" data-coordinates="10.1335, 124.8457"
+                aria-label="Guindapunan soil data">
 
                 <span></span>
 
               </button>
 
-
-              <button class="gis-marker very-low-marker" style="left: 71%; top: 38%;"
-                data-location="Barangay San Roque — Macrohon" aria-label="San Roque soil data">
+              <button class="gis-marker low-marker" style="left: 62%; top: 58%;" data-id="3"
+                data-location="Barangay An-per" data-municipality="san-juan" data-soil="sandy_clay"
+                data-capacity="medium" data-test="SPT" data-bearing="120" data-date="June 15, 2024"
+                data-coordinates="10.2891, 125.1702" aria-label="An-per soil data">
 
                 <span></span>
 
               </button>
 
+              <button class="gis-marker high-marker" style="left: 45%; top: 67%;" data-id="4"
+                data-location="Barangay Hibaga-an" data-municipality="hinunangan" data-soil="gravelly_sand"
+                data-capacity="high" data-test="SPT" data-bearing="210" data-date="June 10, 2024"
+                data-coordinates="10.4001, 125.1948" aria-label="Hibaga-an soil data">
+
+                <span></span>
+
+              </button>
+
+              <button class="gis-marker very-low-marker" style="left: 71%; top: 38%;" data-id="5"
+                data-location="Barangay San Roque" data-municipality="macrohon" data-soil="silty_sand"
+                data-capacity="very-low" data-test="SPT" data-bearing="95" data-date="June 05, 2024"
+                data-coordinates="10.0792, 124.9435" aria-label="San Roque soil data">
+
+                <span></span>
+
+              </button>
 
               <div class="map-location-toast" id="mapLocationToast">
                 <i class="fa-solid fa-location-dot"></i>
                 <span>Select a soil data marker</span>
               </div>
-
-              <div class="map-attribution">
-                GIS Map Preview • QGIS Data Preparation
-              </div>
-
 
               <div class="map-controls">
 
@@ -443,7 +360,6 @@
                 </button>
 
               </div>
-
 
               <div class="map-legend">
 
@@ -480,7 +396,6 @@
 
             </div>
 
-
             <aside class="map-information">
 
               <div class="map-info-header">
@@ -503,37 +418,23 @@
 
               </div>
 
-
               <div class="selected-location" id="selectedLocation">
 
                 <div class="empty-location">
 
-                  <i class="fa-solid fa-location-dot"></i>
+                  <i class="fa-solid fa-map-location-dot"></i>
 
                   <strong>
-                    Select a marker
+                    Select a Soil Location
                   </strong>
 
                   <p>
-                    Click a mapped soil location
-                    to preview its information.
+                    Click any marker on the map to view
+                    its soil type, investigation method,
+                    bearing capacity, test date, and coordinates.
                   </p>
 
                 </div>
-
-              </div>
-
-
-              <div class="map-data-note">
-
-                <i class="fa-solid fa-circle-exclamation"></i>
-
-                <p>
-                  This map is currently a visual
-                  prototype. The final implementation
-                  will use QGIS-prepared GeoJSON data
-                  with Leaflet.js.
-                </p>
 
               </div>
 
@@ -546,11 +447,6 @@
       </div>
 
     </section>
-
-
-    <!-- =========================================
-             SOIL DATA
-        ========================================== -->
 
     <section class="section records-section" id="soil-data">
 
@@ -566,12 +462,13 @@
             </p>
 
             <h2>
-              Available Soil Investigation Information
+              Explore Soil Data Across Southern Leyte
             </h2>
 
             <p class="section-description">
-              Sample records showing how soil information
-              can be organized and presented to users.
+              Search, filter, and explore available soil
+              investigation locations by municipality,
+              soil type, and bearing capacity.
             </p>
 
           </div>
@@ -583,18 +480,25 @@
 
         </div>
 
-
         <div class="records-layout">
 
           <div class="records-table-card reveal">
 
+            <div class="records-toolbar">
+
+              <div class="records-search">
+
+                <i class="fa-solid fa-magnifying-glass"></i>
+
+                <input type="search" id="recordsSearch" placeholder="Search soil records...">
+
+              </div>
+
+            </div>
+
             <div class="table-header">
 
               <div>
-
-                <span>
-                  SOIL INVESTIGATION DATABASE
-                </span>
 
                 <strong>
                   Recent Records
@@ -602,12 +506,7 @@
 
               </div>
 
-              <span class="record-count">
-                5 Sample Records
-              </span>
-
             </div>
-
 
             <div class="table-wrapper">
 
@@ -667,7 +566,6 @@
 
                   </tr>
 
-
                   <tr>
 
                     <td>
@@ -701,7 +599,6 @@
                     <td>Jun 18, 2024</td>
 
                   </tr>
-
 
                   <tr>
 
@@ -737,7 +634,6 @@
 
                   </tr>
 
-
                   <tr>
 
                     <td>
@@ -771,7 +667,6 @@
                     <td>Jun 10, 2024</td>
 
                   </tr>
-
 
                   <tr>
 
@@ -815,7 +710,6 @@
 
           </div>
 
-
           <div class="data-summary-card reveal">
 
             <div class="data-summary-top">
@@ -840,7 +734,6 @@
               investigation records and associated
               geographic information.
             </p>
-
 
             <div class="parameter-list">
 
@@ -909,377 +802,6 @@
 
     </section>
 
-    <!-- <section class="section features-section">
-
-      <div class="container">
-
-        <div class="section-heading centered reveal">
-          
-          <h2>
-            Everything in One Soil Information Platform
-          </h2>
-
-          <p>
-            The system is designed around the needs of
-            users who need accessible and organized
-            soil investigation information.
-          </p>
-
-        </div>
-
-
-        <div class="features-grid">
-
-          <article class="feature-card reveal">
-
-            <div class="feature-icon green">
-              <i class="fa-regular fa-map"></i>
-            </div>
-
-            <div>
-
-              <span>
-                01
-              </span>
-
-              <h3>
-                GIS Map
-              </h3>
-
-              <p>
-                Interactive visualization of soil
-                investigation locations and bearing
-                capacity information.
-              </p>
-
-            </div>
-
-          </article>
-
-
-          <article class="feature-card reveal">
-
-            <div class="feature-icon blue">
-              <i class="fa-solid fa-magnifying-glass"></i>
-            </div>
-
-            <div>
-
-              <span>
-                02
-              </span>
-
-              <h3>
-                Municipality & Barangay Search
-              </h3>
-
-              <p>
-                Find available soil records by
-                municipality, barangay, or location.
-              </p>
-
-            </div>
-
-          </article>
-
-
-          <article class="feature-card reveal">
-
-            <div class="feature-icon brown">
-              <i class="fa-solid fa-file-circle-check"></i>
-            </div>
-
-            <div>
-
-              <span>
-                03
-              </span>
-
-              <h3>
-                Marker Details
-              </h3>
-
-              <p>
-                View coordinates, borehole information,
-                SPT results, and other available details.
-              </p>
-
-            </div>
-
-          </article>
-
-
-          <article class="feature-card reveal">
-
-            <div class="feature-icon purple">
-              <i class="fa-solid fa-user-shield"></i>
-            </div>
-
-            <div>
-
-              <span>
-                04
-              </span>
-
-              <h3>
-                Admin Panel
-              </h3>
-
-              <p>
-                Authorized administrators can add,
-                edit, update, and manage soil data.
-              </p>
-
-            </div>
-
-          </article>
-
-
-          <article class="feature-card reveal">
-
-            <div class="feature-icon olive">
-              <i class="fa-solid fa-file-import"></i>
-            </div>
-
-            <div>
-
-              <span>
-                05
-              </span>
-
-              <h3>
-                GeoJSON Support
-              </h3>
-
-              <p>
-                Prepare and import GIS data exported
-                from QGIS for web mapping.
-              </p>
-
-            </div>
-
-          </article>
-
-
-          <article class="feature-card reveal">
-
-            <div class="feature-icon teal">
-              <i class="fa-solid fa-clock-rotate-left"></i>
-            </div>
-
-            <div>
-
-              <span>
-                06
-              </span>
-
-              <h3>
-                Data History
-              </h3>
-
-              <p>
-                Support multiple soil investigation
-                records for a location over time.
-              </p>
-
-            </div>
-
-          </article>
-
-        </div>
-
-      </div>
-
-    </section> -->
-
-
-    <!-- =========================================
-             HOW USER USES SYSTEM
-        ========================================== -->
-
-    <!-- <section class="section user-flow-section">
-
-      <div class="container">
-
-        <div class="user-flow-layout">
-
-          <div class="user-flow-content reveal">
-
-            <p class="section-kicker">
-              <i class="fa-solid fa-route"></i>
-              USER FLOW
-            </p>
-
-            <h2>
-              Find soil information in a few simple steps.
-            </h2>
-
-            <p class="user-flow-intro">
-              The public interface is designed to keep
-              the process simple for engineers, LGUs,
-              researchers, planners, students, and
-              other users.
-            </p>
-
-
-            <div class="user-steps">
-
-              <div class="user-step">
-
-                <div class="step-number">
-                  01
-                </div>
-
-                <div>
-
-                  <h3>
-                    Search Municipality
-                  </h3>
-
-                  <p>
-                    Select or search for a
-                    municipality in Southern Leyte.
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <div class="user-step">
-
-                <div class="step-number">
-                  02
-                </div>
-
-                <div>
-
-                  <h3>
-                    View Available Barangays
-                  </h3>
-
-                  <p>
-                    See barangays where soil data
-                    has been collected.
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <div class="user-step">
-
-                <div class="step-number">
-                  03
-                </div>
-
-                <div>
-
-                  <h3>
-                    View GIS Map
-                  </h3>
-
-                  <p>
-                    The map focuses on the selected
-                    location and displays available
-                    soil markers.
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <div class="user-step">
-
-                <div class="step-number">
-                  04
-                </div>
-
-                <div>
-
-                  <h3>
-                    Click a Marker
-                  </h3>
-
-                  <p>
-                    View available soil information
-                    for the selected location.
-                  </p>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          <div class="user-flow-visual reveal">
-
-            <div class="phone-interface">
-
-              <div class="phone-top">
-
-                <span>
-                  SOUTHERN LEYTE GIS
-                </span>
-
-                <i class="fa-solid fa-ellipsis"></i>
-
-              </div>
-
-              <div class="phone-map">
-
-                <img src="images/sample_map.png" alt="GIS map interface preview">
-
-                <div class="phone-marker one"></div>
-                <div class="phone-marker two"></div>
-                <div class="phone-marker three"></div>
-
-              </div>
-
-              <div class="phone-search">
-
-                <i class="fa-solid fa-magnifying-glass"></i>
-
-                <span>
-                  Search location...
-                </span>
-
-              </div>
-
-              <div class="phone-bottom">
-
-                <div>
-                  <i class="fa-solid fa-map"></i>
-                  <span>Map</span>
-                </div>
-
-                <div>
-                  <i class="fa-solid fa-database"></i>
-                  <span>Data</span>
-                </div>
-
-                <div>
-                  <i class="fa-solid fa-circle-info"></i>
-                  <span>About</span>
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </section> -->
-
     <section class="section users-section">
 
       <div class="container">
@@ -1303,7 +825,6 @@
 
         </div>
 
-
         <div class="users-grid">
 
           <article class="user-card reveal">
@@ -1323,7 +844,6 @@
 
           </article>
 
-
           <article class="user-card reveal">
 
             <div class="user-icon">
@@ -1340,7 +860,6 @@
             </p>
 
           </article>
-
 
           <article class="user-card reveal">
 
@@ -1359,7 +878,6 @@
 
           </article>
 
-
           <article class="user-card reveal">
 
             <div class="user-icon">
@@ -1376,7 +894,6 @@
             </p>
 
           </article>
-
 
           <article class="user-card reveal">
 
@@ -1401,7 +918,6 @@
 
     </section>
 
-
     <section class="section about-section" id="about">
 
       <div class="container">
@@ -1421,7 +937,6 @@
             </div>
 
           </div>
-
 
           <div class="about-copy reveal">
 
@@ -1448,7 +963,6 @@
               preliminary planning, research, and
               informed decision-making.
             </p>
-
 
             <div class="about-points">
 
@@ -1486,33 +1000,6 @@
 
           </div>
 
-
-          <!-- <aside class="mission-card reveal">
-
-            <div class="mission-symbol">
-
-              <i class="fa-solid fa-leaf"></i>
-
-            </div>
-
-            <span>
-              SYSTEM PURPOSE
-            </span>
-
-            <h3>
-              Building a Safer and Stronger Southern Leyte
-            </h3>
-
-            <p>
-              Reliable data.
-              Informed decisions.
-              Sustainable development.
-            </p>
-
-            <div class="mission-line"></div>
-
-          </aside> -->
-
         </div>
 
       </div>
@@ -1542,7 +1029,6 @@
 
         </div>
 
-
         <div class="workflow-grid">
 
           <article class="workflow-card workflow-green reveal">
@@ -1569,18 +1055,11 @@
               information are gathered from available sources.
             </p>
 
-            <!-- <div class="workflow-source">
-              <i class="fa-solid fa-file-circle-check"></i>
-              Reports • Tests • Records
-            </div> -->
-
           </article>
-
 
           <div class="workflow-arrow">
             <i class="fa-solid fa-arrow-right"></i>
           </div>
-
 
           <article class="workflow-card workflow-blue reveal">
 
@@ -1606,18 +1085,11 @@
               the web-based map.
             </p>
 
-            <!-- <div class="workflow-source">
-              <i class="fa-solid fa-file-export"></i>
-              QGIS → GeoJSON
-            </div> -->
-
           </article>
-
 
           <div class="workflow-arrow">
             <i class="fa-solid fa-arrow-right"></i>
           </div>
-
 
           <article class="workflow-card workflow-brown reveal">
 
@@ -1643,13 +1115,7 @@
               records in the system.
             </p>
 
-            <!-- <div class="workflow-source">
-              <i class="fa-solid fa-user-shield"></i>
-              Secure Administration
-            </div> -->
-
           </article>
-
 
           <div class="workflow-arrow">
             <i class="fa-solid fa-arrow-right"></i>
@@ -1679,35 +1145,9 @@
               available soil information.
             </p>
 
-            <!-- <div class="workflow-source">
-              <i class="fa-solid fa-magnifying-glass"></i>
-              Search • Map • Details
-            </div> -->
-
           </article>
 
         </div>
-
-
-        <!-- <div class="workflow-bottom reveal">
-
-          <div class="workflow-line"></div>
-
-          <div class="workflow-caption">
-
-            <span>
-              <i class="fa-solid fa-arrows-rotate"></i>
-              Continuous Data Updating
-            </span>
-
-            <p>
-              Additional soil investigation records can be
-              added as new data becomes available.
-            </p>
-
-          </div>
-
-        </div> -->
 
       </div>
 
@@ -1739,7 +1179,6 @@
 
           </article>
 
-
           <article class="stat-card reveal">
 
             <div class="stat-icon brown">
@@ -1760,7 +1199,6 @@
 
           </article>
 
-
           <article class="stat-card reveal">
 
             <div class="stat-icon blue">
@@ -1780,7 +1218,6 @@
             </div>
 
           </article>
-
 
           <article class="stat-card reveal">
 
@@ -1809,6 +1246,80 @@
     </section>
 
   </main>
+
+  <section class="section contact-section" id="contact">
+
+    <div class="container">
+
+      <div class="section-heading centered reveal">
+
+        <p class="section-kicker">
+          <i class="fa-solid fa-envelope"></i>
+          CONTACT
+        </p>
+
+        <h2>
+          Need More Information?
+        </h2>
+
+        <p>
+          For questions regarding soil investigation
+          records, GIS data, or system administration,
+          contact the responsible system administrator.
+        </p>
+
+      </div>
+
+      <div class="contact-grid">
+
+        <div class="contact-card reveal">
+
+          <div class="contact-icon">
+            <i class="fa-solid fa-envelope"></i>
+          </div>
+
+          <div>
+            <span>Email</span>
+            <strong></strong>
+          </div>
+
+        </div>
+
+        <div class="contact-card reveal">
+
+          <div class="contact-icon">
+            <i class="fa-solid fa-location-dot"></i>
+          </div>
+
+          <div>
+            <span>Location</span>
+            <strong>
+              Southern Leyte, Philippines
+            </strong>
+          </div>
+
+        </div>
+
+        <div class="contact-card reveal">
+
+          <div class="contact-icon">
+            <i class="fa-solid fa-user-shield"></i>
+          </div>
+
+          <div>
+            <span>Administration</span>
+            <strong>
+              Authorized System Administrator
+            </strong>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
 
   <footer class="footer" id="contact">
 
@@ -1840,94 +1351,60 @@
 
         </div>
 
-        <p class="footer-description"  style="font-size: 12px;">
+        <p class="footer-description" style="font-size: 12px;">
           A GIS-based platform for organizing and accessing
           soil investigation information across Southern Leyte.
         </p>
 
       </div>
 
-
       <div class="footer-column">
 
-        <h3>
-          Quick Links
-        </h3>
-
-        <a href="#">
-          Terms and Privacy
-        </a>
-
-        <a href="#">
-          Privacy Policy
-        </a>
-
-        <a href="#">
-          FAQ
-        </a>
-
-      </div>
-
-
-      <!-- <div class="group-f"> -->
-
-      <div class="footer-column">
-
-        <h3>
-          System
-        </h3>
-
-        <a href="#home">
-          Home
-        </a>
-
-        <a href="#workflow">
-          How It Works
-        </a>
+        <h3>Resources</h3>
 
         <a href="#map">
           GIS Map
         </a>
 
         <a href="#soil-data">
-          Soil Data
+          Soil Records
+        </a>
+
+        <a href="#workflow">
+          System Flow
         </a>
 
         <a href="#about">
-          About
+          About the System
         </a>
 
       </div>
 
+      <div class="footer-column">
 
-      <!-- <div class="footer-column">
+        <h3>System</h3>
 
-          <h3>
-            Information
-          </h3>
+        <a href="#home">
+          Home
+        </a>
 
-          <a href="#workflow">
-            System Flow
-          </a>
+        <a href="#map">
+          Explore Map
+        </a>
 
-          <a href="#about">
-            Purpose
-          </a>
+        <a href="#soil-data">
+          Soil Data
+        </a>
 
-          <a href="#soil-data">
-            Data Records
-          </a>
+        <a href="#contact">
+          Contact
+        </a>
 
-          <a href="#contact">
-            Contact
-          </a>
+        <a href="#" id="footerLogin">
+          Admin Login
+        </a>
 
-          <a href="#home">
-            Disclaimer
-          </a>
-
-        </div> -->
-
+      </div>
 
       <div class="footer-column footer-contact">
 
@@ -1952,7 +1429,6 @@
 
         </p>
 
-
         <div class="footer-social">
 
           <a href="#" aria-label="Facebook">
@@ -1971,10 +1447,7 @@
 
       </div>
 
-      <!-- </div> -->
-
     </div>
-
 
     <div class="footer-bottom">
 
@@ -1994,7 +1467,6 @@
 
   </footer>
 
-
   <div class="search-modal" aria-hidden="true">
 
     <div class="search-backdrop"></div>
@@ -2006,7 +1478,6 @@
         <i class="fa-solid fa-xmark"></i>
 
       </button>
-
 
       <p class="section-kicker">
         QUICK SEARCH
@@ -2020,7 +1491,6 @@
         Search for a municipality, barangay, soil test,
         or other available keyword.
       </p>
-
 
       <form class="search-form">
 
@@ -2055,8 +1525,349 @@
 
   </div>
 
+  <div class="login-modal" id="loginModal" aria-hidden="true">
 
-  <!-- JavaScript -->
+    <div class="login-modal-overlay" id="loginOverlay"></div>
+
+    <div class="login-modal-card" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+
+      <button type="button" class="modal-close" id="closeLogin" aria-label="Close login">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="login-form-wrapper">
+
+        <div class="modal-logo">
+
+          <div class="modal-logo-mark">
+
+            <img src="images/logo.png" alt="Southern Leyte Soil Information System logo">
+
+          </div>
+
+          <div class="modal-logo-copy">
+
+            <strong>SOUTHERN LEYTE</strong>
+
+            <span>
+              SOIL INFORMATION SYSTEM
+            </span>
+
+          </div>
+
+        </div>
+
+        <div class="form-header">
+
+          <div class="form-icon">
+
+            <i class="fa-solid fa-user-shield"></i>
+
+          </div>
+
+          <div>
+
+            <span class="form-kicker">
+              ADMIN PORTAL
+            </span>
+
+            <h2 id="loginTitle">
+              Welcome Back
+            </h2>
+
+          </div>
+
+        </div>
+
+        <p class="form-description">
+          Sign in to access the administrative dashboard
+          and manage system information.
+        </p>
+
+        <form action="login_process.php" method="POST" class="login-form">
+
+          <div class="form-group">
+
+            <label for="email">
+              Email Address
+            </label>
+
+            <div class="input-wrapper">
+
+              <i class="fa-regular fa-envelope"></i>
+
+              <input type="email" id="email" name="email" placeholder="Enter your email address" autocomplete="email"
+                required>
+
+            </div>
+
+          </div>
+
+          <div class="form-group">
+
+            <div class="label-row">
+
+              <label for="password">
+                Password
+              </label>
+
+              <a href="#" class="forgot-link" id="forgotPassword">
+                Forgot password?
+              </a>
+
+            </div>
+
+            <div class="input-wrapper">
+
+              <i class="fa-solid fa-lock"></i>
+
+              <input type="password" id="password" name="password" placeholder="Enter your password"
+                autocomplete="current-password" required>
+
+              <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password">
+
+                <i class="fa-regular fa-eye"></i>
+
+              </button>
+
+            </div>
+
+          </div>
+
+          <div class="form-options">
+
+            <label class="remember-me">
+
+              <input type="checkbox" name="remember" value="1">
+
+              <span class="custom-checkbox"></span>
+
+              <span>
+                Remember me
+              </span>
+
+            </label>
+
+          </div>
+
+          <button type="submit" class="login-submit">
+
+            <span>
+              Sign In
+            </span>
+
+            <i class="fa-solid fa-arrow-right"></i>
+
+          </button>
+
+        </form>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+
+    const loginModal =
+      document.getElementById("loginModal");
+
+    const openLogin =
+      document.getElementById("openLogin");
+
+    const closeLogin =
+      document.getElementById("closeLogin");
+
+    const loginOverlay =
+      document.getElementById("loginOverlay");
+    const passwordInput =
+      document.getElementById("password");
+
+    const passwordToggle =
+      document.getElementById("passwordToggle");
+
+    function openLoginModal() {
+
+      if (!loginModal) return;
+
+      loginModal.classList.add("active");
+
+      loginModal.setAttribute(
+        "aria-hidden",
+        "false"
+      );
+
+      document.body.classList.add(
+        "login-modal-open"
+      );
+
+      setTimeout(function () {
+
+        const email =
+          document.getElementById("email");
+
+        if (email) {
+
+          email.focus();
+
+        }
+
+      }, 300);
+
+    }
+
+    function closeLoginModal() {
+
+      if (!loginModal) return;
+
+      loginModal.classList.remove("active");
+
+      loginModal.setAttribute(
+        "aria-hidden",
+        "true"
+      );
+
+      document.body.classList.remove(
+        "login-modal-open"
+      );
+
+    }
+
+    if (openLogin) {
+
+      openLogin.addEventListener(
+        "click",
+        function (event) {
+
+          event.preventDefault();
+
+          openLoginModal();
+
+        }
+      );
+
+    }
+
+    if (closeLogin) {
+
+      closeLogin.addEventListener(
+        "click",
+        function () {
+
+          closeLoginModal();
+
+        }
+      );
+
+    }
+
+    if (loginOverlay) {
+
+      loginOverlay.addEventListener(
+        "click",
+        function () {
+
+          closeLoginModal();
+
+        }
+      );
+
+    }
+
+    document.addEventListener(
+      "keydown",
+      function (event) {
+
+        if (
+          event.key === "Escape" &&
+          loginModal &&
+          loginModal.classList.contains("active")
+        ) {
+
+          closeLoginModal();
+
+        }
+
+      }
+    );
+
+    if (
+      passwordToggle &&
+      passwordInput
+    ) {
+
+      passwordToggle.addEventListener(
+        "click",
+        function () {
+
+          const isPassword =
+            passwordInput.type === "password";
+
+          passwordInput.type =
+            isPassword
+              ? "text"
+              : "password";
+
+          this.innerHTML =
+            isPassword
+              ? '<i class="fa-regular fa-eye-slash"></i>'
+              : '<i class="fa-regular fa-eye"></i>';
+
+          this.setAttribute(
+            "aria-label",
+            isPassword
+              ? "Hide password"
+              : "Show password"
+          );
+
+        }
+      );
+
+    }
+
+    const forgotPassword =
+      document.getElementById(
+        "forgotPassword"
+      );
+
+    if (forgotPassword) {
+
+      forgotPassword.addEventListener(
+        "click",
+        function (event) {
+
+          event.preventDefault();
+
+          alert(
+            "Please contact the system administrator to reset your password."
+          );
+
+        }
+      );
+
+    }
+
+    const footerLogin =
+      document.getElementById("footerLogin");
+
+    if (footerLogin) {
+
+      footerLogin.addEventListener(
+        "click",
+        function (event) {
+
+          event.preventDefault();
+
+          openLoginModal();
+
+        }
+      );
+
+    }
+
+  </script>
+
   <script src="js/script.js"></script>
 
 </body>
