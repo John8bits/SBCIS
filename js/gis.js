@@ -1,4 +1,45 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    const navToggle = document.querySelector('#gisNavToggle');
+    const navigation = document.querySelector('#gisNavigation');
+    const explorerToggle = document.querySelector('#toggleExplorer');
+    const explorerLabel = explorerToggle.querySelector('.toggle-label');
+    const closeExplorer = document.querySelector('#closeExplorer');
+    const backdrop = document.querySelector('#gisBackdrop');
+    const workspace = document.querySelector('.gis-map-shell');
+    const mobileLayout = window.matchMedia('(max-width: 760px)');
+    function closeNavigation() {
+        navigation.classList.remove('is-open');
+        navToggle.setAttribute('aria-expanded', 'false');
+    }
+    function setExplorer(open, returnFocus = false) {
+        workspace.classList.toggle('explorer-open', open);
+        explorerToggle.setAttribute('aria-expanded', String(open));
+        explorerLabel.textContent = open ? 'Hide explorer' : 'Explore locations';
+        if (returnFocus) explorerToggle.focus();
+    }
+    navToggle.addEventListener('click', () => {
+        const open = navToggle.getAttribute('aria-expanded') !== 'true';
+        navigation.classList.toggle('is-open', open);
+        navToggle.setAttribute('aria-expanded', String(open));
+        setExplorer(false);
+    });
+    navigation.addEventListener('click', closeNavigation);
+    explorerToggle.addEventListener('click', () => {
+        setExplorer(explorerToggle.getAttribute('aria-expanded') !== 'true');
+        closeNavigation();
+    });
+    closeExplorer.addEventListener('click', () => setExplorer(false, true));
+    backdrop.addEventListener('click', () => setExplorer(false, true));
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        if (navigation.classList.contains('is-open')) { closeNavigation(); navToggle.focus(); }
+        if (workspace.classList.contains('explorer-open')) setExplorer(false, true);
+    });
+    document.addEventListener('click', event => {
+        if (!event.target.closest('.gis-header')) closeNavigation();
+    });
+    mobileLayout.addEventListener('change', event => { closeNavigation(); setExplorer(!event.matches); });
+    setExplorer(!mobileLayout.matches);
     const municipalitySelect = document.querySelector('#gisMunicipality');
     const barangaySelect = document.querySelector('#gisBarangay');
     const search = document.querySelector('#gisSearch');
@@ -9,7 +50,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     retry.addEventListener('click', () => window.location.reload());
     try {
         if (!window.L) throw new Error('The map library could not load. Check your internet connection and retry.');
-        const map = L.map('gisMap', { preferCanvas: true, minZoom: 8, maxZoom: 19 });
+        const map = L.map('gisMap', { preferCanvas: true, minZoom: 8, maxZoom: 19, zoomControl: false });
+        L.control.zoom({ position: 'topright' }).addTo(map);
         const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
@@ -35,6 +77,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 label.textContent = feature.properties.NAME_2;
                 layer.bindTooltip(label);
                 layer.on('click', () => selectMunicipality(feature.properties.GID_2));
+                layer.on('mouseover', () => layer.setStyle({ weight: 3, fillOpacity: .28 }));
+                layer.on('mouseout', () => layer.setStyle({
+                    ...municipalityStyle,
+                    fillOpacity: municipalitySelect.value && municipalitySelect.value !== feature.properties.GID_2 ? .04 : .16
+                }));
             }
         }).addTo(map);
         const barangayLayer = L.geoJSON(null, {
@@ -44,6 +91,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 label.textContent = `${feature.properties.NAME_3}, ${feature.properties.NAME_2}`;
                 layer.bindTooltip(label);
                 layer.on('click', () => selectBarangay(feature.properties.GID_3));
+                layer.on('mouseover', () => layer.setStyle({ weight: 2.5, fillOpacity: .28 }));
+                layer.on('mouseout', () => layer.setStyle(barangayStyle));
             }
         }).addTo(map);
         const selection = L.geoJSON(null, { interactive: false, style: { color: '#d88516', weight: 3, fillColor: '#f3ba5a', fillOpacity: .3 } }).addTo(map);
@@ -108,6 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     p.GID_3 ? selectBarangay(p.GID_3) : selectMunicipality(p.GID_2);
                     results.replaceChildren();
                     search.value = '';
+                    setExplorer(false, true);
                 });
                 results.append(button);
             });
@@ -115,9 +165,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         setOptions(municipalitySelect, [...municipalities.features].sort(sortBy('NAME_2')), 'GID_2', 'NAME_2', 'All municipalities / cities');
         municipalitySelect.disabled = search.disabled = reset.disabled = false;
         municipalitySelect.addEventListener('change', () => selectMunicipality(municipalitySelect.value));
-        barangaySelect.addEventListener('change', () => selectBarangay(barangaySelect.value));
+        barangaySelect.addEventListener('change', () => {
+            selectBarangay(barangaySelect.value);
+            if (barangaySelect.value) setExplorer(false, true);
+        });
         search.addEventListener('input', renderSearch);
-        reset.addEventListener('click', () => { search.value = ''; results.replaceChildren(); selectMunicipality(''); });
+        reset.addEventListener('click', () => { search.value = ''; results.replaceChildren(); selectMunicipality(''); setExplorer(false); });
         new ResizeObserver(() => map.invalidateSize()).observe(document.querySelector('#gisMap'));
         selectMunicipality('');
         const query = new URLSearchParams(window.location.search).get('q');
