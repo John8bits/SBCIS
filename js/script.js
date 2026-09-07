@@ -843,6 +843,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
+            if (!mapView) {
+                const recordsSearch = document.querySelector('#recordsSearch');
+                const matchingRows = tableRows.filter(row => row.textContent.toLowerCase().includes(term));
+                if (matchingRows.length && recordsSearch) {
+                    recordsSearch.value = term;
+                    recordsSearch.dispatchEvent(new Event('input'));
+                    closeSearch();
+                    document.querySelector('#soil-data')?.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    window.location.href = `gis.php?q=${encodeURIComponent(term)}`;
+                }
+                return;
+            }
+
             const matches =
                 markers.filter(marker => {
 

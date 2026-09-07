@@ -52,7 +52,7 @@
           </li>
 
           <li>
-            <a href="#map">GIS Map</a>
+            <a href="gis.php">GIS Map</a>
           </li>
 
           <li>
@@ -125,7 +125,7 @@
 
           <div class="hero-actions">
 
-            <a href="#map" class="btn btn-primary">
+            <a href="gis.php" class="btn btn-primary">
 
               <i class="fa-regular fa-map"></i>
 
@@ -204,251 +204,7 @@
 
     </section>
 
-    <section class="section map-section" id="map">
-
-      <div class="container">
-
-        <div class="section-heading-row reveal">
-
-          <div>
-
-            <p class="section-kicker">
-              <i class="fa-regular fa-map"></i>
-              GIS MAP
-            </p>
-
-            <h2>
-              Explore Soil Information by Location
-            </h2>
-
-            <p class="section-description">
-              A preview of the GIS map interface that will
-              display soil investigation locations across
-              Southern Leyte.
-            </p>
-
-          </div>
-
-        </div>
-
-        <div class="map-interface reveal">
-
-          <div class="map-toolbar">
-
-            <div class="map-search">
-
-              <i class="fa-solid fa-magnifying-glass"></i>
-
-              <input type="text" id="mapSearch" placeholder="Search municipality or barangay...">
-
-            </div>
-
-            <div class="map-filters">
-
-              <select id="municipalityFilter">
-                <option value="">All Municipalities</option>
-                <option value="sogod">Sogod</option>
-                <option value="maasin">Maasin City</option>
-                <option value="san-juan">San Juan</option>
-                <option value="hinunangan">Hinunangan</option>
-                <option value="macrohon">Macrohon</option>
-              </select>
-
-              <select id="soilFilter">
-                <option value="">All Soil Types</option>
-                <option value="clay">Clay</option>
-                <option value="gravelly_sand">Gravelly Sand</option>
-                <option value="sand">Sand</option>
-                <option value="sandy_clay">Sandy Clay</option>
-                <option value="silty_sand">Silty Sand</option>
-              </select>
-
-              <select id="capacityFilter">
-                <option value="">All Bearing Capacity</option>
-                <option value="very-high">Very High — &gt;300 kPa</option>
-                <option value="high">High — 200–300 kPa</option>
-                <option value="medium">Medium — 100–200 kPa</option>
-                <option value="low">Low — 50–100 kPa</option>
-                <option value="very-low">Very Low — &lt;50 kPa</option>
-              </select>
-
-              <button type="button" class="map-reset-filters" data-clear-map-filters title="Clear filters">
-
-                <!-- <i class="fa-solid fa-rotate-left"></i> -->
-                Reset
-
-              </button>
-
-            </div>
-
-          </div>
-
-          <div class="map-body">
-
-            <div class="map-view">
-
-              <img src="images/sample_map.png" alt="Southern Leyte soil bearing capacity GIS map">
-
-              <div class="map-overlay-gradient"></div>
-
-              <button class="gis-marker high-marker" style="left: 36%; top: 32%;" data-id="1"
-                data-location="Barangay Luyang" data-municipality="sogod" data-soil="sand" data-capacity="high"
-                data-test="SPT" data-bearing="250" data-date="June 20, 2024" data-coordinates="10.3842, 125.1884"
-                aria-label="Luyang soil data">
-
-                <span></span>
-
-              </button>
-
-              <button class="gis-marker medium-marker" style="left: 52%; top: 45%;" data-id="2"
-                data-location="Barangay Guindapunan" data-municipality="maasin" data-soil="clay" data-capacity="medium"
-                data-test="SPT" data-bearing="180" data-date="June 18, 2024" data-coordinates="10.1335, 124.8457"
-                aria-label="Guindapunan soil data">
-
-                <span></span>
-
-              </button>
-
-              <button class="gis-marker low-marker" style="left: 62%; top: 58%;" data-id="3"
-                data-location="Barangay An-per" data-municipality="san-juan" data-soil="sandy_clay"
-                data-capacity="medium" data-test="SPT" data-bearing="120" data-date="June 15, 2024"
-                data-coordinates="10.2891, 125.1702" aria-label="An-per soil data">
-
-                <span></span>
-
-              </button>
-
-              <button class="gis-marker high-marker" style="left: 45%; top: 67%;" data-id="4"
-                data-location="Barangay Hibaga-an" data-municipality="hinunangan" data-soil="gravelly_sand"
-                data-capacity="high" data-test="SPT" data-bearing="210" data-date="June 10, 2024"
-                data-coordinates="10.4001, 125.1948" aria-label="Hibaga-an soil data">
-
-                <span></span>
-
-              </button>
-
-              <button class="gis-marker very-low-marker" style="left: 71%; top: 38%;" data-id="5"
-                data-location="Barangay San Roque" data-municipality="macrohon" data-soil="silty_sand"
-                data-capacity="very-low" data-test="SPT" data-bearing="95" data-date="June 05, 2024"
-                data-coordinates="10.0792, 124.9435" aria-label="San Roque soil data">
-
-                <span></span>
-
-              </button>
-
-              <div class="map-location-toast" id="mapLocationToast">
-                <i class="fa-solid fa-location-dot"></i>
-                <span>Select a soil data marker</span>
-              </div>
-
-              <div class="map-controls">
-
-                <button type="button" class="map-control" data-map-action="zoom-in" aria-label="Zoom in">
-
-                  +
-                </button>
-
-                <button type="button" class="map-control" data-map-action="zoom-out" aria-label="Zoom out">
-
-                  −
-                </button>
-
-                <button type="button" class="map-control" data-map-action="reset" aria-label="Reset map">
-
-                  <i class="fa-solid fa-house"></i>
-
-                </button>
-
-              </div>
-
-              <div class="map-legend">
-
-                <strong>
-                  Bearing Capacity
-                </strong>
-
-                <span>
-                  <i class="legend-color very-high"></i>
-                  &gt; 300 kPa
-                </span>
-
-                <span>
-                  <i class="legend-color high"></i>
-                  200 – 300 kPa
-                </span>
-
-                <span>
-                  <i class="legend-color medium"></i>
-                  100 – 200 kPa
-                </span>
-
-                <span>
-                  <i class="legend-color low"></i>
-                  50 – 100 kPa
-                </span>
-
-                <span>
-                  <i class="legend-color very-low"></i>
-                  &lt; 50 kPa
-                </span>
-
-              </div>
-
-            </div>
-
-            <aside class="map-information">
-
-              <div class="map-info-header">
-
-                <span class="map-info-icon">
-                  <i class="fa-solid fa-circle-info"></i>
-                </span>
-
-                <div>
-
-                  <span>
-                    GIS INFORMATION
-                  </span>
-
-                  <h3>
-                    Location Details
-                  </h3>
-
-                </div>
-
-              </div>
-
-              <div class="selected-location" id="selectedLocation">
-
-                <div class="empty-location">
-
-                  <i class="fa-solid fa-map-location-dot"></i>
-
-                  <strong>
-                    Select a Soil Location
-                  </strong>
-
-                  <p>
-                    Click any marker on the map to view
-                    its soil type, investigation method,
-                    bearing capacity, test date, and coordinates.
-                  </p>
-
-                </div>
-
-              </div>
-
-            </aside>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </section>
-
-    <section class="section records-section" id="soil-data">
+<section class="section records-section" id="soil-data">
 
       <div class="container">
 
@@ -473,7 +229,7 @@
 
           </div>
 
-          <a href="#map" class="text-link">
+          <a href="gis.php" class="text-link">
             View on Map
             <i class="fa-solid fa-arrow-right"></i>
           </a>
@@ -1362,7 +1118,7 @@
 
         <h3>Resources</h3>
 
-        <a href="#map">
+        <a href="gis.php">
           GIS Map
         </a>
 
@@ -1388,7 +1144,7 @@
           Home
         </a>
 
-        <a href="#map">
+        <a href="gis.php">
           Explore Map
         </a>
 
