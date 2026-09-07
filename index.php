@@ -63,11 +63,11 @@
           </li>
 
           <li>
-            <a href="#contact">Contact</a>
+            <a href="#workflow">How It Works</a>
           </li>
 
           <li>
-            <a href="#workflow">How It Works</a>
+            <a href="#contact">Contact</a>
           </li>
 
         </ul>
@@ -245,7 +245,7 @@
 
             <p class="section-kicker">
               <i class="fa-regular fa-map"></i>
-              GIS VISUALIZATION
+              GIS MAP
             </p>
 
             <h2>
@@ -909,22 +909,12 @@
 
     </section>
 
-
-    <!-- =========================================
-             FEATURES
-        ========================================== -->
-
-    <section class="section features-section">
+    <!-- <section class="section features-section">
 
       <div class="container">
 
         <div class="section-heading centered reveal">
-
-          <p class="section-kicker">
-            <i class="fa-solid fa-grid-2"></i>
-            MAIN MODULES
-          </p>
-
+          
           <h2>
             Everything in One Soil Information Platform
           </h2>
@@ -1100,14 +1090,14 @@
 
       </div>
 
-    </section>
+    </section> -->
 
 
     <!-- =========================================
              HOW USER USES SYSTEM
         ========================================== -->
 
-    <section class="section user-flow-section">
+    <!-- <section class="section user-flow-section">
 
       <div class="container">
 
@@ -1288,12 +1278,7 @@
 
       </div>
 
-    </section>
-
-
-    <!-- =========================================
-             TARGET USERS
-        ========================================== -->
+    </section> -->
 
     <section class="section users-section">
 
@@ -1584,10 +1569,10 @@
               information are gathered from available sources.
             </p>
 
-            <div class="workflow-source">
+            <!-- <div class="workflow-source">
               <i class="fa-solid fa-file-circle-check"></i>
               Reports • Tests • Records
-            </div>
+            </div> -->
 
           </article>
 
@@ -1621,10 +1606,10 @@
               the web-based map.
             </p>
 
-            <div class="workflow-source">
+            <!-- <div class="workflow-source">
               <i class="fa-solid fa-file-export"></i>
               QGIS → GeoJSON
-            </div>
+            </div> -->
 
           </article>
 
@@ -1658,10 +1643,10 @@
               records in the system.
             </p>
 
-            <div class="workflow-source">
+            <!-- <div class="workflow-source">
               <i class="fa-solid fa-user-shield"></i>
               Secure Administration
-            </div>
+            </div> -->
 
           </article>
 
@@ -1669,7 +1654,6 @@
           <div class="workflow-arrow">
             <i class="fa-solid fa-arrow-right"></i>
           </div>
-
 
           <article class="workflow-card workflow-purple reveal">
 
@@ -1695,17 +1679,17 @@
               available soil information.
             </p>
 
-            <div class="workflow-source">
+            <!-- <div class="workflow-source">
               <i class="fa-solid fa-magnifying-glass"></i>
               Search • Map • Details
-            </div>
+            </div> -->
 
           </article>
 
         </div>
 
 
-        <div class="workflow-bottom reveal">
+        <!-- <div class="workflow-bottom reveal">
 
           <div class="workflow-line"></div>
 
@@ -1723,7 +1707,7 @@
 
           </div>
 
-        </div>
+        </div> -->
 
       </div>
 
@@ -1842,11 +1826,9 @@
 
           <div>
 
-            <strong>
-              SOUTHERN LEYTE
-            </strong>
+            <strong style="font-size: 17px;">SOUTHERN LEYTE</strong>
 
-            <span>
+            <span style="font-size: 10px;">
               Soil Bearing Capacity Information System
             </span>
 
@@ -1858,10 +1840,31 @@
 
         </div>
 
-        <p class="footer-description">
+        <p class="footer-description"  style="font-size: 12px;">
           A GIS-based platform for organizing and accessing
           soil investigation information across Southern Leyte.
         </p>
+
+      </div>
+
+
+      <div class="footer-column">
+
+        <h3>
+          Quick Links
+        </h3>
+
+        <a href="#">
+          Terms and Privacy
+        </a>
+
+        <a href="#">
+          Privacy Policy
+        </a>
+
+        <a href="#">
+          FAQ
+        </a>
 
       </div>
 
