@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    const navToggle = document.querySelector('#gisNavToggle');
-    const navigation = document.querySelector('#gisNavigation');
+    const navToggle = document.querySelector('.nav-toggle');
+    const navigation = document.querySelector('.nav-panel');
+    const navLinks = document.querySelectorAll('.nav-links a');
+    const searchTrigger = document.querySelector('.search-trigger');
     const explorerToggle = document.querySelector('#toggleExplorer');
     const explorerLabel = explorerToggle.querySelector('.toggle-label');
     const closeExplorer = document.querySelector('#closeExplorer');
@@ -8,8 +10,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const workspace = document.querySelector('.gis-map-shell');
     const mobileLayout = window.matchMedia('(max-width: 760px)');
     function closeNavigation() {
-        navigation.classList.remove('is-open');
+        navigation.classList.remove('open');
         navToggle.setAttribute('aria-expanded', 'false');
+        navToggle.setAttribute('aria-label', 'Open navigation');
+        const icon = navToggle.querySelector('i');
+        if (icon) icon.className = 'fa-solid fa-bars';
     }
     function setExplorer(open, returnFocus = false) {
         workspace.classList.toggle('explorer-open', open);
@@ -19,11 +24,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     navToggle.addEventListener('click', () => {
         const open = navToggle.getAttribute('aria-expanded') !== 'true';
-        navigation.classList.toggle('is-open', open);
+        navigation.classList.toggle('open', open);
         navToggle.setAttribute('aria-expanded', String(open));
+        navToggle.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+        const icon = navToggle.querySelector('i');
+        if (icon) icon.className = open ? 'fa-solid fa-xmark' : 'fa-solid fa-bars';
         setExplorer(false);
     });
-    navigation.addEventListener('click', closeNavigation);
+    navLinks.forEach(link => link.addEventListener('click', closeNavigation));
+    searchTrigger.addEventListener('click', () => {
+        setExplorer(true);
+        closeNavigation();
+        window.setTimeout(() => document.querySelector('#gisSearch').focus(), 250);
+    });
     explorerToggle.addEventListener('click', () => {
         setExplorer(explorerToggle.getAttribute('aria-expanded') !== 'true');
         closeNavigation();
@@ -32,11 +45,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     backdrop.addEventListener('click', () => setExplorer(false, true));
     document.addEventListener('keydown', event => {
         if (event.key !== 'Escape') return;
-        if (navigation.classList.contains('is-open')) { closeNavigation(); navToggle.focus(); }
+        if (navigation.classList.contains('open')) { closeNavigation(); navToggle.focus(); }
         if (workspace.classList.contains('explorer-open')) setExplorer(false, true);
     });
     document.addEventListener('click', event => {
-        if (!event.target.closest('.gis-header')) closeNavigation();
+        if (!event.target.closest('.site-header')) closeNavigation();
     });
     mobileLayout.addEventListener('change', event => { closeNavigation(); setExplorer(!event.matches); });
     setExplorer(!mobileLayout.matches);
