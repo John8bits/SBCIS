@@ -190,361 +190,19 @@
     </section>
 
 
-<section class="section records-section" id="soil-data">
-
-    <section class="section records-section" id="soil-data">
-
-
+    <section class="section records-section" id="soil-data" aria-labelledby="soil-data-title">
       <div class="container">
-
-        <div class="section-heading-row reveal">
-
-          <div>
-
-            <p class="section-kicker">
-              <i class="fa-regular fa-file-lines"></i>
-              SOIL DATA RECORDS
-            </p>
-
-            <h2>
-              Explore Soil Data Across Southern Leyte
-            </h2>
-
-            <p class="section-description">
-              Search, filter, and explore available soil
-              investigation locations by municipality,
-              soil type, and bearing capacity.
-            </p>
-
-          </div>
-
-          <a href="pages/gis.php" class="text-link">
-            View on Map
-            <i class="fa-solid fa-arrow-right"></i>
-          </a>
-
+        <div class="section-heading centered reveal">
+          <p class="section-kicker"><i class="fa-regular fa-file-lines" aria-hidden="true"></i> SOIL DATA RECORDS</p>
+          <h2 id="soil-data-title">Soil Data</h2>
         </div>
-
-        <div class="records-layout">
-
-          <div class="records-table-card reveal">
-
-            <div class="records-toolbar">
-
-              <div class="records-search">
-
-                <i class="fa-solid fa-magnifying-glass"></i>
-
-                <input type="search" id="recordsSearch" placeholder="Search soil records...">
-
-              </div>
-
-            </div>
-
-            <div class="table-header">
-
-              <div>
-
-                <strong>
-                  Recent Records
-                </strong>
-
-              </div>
-
-            </div>
-
-            <div class="table-wrapper">
-
-              <table>
-
-                <thead>
-
-                  <tr>
-
-                    <th>Location</th>
-
-                    <th>Municipality</th>
-
-                    <th>Test</th>
-
-                    <th>Bearing Capacity</th>
-
-                    <th>Date</th>
-
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  <tr>
-
-                    <td>
-                      <div class="location-cell">
-
-                        <span class="table-icon">
-                          <i class="fa-solid fa-location-dot"></i>
-                        </span>
-
-                        <strong>
-                          Luyang
-                        </strong>
-
-                      </div>
-                    </td>
-
-                    <td>Sogod</td>
-
-                    <td>
-                      <span class="test-badge">
-                        SPT
-                      </span>
-                    </td>
-
-                    <td>
-                      <strong class="capacity high-text">
-                        250 kPa
-                      </strong>
-                    </td>
-
-                    <td>Jun 20, 2024</td>
-
-                  </tr>
-
-                  <tr>
-
-                    <td>
-                      <div class="location-cell">
-
-                        <span class="table-icon">
-                          <i class="fa-solid fa-location-dot"></i>
-                        </span>
-
-                        <strong>
-                          Guindapunan
-                        </strong>
-
-                      </div>
-                    </td>
-
-                    <td>Maasin City</td>
-
-                    <td>
-                      <span class="test-badge">
-                        SPT
-                      </span>
-                    </td>
-
-                    <td>
-                      <strong class="capacity medium-text">
-                        180 kPa
-                      </strong>
-                    </td>
-
-                    <td>Jun 18, 2024</td>
-
-                  </tr>
-
-                  <tr>
-
-                    <td>
-                      <div class="location-cell">
-
-                        <span class="table-icon">
-                          <i class="fa-solid fa-location-dot"></i>
-                        </span>
-
-                        <strong>
-                          An-per
-                        </strong>
-
-                      </div>
-                    </td>
-
-                    <td>San Juan</td>
-
-                    <td>
-                      <span class="test-badge">
-                        SPT
-                      </span>
-                    </td>
-
-                    <td>
-                      <strong class="capacity medium-text">
-                        120 kPa
-                      </strong>
-                    </td>
-
-                    <td>Jun 15, 2024</td>
-
-                  </tr>
-
-                  <tr>
-
-                    <td>
-                      <div class="location-cell">
-
-                        <span class="table-icon">
-                          <i class="fa-solid fa-location-dot"></i>
-                        </span>
-
-                        <strong>
-                          Hibaga-an
-                        </strong>
-
-                      </div>
-                    </td>
-
-                    <td>Hinunangan</td>
-
-                    <td>
-                      <span class="test-badge">
-                        SPT
-                      </span>
-                    </td>
-
-                    <td>
-                      <strong class="capacity high-text">
-                        210 kPa
-                      </strong>
-                    </td>
-
-                    <td>Jun 10, 2024</td>
-
-                  </tr>
-
-                  <tr>
-
-                    <td>
-                      <div class="location-cell">
-
-                        <span class="table-icon">
-                          <i class="fa-solid fa-location-dot"></i>
-                        </span>
-
-                        <strong>
-                          San Roque
-                        </strong>
-
-                      </div>
-                    </td>
-
-                    <td>Macrohon</td>
-
-                    <td>
-                      <span class="test-badge">
-                        SPT
-                      </span>
-                    </td>
-
-                    <td>
-                      <strong class="capacity low-text">
-                        95 kPa
-                      </strong>
-                    </td>
-
-                    <td>Jun 05, 2024</td>
-
-                  </tr>
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          </div>
-
-          <div class="data-summary-card reveal">
-
-            <div class="data-summary-top">
-
-              <span class="summary-icon">
-                <i class="fa-solid fa-chart-simple"></i>
-              </span>
-
-              <span>
-                DATA OVERVIEW
-              </span>
-
-            </div>
-
-            <h3>
-              Soil parameters
-              prepared for GIS visualization.
-            </h3>
-
-            <p>
-              Each location can contain multiple
-              investigation records and associated
-              geographic information.
-            </p>
-
-            <div class="parameter-list">
-
-              <div>
-                <span>
-                  <i class="fa-solid fa-location-dot"></i>
-                  Coordinates
-                </span>
-
-                <strong>
-                  Lat / Long
-                </strong>
-              </div>
-
-              <div>
-                <span>
-                  <i class="fa-solid fa-mountain"></i>
-                  Soil Type
-                </span>
-
-                <strong>
-                  Recorded
-                </strong>
-              </div>
-
-              <div>
-                <span>
-                  <i class="fa-solid fa-weight-hanging"></i>
-                  Bearing Capacity
-                </span>
-
-                <strong>
-                  kPa
-                </strong>
-              </div>
-
-              <div>
-                <span>
-                  <i class="fa-solid fa-calendar"></i>
-                  Test Date
-                </span>
-
-                <strong>
-                  History
-                </strong>
-              </div>
-
-              <div>
-                <span>
-                  <i class="fa-solid fa-file-lines"></i>
-                  Data Source
-                </span>
-
-                <strong>
-                  Reference
-                </strong>
-              </div>
-
-            </div>
-
-          </div>
-
+        <div class="soil-empty-state reveal">
+          <span class="soil-empty-icon" aria-hidden="true"><i class="fa-regular fa-folder-open"></i></span>
+          <h3>No soil data yet</h3>
+          <p>Soil investigation records will appear here once they are available.</p>
+          <a href="pages/gis.php" class="text-link">Explore location boundaries <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
         </div>
-
       </div>
-
     </section>
 
     <section class="section users-section">
@@ -1066,7 +724,7 @@
 
   </section>
 
-  <footer class="footer" id="contact">
+  <footer class="footer">
 
     <div class="container footer-grid">
 
@@ -1599,7 +1257,7 @@
     const logoutStatus =
       urlParams.get("logout");
 
-
+  
 
     const loginMessages = {
       failed: 'Incorrect email or password.',
@@ -1636,7 +1294,7 @@
 
   </script>
 
-  <script src="src/js/script.js"></script>
+  <script src="src/js/script.js?v=<?= filemtime(__DIR__ . '/src/js/script.js') ?>"></script>
 
 </body>
 </html>

@@ -105,51 +105,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
     });
 
-    //act nav
-    const sections =
-        document.querySelectorAll(
-            "main section[id], footer[id]"
-        );
+    // Track the actual navigation targets, including Contact outside main.
+    const navSections = [...navLinks].map(link => {
+        const href = link.getAttribute('href');
+        return href?.startsWith('#') && href.length > 1
+            ? document.getElementById(href.slice(1))
+            : null;
+    }).filter(Boolean);
 
-    if ("IntersectionObserver" in window) {
-
-        const sectionObserver =
-            new IntersectionObserver(
-                entries => {
-
-                    entries.forEach(entry => {
-
-                        if (!entry.isIntersecting)
-                            return;
-
-                        const id =
-                            entry.target.id;
-
-                        navLinks.forEach(link => {
-
-                            link.classList.toggle(
-                                "active",
-                                link.getAttribute("href") ===
-                                `#${id}`
-                            );
-
-                        });
-
-                    });
-
-                },
-                {
-                    rootMargin:
-                        "-25% 0px -65% 0px",
-                    threshold: 0
-                }
-            );
-
-        sections.forEach(section => {
-            sectionObserver.observe(section);
+    function updateActiveNavigation() {
+        if (!navSections.length) return;
+        const marker = Math.max((header?.getBoundingClientRect().height || 0) + 16, window.innerHeight * 0.25);
+        let active = navSections[0];
+        navSections.forEach(section => {
+            if (section.getBoundingClientRect().top <= marker) active = section;
         });
-
+        // The final section may never reach the marker on a short page.
+        if (window.scrollY > 0 && window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
+            active = navSections[navSections.length - 1];
+        }
+        navLinks.forEach(link => {
+            const current = link.getAttribute('href') === '#' + active.id;
+            link.classList.toggle('active', current);
+            if (current) link.setAttribute('aria-current', 'location');
+            else link.removeAttribute('aria-current');
+        });
     }
+
+    let navigationFrame = null;
+    function scheduleNavigationUpdate() {
+        if (navigationFrame !== null) return;
+        navigationFrame = requestAnimationFrame(() => {
+            navigationFrame = null;
+            updateActiveNavigation();
+        });
+    }
+    window.addEventListener('scroll', scheduleNavigationUpdate, { passive: true });
+    window.addEventListener('resize', scheduleNavigationUpdate);
+    window.addEventListener('load', scheduleNavigationUpdate);
+    updateActiveNavigation();
 
     //reveal animate
     const revealItems =
