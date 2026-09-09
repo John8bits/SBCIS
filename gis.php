@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="css/gis.css">
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script defer src="js/gis.js"></script>
+  <script defer src="js/login-modal.js"></script>
 </head>
 <body class="gis-page">
   <a class="gis-skip" href="#gisMap">Skip to map</a>
@@ -49,7 +50,7 @@
           <button class="icon-btn search-trigger" type="button" aria-label="Search locations">
             <i class="fa-solid fa-magnifying-glass"></i>
           </button>
-          <a href="login.php" class="login-btn">
+          <a href="#" id="openLogin" class="login-btn">
             <i class="fa-solid fa-user-shield"></i>
             Login
           </a>
@@ -105,5 +106,72 @@
     </div>
     <noscript>Enable JavaScript to explore municipalities and barangays on the map.</noscript>
   </main>
+
+  <div class="login-modal" id="loginModal" aria-hidden="true">
+    <div class="login-modal-overlay" id="loginOverlay"></div>
+
+    <div class="login-modal-card" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+      <button type="button" class="modal-close" id="closeLogin" aria-label="Close login">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="login-form-wrapper">
+        <div class="modal-logo">
+          <div class="modal-logo-mark">
+            <img src="images/logo.png" alt="Southern Leyte Soil Information System logo">
+          </div>
+
+          <div class="modal-logo-copy">
+            <strong>SOUTHERN LEYTE</strong>
+            <span>SOIL INFORMATION SYSTEM</span>
+          </div>
+        </div>
+
+        <div class="form-header">
+          <h2 id="loginTitle">Sign in</h2>
+        </div>
+
+        <p class="form-description">Enter your account credentials to continue.</p>
+
+        <form action="login_process.php" method="POST" class="login-form">
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <div class="input-wrapper">
+              <i class="fa-regular fa-envelope"></i>
+              <input type="email" id="email" name="email" placeholder="Enter your email address" autocomplete="email" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="label-row">
+              <label for="password">Password</label>
+              <a href="#" class="forgot-link" id="forgotPassword">Forgot password?</a>
+            </div>
+
+            <div class="input-wrapper">
+              <i class="fa-solid fa-lock"></i>
+              <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+              <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password">
+                <i class="fa-regular fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-options">
+            <label class="remember-me">
+              <input type="checkbox" name="remember" value="1">
+              <span class="custom-checkbox"></span>
+              <span>Remember me</span>
+            </label>
+          </div>
+
+          <button type="submit" class="login-submit">
+            <span>Sign In</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

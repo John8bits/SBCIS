@@ -1157,7 +1157,7 @@
         </a>
 
         <a href="#" id="footerLogin">
-          Admin Login
+          Sign In
         </a>
 
       </div>
@@ -1314,30 +1314,11 @@
         </div>
 
         <div class="form-header">
-
-          <div class="form-icon">
-
-            <i class="fa-solid fa-user-shield"></i>
-
-          </div>
-
-          <div>
-
-            <span class="form-kicker">
-              ADMIN PORTAL
-            </span>
-
-            <h2 id="loginTitle">
-              Welcome Back
-            </h2>
-
-          </div>
-
+          <h2 id="loginTitle">Sign in</h2>
         </div>
 
         <p class="form-description">
-          Sign in to access the administrative dashboard
-          and manage system information.
+          Enter your account credentials to continue.
         </p>
 
         <form action="login_process.php" method="POST" class="login-form">
@@ -1596,7 +1577,7 @@
           event.preventDefault();
 
           alert(
-            "Please contact the system administrator to reset your password."
+            "Please contact the support team to reset your password."
           );
 
         }

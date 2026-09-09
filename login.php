@@ -6,11 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <meta name="description"
-        content="Administrator login for the Southern Leyte Soil Bearing Capacity Information System.">
+        content="Secure account access for the Southern Leyte Soil Bearing Capacity Information System.">
 
     <meta name="theme-color" content="#0b3d2e">
 
-    <title>Admin Login | Southern Leyte Soil Information System</title>
+    <title>Sign In | Southern Leyte Soil Information System</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -50,7 +50,7 @@
 
                         <span class="brand-kicker">
                             <i class="fa-solid fa-shield-halved"></i>
-                            SECURE ADMINISTRATION
+                            SECURE ACCESS
                         </span>
 
                         <h1 style="font-size: 70px;">
@@ -59,7 +59,7 @@
                         </h1>
 
                         <!-- <p>
-                            Access the administrative portal to manage soil
+                            Access the secure workspace to manage soil
                             investigation records, GIS information, and
                             bearing capacity data for Southern Leyte.
                         </p> -->
@@ -96,8 +96,8 @@
                             </span>
 
                             <div>
-                                <strong>Administrator Access</strong>
-                                <span>Authorized system management</span>
+                                <strong>Account Access</strong>
+                                <span>Secure system management</span>
                             </div>
                         </div>
 
@@ -139,12 +139,12 @@
                     <div class="form-header">
 
                         <div class="form-icon">
-                            <i class="fa-solid fa-user-shield"></i>
+                            <i class="fa-solid fa-lock"></i>
                         </div>
 
                         <div>
                             <span class="form-kicker">
-                                ADMIN PORTAL
+                                ACCOUNT ACCESS
                             </span>
 
                             <h2>Welcome Back</h2>
@@ -153,8 +153,7 @@
                     </div>
 
                     <p class="form-description">
-                        Sign in to access the administrative dashboard
-                        and manage system information.
+                        Enter your account credentials to continue.
                     </p>
 
 
