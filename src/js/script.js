@@ -145,50 +145,29 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener('load', scheduleNavigationUpdate);
     updateActiveNavigation();
 
-    //reveal animate
-    const revealItems =
-        document.querySelectorAll(".reveal");
-
-    if ("IntersectionObserver" in window) {
-
-        const revealObserver =
-            new IntersectionObserver(
-                entries => {
-
-                    entries.forEach(entry => {
-
-                        if (
-                            entry.isIntersecting
-                        ) {
-
-                            entry.target.classList.add(
-                                "visible"
-                            );
-
-                            revealObserver.unobserve(
-                                entry.target
-                            );
-
-                        }
-
-                    });
-
-                },
-                {
-                    threshold: 0.1
-                }
-            );
+    // One quiet reveal per element; content stays visible without JavaScript.
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const revealItems = [...document.querySelectorAll('.reveal')];
+    if ('IntersectionObserver' in window && !motionPreference.matches) {
+        const revealObserver = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+                entry.target.classList.add('visible');
+                revealObserver.unobserve(entry.target);
+            });
+        }, { threshold: 0, rootMargin: '0px 0px -24px 0px' });
 
         revealItems.forEach(item => {
+            const siblings = [...item.parentElement.children].filter(child => child.classList.contains('reveal'));
+            item.style.setProperty('--reveal-delay', Math.min(siblings.indexOf(item), 3) * 60 + 'ms');
+            item.classList.add('reveal-pending');
             revealObserver.observe(item);
         });
-
-    } else {
-
-        revealItems.forEach(item => {
-            item.classList.add("visible");
+        motionPreference.addEventListener('change', event => {
+            if (!event.matches) return;
+            revealObserver.disconnect();
+            revealItems.forEach(item => item.classList.add('visible'));
         });
-
     }
 
     //map toast
@@ -763,7 +742,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     recordsSearch.value = term;
                     recordsSearch.dispatchEvent(new Event('input'));
                     closeSearch();
-                    document.querySelector('#soil-data')?.scrollIntoView({ behavior: 'smooth' });
+                    document.querySelector('#soil-data')?.scrollIntoView({ behavior: motionPreference.matches ? 'instant' : 'smooth' });
                 } else {
                     window.location.href = `pages/gis.php?q=${encodeURIComponent(term)}`;
                 }
@@ -846,7 +825,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 document
                     .querySelector("#map")
                     ?.scrollIntoView({
-                        behavior: "smooth"
+                        behavior: motionPreference.matches ? "instant" : "smooth"
                     });
 
 
@@ -932,7 +911,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     event.preventDefault();
 
                     target.scrollIntoView({
-                        behavior: "smooth",
+                        behavior: motionPreference.matches ? "instant" : "smooth",
                         block: "start"
                     });
 

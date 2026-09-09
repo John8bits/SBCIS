@@ -63,7 +63,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
           <li><a href="#workflow">How It Works</a></li>
           <li><a href="#about">About</a></li>
           <li><a href="#contact">Contact</a></li>
-          <li><a href="pages/gis.php">GIS Map</a></li>
+          <li><a href="views/gis.php">GIS Map</a></li>
         </ul>
 
         <div class="nav-actions">
@@ -117,7 +117,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
           <div class="hero-actions">
 
-            <a href="pages/gis.php" class="btn btn-primary">
+            <a href="views/gis.php" class="btn btn-primary">
 
               <i class="fa-regular fa-map"></i>
 
@@ -160,7 +160,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
             <div id="heroMap" class="mini-map" role="region" aria-label="Southern Leyte map preview with zoom controls"></div>
             <div class="hero-map-actions">
               <button id="heroMapReset" type="button" disabled>Reset view</button>
-              <a href="pages/gis.php">Explore full map <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
+              <a href="views/gis.php">Explore full map <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
             </div>
             <p id="heroMapStatus" class="hero-map-note" role="status">Loading map...</p>
 
@@ -202,14 +202,14 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
             <span class="soil-empty-icon" aria-hidden="true"><i class="fa-regular fa-folder-open"></i></span>
             <h3>Soil data is temporarily unavailable</h3>
             <p>Please try again later. You can still explore the location boundaries.</p>
-            <a href="pages/gis.php" class="text-link">Explore the map <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+            <a href="views/gis.php" class="text-link">Explore the map <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
           </div>
         <?php elseif (!$home['records']): ?>
           <div class="soil-empty-state reveal">
             <span class="soil-empty-icon" aria-hidden="true"><i class="fa-regular fa-folder-open"></i></span>
             <h3>No soil data yet</h3>
             <p>Soil investigation records will appear here once they are available.</p>
-            <a href="pages/gis.php" class="text-link">Explore location boundaries <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+            <a href="views/gis.php" class="text-link">Explore location boundaries <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
           </div>
         <?php else: ?>
           <div class="records-table-card reveal">
@@ -572,7 +572,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
         <h3>Resources</h3>
 
-        <a href="pages/gis.php">
+        <a href="views/gis.php">
           GIS Map
         </a>
 
@@ -598,7 +598,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
           Home
         </a>
 
-        <a href="pages/gis.php">
+        <a href="views/gis.php">
           Explore Map
         </a>
 
