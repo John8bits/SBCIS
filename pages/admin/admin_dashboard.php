@@ -18,6 +18,7 @@ if (
 <html lang="en">
 
 <head>
+    <link rel="icon" type="image/png" href="../../src/images/logo.png">
     <meta charset="UTF-8">
     <title>Admin Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
