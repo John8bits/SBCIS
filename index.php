@@ -14,11 +14,11 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <link rel="stylesheet" href="src/css/style.css">
-<<<<<<< HEAD
-=======
+  <link rel="stylesheet" href="src/css/style.css?v=<?= filemtime(__DIR__ . '/src/css/style.css') ?>">
+
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
->>>>>>> a6f6c58f7fe7f063db10b4a873b344df37d5806e
+  <script src="src/js/toast.js"></script>
+
 
 </head>
 
@@ -56,7 +56,7 @@
           </li>
 
           <li>
-            <a href="gis.php">GIS Map</a>
+            <a href="pages/gis.php">GIS Map</a>
           </li>
 
           <li>
@@ -129,7 +129,7 @@
 
           <div class="hero-actions">
 
-            <a href="gis.php" class="btn btn-primary">
+            <a href="pages/gis.php" class="btn btn-primary">
 
               <i class="fa-regular fa-map"></i>
 
@@ -208,11 +208,11 @@
 
     </section>
 
-<<<<<<< HEAD
+
 <section class="section records-section" id="soil-data">
-=======
+
     <section class="section records-section" id="soil-data">
->>>>>>> a6f6c58f7fe7f063db10b4a873b344df37d5806e
+
 
       <div class="container">
 
@@ -237,7 +237,7 @@
 
           </div>
 
-          <a href="gis.php" class="text-link">
+          <a href="pages/gis.php" class="text-link">
             View on Map
             <i class="fa-solid fa-arrow-right"></i>
           </a>
@@ -1126,7 +1126,7 @@
 
         <h3>Resources</h3>
 
-        <a href="gis.php">
+        <a href="pages/gis.php">
           GIS Map
         </a>
 
@@ -1152,7 +1152,7 @@
           Home
         </a>
 
-        <a href="gis.php">
+        <a href="pages/gis.php">
           Explore Map
         </a>
 
@@ -1329,7 +1329,7 @@
           Enter your account credentials to continue.
         </p>
 
-        <form action="login_process.php" method="POST" class="login-form">
+        <form action="app/Controllers/login_process.php" method="POST" class="login-form">
 
           <div class="form-group">
 
@@ -1413,26 +1413,6 @@
 
   </div>
 
-<<<<<<< HEAD
-  <script>
-
-    const loginModal =
-      document.getElementById("loginModal");
-
-    const openLogin =
-      document.getElementById("openLogin");
-
-    const closeLogin =
-      document.getElementById("closeLogin");
-
-    const loginOverlay =
-      document.getElementById("loginOverlay");
-    const passwordInput =
-      document.getElementById("password");
-
-    const passwordToggle =
-      document.getElementById("passwordToggle");
-=======
 
   <script>
 
@@ -1442,7 +1422,7 @@
     const loginOverlay = document.getElementById("loginOverlay");
     const passwordInput = document.getElementById("password");
     const passwordToggle = document.getElementById("passwordToggle");
->>>>>>> a6f6c58f7fe7f063db10b4a873b344df37d5806e
+
 
     function openLoginModal() {
 
@@ -1465,23 +1445,17 @@
           document.getElementById("email");
 
         if (email) {
-<<<<<<< HEAD
+
 
           email.focus();
 
-=======
-          email.focus();
->>>>>>> a6f6c58f7fe7f063db10b4a873b344df37d5806e
         }
 
       }, 300);
 
     }
 
-<<<<<<< HEAD
-=======
 
->>>>>>> a6f6c58f7fe7f063db10b4a873b344df37d5806e
     function closeLoginModal() {
 
       if (!loginModal) return;
@@ -1499,10 +1473,6 @@
 
     }
 
-<<<<<<< HEAD
-=======
-
->>>>>>> a6f6c58f7fe7f063db10b4a873b344df37d5806e
     if (openLogin) {
 
       openLogin.addEventListener(
@@ -1518,10 +1488,6 @@
 
     }
 
-<<<<<<< HEAD
-=======
-
->>>>>>> a6f6c58f7fe7f063db10b4a873b344df37d5806e
     if (closeLogin) {
 
       closeLogin.addEventListener(
@@ -1547,11 +1513,6 @@
       );
 
     }
-
-<<<<<<< HEAD
-=======
-
->>>>>>> a6f6c58f7fe7f063db10b4a873b344df37d5806e
     document.addEventListener(
       "keydown",
       function (event) {
@@ -1616,29 +1577,18 @@
 
           event.preventDefault();
 
-<<<<<<< HEAD
-          alert(
-            "Please contact the support team to reset your password."
-          );
-=======
-          Swal.fire({
-            icon: "info",
-            title: "Forgot Password?",
-            text: "Please contact the system administrator to reset your password.",
-            confirmButtonText: "Okay",
-            confirmButtonColor: "#0b3d2e"
+
+          AppToast.fire({
+            icon: 'info',
+            title: 'Contact your admin to reset your password.'
           });
->>>>>>> a6f6c58f7fe7f063db10b4a873b344df37d5806e
 
         }
       );
 
     }
 
-<<<<<<< HEAD
-=======
 
->>>>>>> a6f6c58f7fe7f063db10b4a873b344df37d5806e
     const footerLogin =
       document.getElementById("footerLogin");
 
@@ -1657,10 +1607,6 @@
 
     }
 
-<<<<<<< HEAD
-=======
-
-
     const urlParams =
       new URLSearchParams(
         window.location.search
@@ -1674,107 +1620,25 @@
 
 
 
-    if (
-      loginStatus === "failed" ||
-      loginStatus === "empty" ||
-      loginStatus === "invalid"
-    ) {
+    const loginMessages = {
+      failed: 'Incorrect email or password.',
+      empty: 'Enter your email and password.',
+      invalid: 'Enter a valid email address.',
+      error: 'Unable to sign in. Please try again.',
+      required: 'Please sign in to continue.'
+    };
 
-      let errorMessage =
-        "Invalid email or password.";
-
-      if (loginStatus === "empty") {
-
-        errorMessage =
-          "Please enter your email and password.";
-
-      }
-
-      if (loginStatus === "invalid") {
-
-        errorMessage =
-          "Please enter a valid email address.";
-
-      }
-
+    if (Object.hasOwn(loginMessages, loginStatus)) {
       openLoginModal();
-
-
-      setTimeout(function () {
-
-        Swal.fire({
-
-          icon: "error",
-
-          title: "Login Failed",
-
-          text: errorMessage,
-
-          confirmButtonText: "Try Again",
-
-          confirmButtonColor: "#0b3d2e",
-
-          allowOutsideClick: false,
-
-          allowEscapeKey: false,
-
-          customClass: {
-            container: "swal-login-alert"
-          }
-
-        });
-
-      }, 350);
-
-    }
-
-
-
-    if (loginStatus === "error") {
-
-      Swal.fire({
-
-        icon: "error",
-
-        title: "Something Went Wrong",
-
-        text: "We could not process your login. Please try again later.",
-
-        confirmButtonText: "Okay",
-
-        confirmButtonColor: "#0b3d2e",
-
-        allowOutsideClick: false
-
+      AppToast.fire({
+        icon: loginStatus === 'required' ? 'info' : 'error',
+        title: loginMessages[loginStatus]
       });
-
     }
 
-    if (logoutStatus === "success") {
-
-      Swal.fire({
-
-        icon: "success",
-
-        title: "Logged Out Successfully",
-
-        text: "You have been safely logged out of the administrator account.",
-
-        confirmButtonText: "Okay",
-
-        confirmButtonColor: "#0b3d2e",
-
-        timer: 3000,
-
-        timerProgressBar: true,
-
-        allowOutsideClick: false
-
-      });
-
+    if (logoutStatus === 'success') {
+      AppToast.fire({ icon: 'success', title: 'You are signed out.' });
     }
-
-
 
     if (
       loginStatus ||
@@ -1789,15 +1653,11 @@
 
     }
 
->>>>>>> a6f6c58f7fe7f063db10b4a873b344df37d5806e
   </script>
 
   <script src="src/js/script.js"></script>
 
 </body>
+</html>
 
-<<<<<<< HEAD
-</html>
-=======
-</html>
->>>>>>> a6f6c58f7fe7f063db10b4a873b344df37d5806e
+

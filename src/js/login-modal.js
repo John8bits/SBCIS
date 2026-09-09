@@ -40,17 +40,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const showPassword = passwordInput.type === 'password';
         passwordInput.type = showPassword ? 'text' : 'password';
         passwordToggle.innerHTML = showPassword
-<<<<<<< HEAD
             ? '<i class="fa-regular fa-eye-slash"></i>'
-=======
-            ? '<i class="fa-regular f   a-eye-slash"></i>'
->>>>>>> a6f6c58f7fe7f063db10b4a873b344df37d5806e
             : '<i class="fa-regular fa-eye"></i>';
         passwordToggle.setAttribute('aria-label', showPassword ? 'Hide password' : 'Show password');
     });
 
     forgotPassword?.addEventListener('click', event => {
         event.preventDefault();
-        window.alert('Please contact the support team to reset your password.');
+        AppToast.fire({ icon: 'info', title: 'Contact your admin to reset your password.' });
     });
 });

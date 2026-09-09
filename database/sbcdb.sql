@@ -142,9 +142,6 @@ LEFT JOIN barangays br
     ON b.barangay_id = br.barangay_id
 
 LEFT JOIN soil_layers sl
-<<<<<<< HEAD
-    ON b.borehole_id = sl.borehole_id;
-=======
     ON b.borehole_id = sl.borehole_id;
 
 
@@ -165,4 +162,3 @@ VALUES
     'jbitss@gmail.com',
     '$2y$10$JEpD/ne4IfQl2wK6fVb.Pe/f/LDYq1jmxM4NMdPdF.1lNLqHvQ3vu'
 );
->>>>>>> a6f6c58f7fe7f063db10b4a873b344df37d5806e

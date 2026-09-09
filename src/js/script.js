@@ -852,7 +852,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     closeSearch();
                     document.querySelector('#soil-data')?.scrollIntoView({ behavior: 'smooth' });
                 } else {
-                    window.location.href = `gis.php?q=${encodeURIComponent(term)}`;
+                    window.location.href = `pages/gis.php?q=${encodeURIComponent(term)}`;
                 }
                 return;
             }

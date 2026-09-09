@@ -10,21 +10,23 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <link rel="stylesheet" href="src/css/style.css">
+  <link rel="stylesheet" href="../src/css/style.css?v=<?= filemtime(__DIR__ . '/../src/css/style.css') ?>">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="src/css/gis.css">
+  <link rel="stylesheet" href="../src/css/gis.css">
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script defer src="src/js/gis.js"></script>
-  <script defer src="src/js/login-modal.js"></script>
+  <script defer src="../src/js/gis.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script defer src="../src/js/toast.js"></script>
+  <script defer src="../src/js/login-modal.js?v=<?= filemtime(__DIR__ . '/../src/js/login-modal.js') ?>"></script>
 </head>
 <body class="gis-page">
   <a class="gis-skip" href="#gisMap">Skip to map</a>
 
   <header class="site-header" id="top">
     <nav class="navbar container" aria-label="Primary navigation">
-      <a href="index.php#home" class="brand">
+      <a href="../index.php#home" class="brand">
         <span class="brand-mark">
-          <img src="src/images/logo.png" alt="Southern Leyte Soil Information System logo">
+          <img src="../src/images/logo.png" alt="Southern Leyte Soil Information System logo">
         </span>
         <span class="brand-copy">
           <strong>SOUTHERN LEYTE</strong>
@@ -38,12 +40,12 @@
 
       <div class="nav-panel" id="gisNavigation">
         <ul class="nav-links">
-          <li><a href="index.php#home">Home</a></li>
+          <li><a href="../index.php#home">Home</a></li>
           <li><a class="active" href="gis.php" aria-current="page">GIS Map</a></li>
-          <li><a href="index.php#soil-data">Soil Data</a></li>
-          <li><a href="index.php#about">About</a></li>
-          <li><a href="index.php#workflow">How It Works</a></li>
-          <li><a href="index.php#contact">Contact</a></li>
+          <li><a href="../index.php#soil-data">Soil Data</a></li>
+          <li><a href="../index.php#about">About</a></li>
+          <li><a href="../index.php#workflow">How It Works</a></li>
+          <li><a href="../index.php#contact">Contact</a></li>
         </ul>
 
         <div class="nav-actions">
@@ -118,7 +120,7 @@
       <div class="login-form-wrapper">
         <div class="modal-logo">
           <div class="modal-logo-mark">
-            <img src="src/images/logo.png" alt="Southern Leyte Soil Information System logo">
+            <img src="../src/images/logo.png" alt="Southern Leyte Soil Information System logo">
           </div>
 
           <div class="modal-logo-copy">
@@ -133,7 +135,7 @@
 
         <p class="form-description">Enter your account credentials to continue.</p>
 
-        <form action="login_process.php" method="POST" class="login-form">
+        <form action="../app/Controllers/login_process.php" method="POST" class="login-form">
           <div class="form-group">
             <label for="email">Email Address</label>
             <div class="input-wrapper">

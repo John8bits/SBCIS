@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         tiles.on('tileerror', () => { status.textContent = 'Background map unavailable. You can still explore the boundaries.'; });
         L.control.scale({ imperial: false }).addTo(map);
         const datasets = await Promise.all(['boundary', 'municipalities', 'barangays'].map(async name => {
-            const response = await fetch(`src/qgis/southern_leyte_${name}.geojson`);
+            const response = await fetch(`../src/qgis/southern_leyte_${name}.geojson`);
             if (!response.ok) throw new Error(`Unable to load ${name} boundaries. Please retry.`);
             const data = await response.json();
             if (data.type !== 'FeatureCollection' || !data.features?.length) throw new Error(`The ${name} boundary file is empty or invalid.`);

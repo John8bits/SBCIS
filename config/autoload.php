@@ -9,7 +9,7 @@ declare(strict_types=1);
  */
 spl_autoload_register(static function (string $class): void {
     $namespacePrefix = 'App\\';
-    $baseDirectory = __DIR__ . '/app/';
+    $baseDirectory = __DIR__ . '/../app/';
 
     if (strncmp($class, $namespacePrefix, strlen($namespacePrefix)) !== 0) {
         return;

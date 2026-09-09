@@ -2,10 +2,8 @@
 
 session_start();
 
-require_once 'config/config.php';
-
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: ../../index.php');
     exit;
 }
 
@@ -13,19 +11,18 @@ $email = trim($_POST['email'] ?? '');
 $password = $_POST['password'] ?? '';
 
 if ($email === '' || $password === '') {
-    header('Location: index.php?login=empty');
+    header('Location: ../../index.php?login=empty');
     exit;
 }
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    header('Location: index.php?login=invalid');    
+    header('Location: ../../index.php?login=invalid');
     exit;
 }
 
 try {
 
-    $database = new Database();
-    $pdo = $database->getConnection();
+    require_once __DIR__ . '/../../config/config.php';
 
     $sql = "
         SELECT
@@ -53,17 +50,17 @@ try {
         $_SESSION['admin_id'] = $admin['admin_id'];
         $_SESSION['admin_email'] = $admin['email'];
 
-        header('Location: dashboard/admin_dashboard.php?login=success');
+        header('Location: ../../pages/admin/admin_dashboard.php?login=success');
         exit;
     }
 
-    header('Location: index.php?login=failed');
+    header('Location: ../../index.php?login=failed');
     exit;
 
 } catch (PDOException $e) {
 
     error_log($e->getMessage());
 
-    header('Location: index.php?login=error');
+    header('Location: ../../index.php?login=error');
     exit;
 }

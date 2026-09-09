@@ -5308,13 +5308,10 @@ tbody tr:hover {
         visibility 0.2s ease;
 }
 
-<<<<<<< HEAD
-=======
 .swal2-container {
   z-index: 99999 !important;
 }
 
->>>>>>> a6f6c58f7fe7f063db10b4a873b344df37d5806e
 .login-modal.active {
     visibility: visible;
     opacity: 1;

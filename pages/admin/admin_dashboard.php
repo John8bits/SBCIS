@@ -7,7 +7,7 @@ if (
     $_SESSION['admin_logged_in'] !== true
 ) {
 
-    header('Location: ../index.php?login=required');
+    header('Location: ../../index.php?login=required');
     exit;
 
 }
@@ -21,12 +21,13 @@ if (
     <meta charset="UTF-8">
     <title>Admin Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../../src/js/toast.js"></script>
 </head>
 
 <body>
 
     <h1>Admin Dashboard</h1>
-    <a href="../logout.php" id="logoutButton">
+    <a href="../../app/Controllers/logout.php" id="logoutButton">
         <i class="fa-solid fa-right-from-bracket"></i>
         Logout
     </a>
@@ -45,23 +46,7 @@ if (
 
         if (loginStatus === "success") {
 
-            Swal.fire({
-
-                icon: "success",
-
-                title: "Login Successful",
-
-                text: "Welcome to the Southern Leyte Soil Information System.",
-
-                confirmButtonText: "Continue",
-
-                confirmButtonColor: "#0b3d2e",
-
-                timer: 2500,
-
-                timerProgressBar: true
-
-            });
+            AppToast.fire({ icon: 'success', title: 'Welcome back!' });
 
         }
 
@@ -94,22 +79,21 @@ if (
                     event.preventDefault();
 
                     Swal.fire({
-
-                        icon: "warning",
-                        title: "Logout?",
-                        text: "Are you sure you want to logout from?",
+                        toast: false,
+                        position: 'center',
+                        icon: 'question',
+                        title: 'Sign out?',
+                        timer: false,
+                        showConfirmButton: true,
                         showCancelButton: true,
-                        confirmButtonText: "Yes, Logout",
-                        cancelButtonText: "Cancel",
-                        confirmButtonColor: "#0b3d2e",
-                        cancelButtonColor: "#6c757d",
-                        reverseButtons: true
-
+                        confirmButtonText: 'Sign out',
+                        cancelButtonText: 'Stay',
+                        confirmButtonColor: '#0b3d2e'
                     }).then((result) => {
 
                         if (result.isConfirmed) {
 
-                            window.location.href ="../logout.php";
+                            window.location.href ="../../app/Controllers/logout.php";
 
                         }
 
