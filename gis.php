@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="css/gis.css">
@@ -18,18 +19,42 @@
 <body class="gis-page">
   <a class="gis-skip" href="#gisMap">Skip to map</a>
 
-  <header class="gis-header">
-    <a class="brand" href="index.php" aria-label="Southern Leyte Soil Information System home">
-      <span class="brand-mark"><img src="images/logo.png" alt=""></span>
-      <span class="brand-copy"><strong>SOUTHERN LEYTE</strong><small>SOIL INFORMATION SYSTEM</small></span>
-    </a>
-    <button class="gis-nav-toggle" id="gisNavToggle" type="button" aria-expanded="false" aria-controls="gisNavigation">
-      <span>Menu</span><span aria-hidden="true">☰</span>
-    </button>
-    <nav id="gisNavigation" aria-label="Primary navigation">
-      <a href="index.php">Home</a>
-      <a href="gis.php" aria-current="page">GIS Map</a>
-      <a href="index.php#soil-data">Soil Data</a>
+  <header class="site-header" id="top">
+    <nav class="navbar container" aria-label="Primary navigation">
+      <a href="index.php#home" class="brand">
+        <span class="brand-mark">
+          <img src="images/logo.png" alt="Southern Leyte Soil Information System logo">
+        </span>
+        <span class="brand-copy">
+          <strong>SOUTHERN LEYTE</strong>
+          <small>SOIL INFORMATION SYSTEM</small>
+        </span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="gisNavigation">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <div class="nav-panel" id="gisNavigation">
+        <ul class="nav-links">
+          <li><a href="index.php#home">Home</a></li>
+          <li><a class="active" href="gis.php" aria-current="page">GIS Map</a></li>
+          <li><a href="index.php#soil-data">Soil Data</a></li>
+          <li><a href="index.php#about">About</a></li>
+          <li><a href="index.php#workflow">How It Works</a></li>
+          <li><a href="index.php#contact">Contact</a></li>
+        </ul>
+
+        <div class="nav-actions">
+          <button class="icon-btn search-trigger" type="button" aria-label="Search locations">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+          <a href="login.php" class="login-btn">
+            <i class="fa-solid fa-user-shield"></i>
+            Login
+          </a>
+        </div>
+      </div>
     </nav>
   </header>
 

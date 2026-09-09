@@ -83,7 +83,7 @@
 
           <a href="#" id="openLogin" class="login-btn">
             <i class="fa-solid fa-user-shield"></i>
-            Admin Login
+            Login
           </a>
 
         </div>
