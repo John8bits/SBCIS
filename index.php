@@ -239,7 +239,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
 <section class="section workflow-section" id="workflow">
       <div class="container">
-        <div class="section-heading centered reveal"><p class="section-kicker">HOW IT WORKS</p><h2>Find Your Location, Then Check the Records</h2><p>Explore the boundaries and check which soil records are available.</p></div>
+        <div class="section-heading centered reveal"><p class="section-kicker">HOW IT WORKS</p><h2>Explore a Location</h2><p>Find a municipality or barangay on the map, then check for available soil records.</p></div>
         <div class="workflow-grid">
           <article class="workflow-card workflow-green reveal"><div class="workflow-number">01</div><div class="workflow-icon"><i class="fa-solid fa-map" aria-hidden="true"></i></div><span class="workflow-label">OPEN THE MAP</span><h3>Explore Southern Leyte</h3><p>Open the GIS map to view the province and municipality boundaries.</p></article>
           <div class="workflow-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></div>
@@ -352,7 +352,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
           </p>
 
           <h2>
-            Built for People Who Need Soil Information
+            Who Can Use This Information
           </h2>
 
           <p>

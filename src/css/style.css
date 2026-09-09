@@ -6011,3 +6011,95 @@ body.login-modal-open {
 .login-modal .login-footer {
     margin-top: 16px;
 }
+
+/* Homepage: restrained surfaces, readable type, and quiet geographic accents. */
+main > .section {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding-block: clamp(56px, 6vw, 88px);
+}
+main > .section > .container { position: relative; z-index: 1; }
+main > .records-section { background: #f7f8f5; }
+main > .workflow-section { background: #fff; border-block: 1px solid #e6e9e3; }
+main > .about-section { background: #f0f4ee; }
+main > .users-section { background: #fafaf8; }
+main > .contact-section { background: #fff; border-top: 1px solid #e6e9e3; }
+
+/* A single off-center contour motif on the informational sections. */
+main > .about-section::before,
+main > .contact-section::before {
+  content: '';
+  position: absolute;
+  width: clamp(260px, 32vw, 440px);
+  aspect-ratio: 1;
+  height: auto;
+  top: -180px;
+  right: -200px;
+  left: auto;
+  border: 1px solid rgba(49, 86, 62, .08);
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: 0 0 0 28px rgba(49, 86, 62, .025), 0 0 0 60px rgba(49, 86, 62, .015);
+  pointer-events: none;
+}
+main > .contact-section::after { content: none; }
+
+main > .section .section-heading {
+  max-width: 680px;
+  margin-bottom: 32px;
+}
+main > .section h2 {
+  font-size: clamp(26px, 2.7vw, 34px);
+  line-height: 1.25;
+  letter-spacing: -.025em;
+  font-weight: 700;
+}
+main > .section .section-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .09em;
+  color: #52715b;
+  margin-bottom: 10px;
+}
+main > .section .section-heading > p:last-child {
+  font-size: 15px;
+  line-height: 1.75;
+  color: #616b63;
+}
+
+.soil-coverage .stat-card {
+  border-color: #e0e5dd;
+  border-radius: 8px;
+  box-shadow: none;
+}
+.soil-coverage .stat-card h3 { font-size: 13px; }
+.soil-coverage .stat-card p { font-size: 12px; line-height: 1.5; }
+.soil-empty-state { border-color: #e0e5dd; border-radius: 8px; padding-block: 40px; }
+
+main .workflow-card {
+  background: #fff;
+  border: 1px solid #e0e5dd;
+  border-radius: 8px;
+  box-shadow: none;
+}
+main .workflow-card::before { content: none; }
+main .workflow-card:hover { transform: none; box-shadow: none; }
+main .workflow-number { color: #718375; font-weight: 500; font-size: 14px; }
+main .workflow-icon { width: 40px; height: 40px; margin-bottom: 18px; font-size: 17px; border-radius: 6px; }
+main .workflow-label { color: #617565; font-size: 10px; letter-spacing: .06em; }
+main .workflow-card h3 { font-size: 16px; line-height: 1.4; }
+main .workflow-card p { font-size: 13px; line-height: 1.75; color: #616b63; }
+main .workflow-arrow { color: #a5b2a7; }
+
+main .user-card { background: transparent; border-radius: 8px; }
+main .user-card:hover { transform: none; background: transparent; }
+main .user-icon { width: 44px; height: 44px; font-size: 17px; background: #eaf0e7; }
+main .user-card h3 { font-size: 15px; }
+main .user-card p { font-size: 13px; line-height: 1.7; }
+
+@media (max-width: 600px) {
+  main > .section .section-heading { margin-bottom: 26px; }
+  main > .section .section-heading > p:last-child { font-size: 14px; }
+  main > .about-section::before, main > .contact-section::before { opacity: .5; }
+}
