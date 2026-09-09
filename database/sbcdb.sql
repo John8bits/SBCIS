@@ -143,3 +143,22 @@ LEFT JOIN barangays br
 
 LEFT JOIN soil_layers sl
     ON b.borehole_id = sl.borehole_id;
+
+
+CREATE TABLE admins (
+    admin_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO admins (email, password)
+VALUES
+(
+    'shawngaldo@gmail.com',
+    '$2y$10$XEVTVz.b46jiwBdfdIkOkej1DxC.UCvTm5RCh.bVrCcVzyE6HCQDe'
+),
+(
+    'jbitss@gmail.com',
+    '$2y$10$JEpD/ne4IfQl2wK6fVb.Pe/f/LDYq1jmxM4NMdPdF.1lNLqHvQ3vu'
+);
