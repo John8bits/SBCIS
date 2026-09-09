@@ -50,7 +50,7 @@ try {
         $_SESSION['admin_id'] = $admin['admin_id'];
         $_SESSION['admin_email'] = $admin['email'];
 
-        header('Location: ../../pages/admin/admin_dashboard.php?login=success');
+        header('Location: ../../views/admin/admin_dashboard.php?login=success');
         exit;
     }
 
