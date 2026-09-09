@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/png" href="../src/images/logo.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Explore municipality and barangay boundaries across Southern Leyte.">
@@ -41,11 +42,11 @@
       <div class="nav-panel" id="gisNavigation">
         <ul class="nav-links">
           <li><a href="../index.php#home">Home</a></li>
-          <li><a class="active" href="gis.php" aria-current="page">GIS Map</a></li>
           <li><a href="../index.php#soil-data">Soil Data</a></li>
-          <li><a href="../index.php#about">About</a></li>
           <li><a href="../index.php#workflow">How It Works</a></li>
+          <li><a href="../index.php#about">About</a></li>
           <li><a href="../index.php#contact">Contact</a></li>
+          <li><a class="active" href="gis.php" aria-current="page">GIS Map</a></li>
         </ul>
 
         <div class="nav-actions">

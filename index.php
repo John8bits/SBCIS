@@ -1,7 +1,15 @@
+<?php
+$home = require __DIR__ . '/app/Controllers/home.php';
+$escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+?>
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="src/js/hero-map.js?v=<?= filemtime(__DIR__ . '/src/js/hero-map.js') ?>"></script>
+  <link rel="icon" type="image/png" href="src/images/logo.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description"
@@ -50,31 +58,12 @@
       <div class="nav-panel">
 
         <ul class="nav-links">
-
-          <li>
-            <a class="active" href="#home">Home</a>
-          </li>
-
-          <li>
-            <a href="pages/gis.php">GIS Map</a>
-          </li>
-
-          <li>
-            <a href="#soil-data">Soil Data</a>
-          </li>
-
-          <li>
-            <a href="#about">About</a>
-          </li>
-
-          <li>
-            <a href="#workflow">How It Works</a>
-          </li>
-
-          <li>
-            <a href="#contact">Contact</a>
-          </li>
-
+          <li><a class="active" href="#home">Home</a></li>
+          <li><a href="#soil-data">Soil Data</a></li>
+          <li><a href="#workflow">How It Works</a></li>
+          <li><a href="#about">About</a></li>
+          <li><a href="#contact">Contact</a></li>
+          <li><a href="views/gis.php">GIS Map</a></li>
         </ul>
 
         <div class="nav-actions">
@@ -99,8 +88,7 @@
   </header>
 
   <main>
-
-    <section class="hero" id="home">
+<section class="hero" id="home">
 
       <div class="hero-overlay"></div>
 
@@ -129,7 +117,7 @@
 
           <div class="hero-actions">
 
-            <a href="pages/gis.php" class="btn btn-primary">
+            <a href="views/gis.php" class="btn btn-primary">
 
               <i class="fa-regular fa-map"></i>
 
@@ -162,43 +150,20 @@
                 </span>
 
                 <strong>
-                  GIS DATA OVERVIEW
+                  Explore Southern Leyte
                 </strong>
 
               </div>
 
             </div>
 
-            <div class="mini-map">
-
-              <img src="src/images/sample_map.png" alt="Preview of Southern Leyte GIS soil map">
-
-              <div class="mini-map-overlay">
-
-                <div class="map-marker marker-1">
-                  <span></span>
-                </div>
-
-                <div class="map-marker marker-2">
-                  <span></span>
-                </div>
-
-                <div class="map-marker marker-3">
-                  <span></span>
-                </div>
-
-                <div class="map-marker marker-4">
-                  <span></span>
-                </div>
-
-              </div>
-
-              <div class="mini-map-label">
-                <i class="fa-solid fa-location-dot"></i>
-                Soil Data Locations
-              </div>
-
+            <div id="heroMap" class="mini-map" role="region" aria-label="Southern Leyte map preview with zoom controls"></div>
+            <div class="hero-map-actions">
+              <button id="heroMapReset" type="button" disabled>Reset view</button>
+              <a href="views/gis.php">Explore full map <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
             </div>
+            <p id="heroMapStatus" class="hero-map-note" role="status">Loading map...</p>
+
 
           </div>
 
@@ -208,352 +173,161 @@
 
     </section>
 
+<section class="section records-section" id="soil-data" aria-labelledby="soil-data-title">
+      <div class="container">
+        <div class="section-heading centered reveal">
+          <p class="section-kicker">MAP COVERAGE &amp; SOIL RECORDS</p>
+          <h2 id="soil-data-title">Soil Data</h2>
+          <p>Boundary coverage and available soil records. Mapped areas do not indicate soil test locations.</p>
+        </div>
+        <div class="stats-grid soil-coverage">
+          <?php foreach ([
+              ['municipalities', 'Municipalities / Cities', 'Areas in the boundary map', 'fa-map-location-dot'],
+              ['barangays', 'Barangays', 'Areas in the boundary map', 'fa-location-crosshairs'],
+              ['boreholes', 'Borehole Locations', 'Locations saved in soil records', 'fa-location-dot'],
+              ['soilLayers', 'Soil Layer Records', 'Recorded layers, not individual tests', 'fa-layer-group'],
+          ] as [$key, $label, $description, $icon]): ?>
+            <article class="stat-card reveal">
+              <div class="stat-icon green"><i class="fa-solid <?= $escape($icon) ?>" aria-hidden="true"></i></div>
+              <div>
+                <strong<?= $home[$key] === null ? ' class="stat-unavailable"' : '' ?>><?= $home[$key] === null ? 'Unavailable' : number_format($home[$key]) ?></strong>
+                <h3><?= $escape($label) ?></h3>
+                <p><?= $escape($description) ?></p>
+              </div>
+            </article>
+          <?php endforeach; ?>
+        </div>
+        <?php if (!$home['databaseAvailable']): ?>
+          <div class="soil-empty-state reveal">
+            <span class="soil-empty-icon" aria-hidden="true"><i class="fa-regular fa-folder-open"></i></span>
+            <h3>Soil data is temporarily unavailable</h3>
+            <p>Please try again later. You can still explore the location boundaries.</p>
+            <a href="views/gis.php" class="text-link">Explore the map <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+          </div>
+        <?php elseif (!$home['records']): ?>
+          <div class="soil-empty-state reveal">
+            <span class="soil-empty-icon" aria-hidden="true"><i class="fa-regular fa-folder-open"></i></span>
+            <h3>No soil data yet</h3>
+            <p>Soil investigation records will appear here once they are available.</p>
+            <a href="views/gis.php" class="text-link">Explore location boundaries <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+          </div>
+        <?php else: ?>
+          <div class="records-table-card reveal">
+            <div class="table-header"><strong>Latest soil layer records</strong><span>Showing <?= count($home['records']) ?> of <?= number_format($home['soilLayers']) ?></span></div>
+            <div class="table-wrapper">
+              <table>
+                <caption class="soil-table-caption">Latest recorded layers by borehole and location</caption>
+                <thead><tr><th scope="col">Borehole</th><th scope="col">Municipality / City</th><th scope="col">Barangay</th><th scope="col">Layer</th><th scope="col">Soil Type</th><th scope="col">Bearing Capacity</th></tr></thead>
+                <tbody>
+                  <?php foreach ($home['records'] as $record): ?>
+                    <tr>
+                      <td><?= $escape($record['borehole_code']) ?></td>
+                      <td><?= $escape($record['municipality_name'] ?? 'Not recorded') ?></td>
+                      <td><?= $escape($record['barangay_name'] ?? 'Not recorded') ?></td>
+                      <td><?= $escape($record['layer_number']) ?></td>
+                      <td><?= $escape($record['soil_type']) ?></td>
+                      <td><?= $record['bearing_capacity_kpa'] === null ? 'Not recorded' : $escape($record['bearing_capacity_kpa']) . ' kPa' ?></td>
+                    </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <?php endif; ?>
+      </div>
+    </section>
 
-<section class="section records-section" id="soil-data">
+<section class="section workflow-section" id="workflow">
+      <div class="container">
+        <div class="section-heading centered reveal"><p class="section-kicker">HOW IT WORKS</p><h2>Explore a Location</h2><p>Find a municipality or barangay on the map, then check for available soil records.</p></div>
+        <div class="workflow-grid">
+          <article class="workflow-card workflow-green reveal"><div class="workflow-number">01</div><div class="workflow-icon"><i class="fa-solid fa-map" aria-hidden="true"></i></div><span class="workflow-label">OPEN THE MAP</span><h3>Explore Southern Leyte</h3><p>Open the GIS map to view the province and municipality boundaries.</p></article>
+          <div class="workflow-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></div>
+          <article class="workflow-card workflow-green reveal"><div class="workflow-number">02</div><div class="workflow-icon"><i class="fa-solid fa-location-dot" aria-hidden="true"></i></div><span class="workflow-label">CHOOSE A PLACE</span><h3>Select a Municipality</h3><p>Choose a municipality or city to see its barangay boundaries.</p></article>
+          <div class="workflow-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></div>
+          <article class="workflow-card workflow-green reveal"><div class="workflow-number">03</div><div class="workflow-icon"><i class="fa-solid fa-magnifying-glass-location" aria-hidden="true"></i></div><span class="workflow-label">LOOK CLOSER</span><h3>Explore a Barangay</h3><p>Click a barangay to zoom in, or search for a place on the full map.</p></article>
+          <div class="workflow-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></div>
+          <article class="workflow-card workflow-green reveal"><div class="workflow-number">04</div><div class="workflow-icon"><i class="fa-solid fa-file-lines" aria-hidden="true"></i></div><span class="workflow-label">CHECK AVAILABILITY</span><h3>View Soil Records</h3><p>Check the Soil Data section for saved records. Areas on the boundary map may not have soil records.</p></article>
+        </div>
+      </div>
+    </section>
 
-    <section class="section records-section" id="soil-data">
-
+<section class="section about-section" id="about">
 
       <div class="container">
 
-        <div class="section-heading-row reveal">
+        <div class="about-layout">
 
-          <div>
+          <div class="about-image reveal">
+
+            <img src="src/images/soil_data.jpg" alt="Southern Leyte landscape">
+
+            <div class="about-image-caption">
+
+              <i class="fa-solid fa-location-dot"></i>
+
+              Southern Leyte, Philippines
+
+            </div>
+
+          </div>
+
+          <div class="about-copy reveal">
 
             <p class="section-kicker">
-              <i class="fa-regular fa-file-lines"></i>
-              SOIL DATA RECORDS
+              ABOUT THE SYSTEM
             </p>
 
             <h2>
-              Explore Soil Data Across Southern Leyte
+              Better soil data for better decisions.
             </h2>
 
-            <p class="section-description">
-              Search, filter, and explore available soil
-              investigation locations by municipality,
-              soil type, and bearing capacity.
+            <p>
+              The Southern Leyte Soil Bearing Capacity
+              Information System is designed to organize
+              soil investigation information and provide
+              an accessible GIS-based platform for viewing
+              available data.
             </p>
-
-          </div>
-
-          <a href="pages/gis.php" class="text-link">
-            View on Map
-            <i class="fa-solid fa-arrow-right"></i>
-          </a>
-
-        </div>
-
-        <div class="records-layout">
-
-          <div class="records-table-card reveal">
-
-            <div class="records-toolbar">
-
-              <div class="records-search">
-
-                <i class="fa-solid fa-magnifying-glass"></i>
-
-                <input type="search" id="recordsSearch" placeholder="Search soil records...">
-
-              </div>
-
-            </div>
-
-            <div class="table-header">
-
-              <div>
-
-                <strong>
-                  Recent Records
-                </strong>
-
-              </div>
-
-            </div>
-
-            <div class="table-wrapper">
-
-              <table>
-
-                <thead>
-
-                  <tr>
-
-                    <th>Location</th>
-
-                    <th>Municipality</th>
-
-                    <th>Test</th>
-
-                    <th>Bearing Capacity</th>
-
-                    <th>Date</th>
-
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  <tr>
-
-                    <td>
-                      <div class="location-cell">
-
-                        <span class="table-icon">
-                          <i class="fa-solid fa-location-dot"></i>
-                        </span>
-
-                        <strong>
-                          Luyang
-                        </strong>
-
-                      </div>
-                    </td>
-
-                    <td>Sogod</td>
-
-                    <td>
-                      <span class="test-badge">
-                        SPT
-                      </span>
-                    </td>
-
-                    <td>
-                      <strong class="capacity high-text">
-                        250 kPa
-                      </strong>
-                    </td>
-
-                    <td>Jun 20, 2024</td>
-
-                  </tr>
-
-                  <tr>
-
-                    <td>
-                      <div class="location-cell">
-
-                        <span class="table-icon">
-                          <i class="fa-solid fa-location-dot"></i>
-                        </span>
-
-                        <strong>
-                          Guindapunan
-                        </strong>
-
-                      </div>
-                    </td>
-
-                    <td>Maasin City</td>
-
-                    <td>
-                      <span class="test-badge">
-                        SPT
-                      </span>
-                    </td>
-
-                    <td>
-                      <strong class="capacity medium-text">
-                        180 kPa
-                      </strong>
-                    </td>
-
-                    <td>Jun 18, 2024</td>
-
-                  </tr>
-
-                  <tr>
-
-                    <td>
-                      <div class="location-cell">
-
-                        <span class="table-icon">
-                          <i class="fa-solid fa-location-dot"></i>
-                        </span>
-
-                        <strong>
-                          An-per
-                        </strong>
-
-                      </div>
-                    </td>
-
-                    <td>San Juan</td>
-
-                    <td>
-                      <span class="test-badge">
-                        SPT
-                      </span>
-                    </td>
-
-                    <td>
-                      <strong class="capacity medium-text">
-                        120 kPa
-                      </strong>
-                    </td>
-
-                    <td>Jun 15, 2024</td>
-
-                  </tr>
-
-                  <tr>
-
-                    <td>
-                      <div class="location-cell">
-
-                        <span class="table-icon">
-                          <i class="fa-solid fa-location-dot"></i>
-                        </span>
-
-                        <strong>
-                          Hibaga-an
-                        </strong>
-
-                      </div>
-                    </td>
-
-                    <td>Hinunangan</td>
-
-                    <td>
-                      <span class="test-badge">
-                        SPT
-                      </span>
-                    </td>
-
-                    <td>
-                      <strong class="capacity high-text">
-                        210 kPa
-                      </strong>
-                    </td>
-
-                    <td>Jun 10, 2024</td>
-
-                  </tr>
-
-                  <tr>
-
-                    <td>
-                      <div class="location-cell">
-
-                        <span class="table-icon">
-                          <i class="fa-solid fa-location-dot"></i>
-                        </span>
-
-                        <strong>
-                          San Roque
-                        </strong>
-
-                      </div>
-                    </td>
-
-                    <td>Macrohon</td>
-
-                    <td>
-                      <span class="test-badge">
-                        SPT
-                      </span>
-                    </td>
-
-                    <td>
-                      <strong class="capacity low-text">
-                        95 kPa
-                      </strong>
-                    </td>
-
-                    <td>Jun 05, 2024</td>
-
-                  </tr>
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          </div>
-
-          <div class="data-summary-card reveal">
-
-            <div class="data-summary-top">
-
-              <span class="summary-icon">
-                <i class="fa-solid fa-chart-simple"></i>
-              </span>
-
-              <span>
-                DATA OVERVIEW
-              </span>
-
-            </div>
-
-            <h3>
-              Soil parameters
-              prepared for GIS visualization.
-            </h3>
 
             <p>
-              Each location can contain multiple
-              investigation records and associated
-              geographic information.
+              By combining geographic information,
+              soil investigation records, and a simple
+              web interface, the system aims to support
+              preliminary planning, research, and
+              informed decision-making.
             </p>
 
-            <div class="parameter-list">
+            <div class="about-points">
 
               <div>
+
+                <i class="fa-solid fa-check"></i>
+
                 <span>
-                  <i class="fa-solid fa-location-dot"></i>
-                  Coordinates
+                  Organized soil information
                 </span>
 
-                <strong>
-                  Lat / Long
-                </strong>
               </div>
 
               <div>
+
+                <i class="fa-solid fa-check"></i>
+
                 <span>
-                  <i class="fa-solid fa-mountain"></i>
-                  Soil Type
+                  GIS-based location visualization
                 </span>
 
-                <strong>
-                  Recorded
-                </strong>
               </div>
 
               <div>
+
+                <i class="fa-solid fa-check"></i>
+
                 <span>
-                  <i class="fa-solid fa-weight-hanging"></i>
-                  Bearing Capacity
+                  Accessible public reference
                 </span>
 
-                <strong>
-                  kPa
-                </strong>
-              </div>
-
-              <div>
-                <span>
-                  <i class="fa-solid fa-calendar"></i>
-                  Test Date
-                </span>
-
-                <strong>
-                  History
-                </strong>
-              </div>
-
-              <div>
-                <span>
-                  <i class="fa-solid fa-file-lines"></i>
-                  Data Source
-                </span>
-
-                <strong>
-                  Reference
-                </strong>
               </div>
 
             </div>
@@ -566,7 +340,7 @@
 
     </section>
 
-    <section class="section users-section">
+<section class="section users-section">
 
       <div class="container">
 
@@ -578,7 +352,7 @@
           </p>
 
           <h2>
-            Built for People Who Need Soil Information
+            Who Can Use This Information
           </h2>
 
           <p>
@@ -682,336 +456,7 @@
 
     </section>
 
-    <section class="section about-section" id="about">
-
-      <div class="container">
-
-        <div class="about-layout">
-
-          <div class="about-image reveal">
-
-            <img src="src/images/soil_data.jpg" alt="Southern Leyte landscape">
-
-            <div class="about-image-caption">
-
-              <i class="fa-solid fa-location-dot"></i>
-
-              Southern Leyte, Philippines
-
-            </div>
-
-          </div>
-
-          <div class="about-copy reveal">
-
-            <p class="section-kicker">
-              ABOUT THE SYSTEM
-            </p>
-
-            <h2>
-              Better soil data for better decisions.
-            </h2>
-
-            <p>
-              The Southern Leyte Soil Bearing Capacity
-              Information System is designed to organize
-              soil investigation information and provide
-              an accessible GIS-based platform for viewing
-              available data.
-            </p>
-
-            <p>
-              By combining geographic information,
-              soil investigation records, and a simple
-              web interface, the system aims to support
-              preliminary planning, research, and
-              informed decision-making.
-            </p>
-
-            <div class="about-points">
-
-              <div>
-
-                <i class="fa-solid fa-check"></i>
-
-                <span>
-                  Organized soil information
-                </span>
-
-              </div>
-
-              <div>
-
-                <i class="fa-solid fa-check"></i>
-
-                <span>
-                  GIS-based location visualization
-                </span>
-
-              </div>
-
-              <div>
-
-                <i class="fa-solid fa-check"></i>
-
-                <span>
-                  Accessible public reference
-                </span>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </section>
-
-    <section class="section workflow-section" id="workflow">
-
-      <div class="container">
-
-        <div class="section-heading centered reveal">
-
-          <p class="section-kicker">
-            <i class="fa-solid fa-diagram-project"></i>
-            SYSTEM FLOW
-          </p>
-
-          <h2>
-            From Soil Data Collection to Public Access
-          </h2>
-
-          <p>
-            The system organizes collected soil investigation
-            information and makes it easier to locate and view
-            through a GIS-based interface.
-          </p>
-
-        </div>
-
-        <div class="workflow-grid">
-
-          <article class="workflow-card workflow-green reveal">
-
-            <div class="workflow-number">
-              01
-            </div>
-
-            <div class="workflow-icon">
-              <i class="fa-solid fa-database"></i>
-            </div>
-
-            <span class="workflow-label">
-              DATA COLLECTION
-            </span>
-
-            <h3>
-              Collect Soil Data
-            </h3>
-
-            <p>
-              Borehole locations, SPT results, soil type,
-              bearing capacity, and other investigation
-              information are gathered from available sources.
-            </p>
-
-          </article>
-
-          <div class="workflow-arrow">
-            <i class="fa-solid fa-arrow-right"></i>
-          </div>
-
-          <article class="workflow-card workflow-blue reveal">
-
-            <div class="workflow-number">
-              02
-            </div>
-
-            <div class="workflow-icon">
-              <i class="fa-solid fa-map"></i>
-            </div>
-
-            <span class="workflow-label">
-              GIS PREPARATION
-            </span>
-
-            <h3>
-              Map with QGIS
-            </h3>
-
-            <p>
-              Soil locations are plotted using coordinates
-              and prepared as GIS layers for integration with
-              the web-based map.
-            </p>
-
-          </article>
-
-          <div class="workflow-arrow">
-            <i class="fa-solid fa-arrow-right"></i>
-          </div>
-
-          <article class="workflow-card workflow-brown reveal">
-
-            <div class="workflow-number">
-              03
-            </div>
-
-            <div class="workflow-icon">
-              <i class="fa-solid fa-gears"></i>
-            </div>
-
-            <span class="workflow-label">
-              DATA MANAGEMENT
-            </span>
-
-            <h3>
-              Manage Through Admin Panel
-            </h3>
-
-            <p>
-              Authorized administrators encode, update,
-              organize, and maintain soil investigation
-              records in the system.
-            </p>
-
-          </article>
-
-          <div class="workflow-arrow">
-            <i class="fa-solid fa-arrow-right"></i>
-          </div>
-
-          <article class="workflow-card workflow-purple reveal">
-
-            <div class="workflow-number">
-              04
-            </div>
-
-            <div class="workflow-icon">
-              <i class="fa-solid fa-globe"></i>
-            </div>
-
-            <span class="workflow-label">
-              PUBLIC ACCESS
-            </span>
-
-            <h3>
-              Search and View
-            </h3>
-
-            <p>
-              Engineers, LGUs, researchers, students, and
-              other users can search locations and view
-              available soil information.
-            </p>
-
-          </article>
-
-        </div>
-
-      </div>
-
-    </section>
-
-    <section class="stats-section">
-
-      <div class="container">
-
-        <div class="stats-grid">
-
-          <article class="stat-card reveal">
-
-            <div class="stat-icon green">
-              <i class="fa-solid fa-map-location-dot"></i>
-            </div>
-
-            <div>
-
-              <strong class="counter" data-target="18">
-                0
-              </strong>
-
-              <h3>Municipalities</h3>
-
-              <p>Across Southern Leyte</p>
-
-            </div>
-
-          </article>
-
-          <article class="stat-card reveal">
-
-            <div class="stat-icon brown">
-              <i class="fa-solid fa-location-crosshairs"></i>
-            </div>
-
-            <div>
-
-              <strong class="counter" data-target="500">
-                0
-              </strong>
-
-              <h3>Barangay</h3>
-
-              <p>GIS-mapped soil locations</p>
-
-            </div>
-
-          </article>
-
-          <article class="stat-card reveal">
-
-            <div class="stat-icon blue">
-              <i class="fa-solid fa-flask"></i>
-            </div>
-
-            <div>
-
-              <strong class="counter" data-target="98">
-                0
-              </strong>
-
-              <h3>Soil Test Records</h3>
-
-              <p>SPT and other investigations</p>
-
-            </div>
-
-          </article>
-
-          <article class="stat-card reveal">
-
-            <div class="stat-icon olive">
-              <i class="fa-solid fa-layer-group"></i>
-            </div>
-
-            <div>
-
-              <strong class="stat-word">
-                GIS
-              </strong>
-
-              <h3>Data Integration</h3>
-
-              <p>QGIS and web mapping</p>
-
-            </div>
-
-          </article>
-
-        </div>
-
-      </div>
-
-    </section>
-
-  </main>
-
-  <section class="section contact-section" id="contact">
+<section class="section contact-section" id="contact">
 
     <div class="container">
 
@@ -1084,8 +529,9 @@
     </div>
 
   </section>
+</main>
 
-  <footer class="footer" id="contact">
+<footer class="footer">
 
     <div class="container footer-grid">
 
@@ -1126,7 +572,7 @@
 
         <h3>Resources</h3>
 
-        <a href="pages/gis.php">
+        <a href="views/gis.php">
           GIS Map
         </a>
 
@@ -1152,7 +598,7 @@
           Home
         </a>
 
-        <a href="pages/gis.php">
+        <a href="views/gis.php">
           Explore Map
         </a>
 
@@ -1618,7 +1064,7 @@
     const logoutStatus =
       urlParams.get("logout");
 
-
+  
 
     const loginMessages = {
       failed: 'Incorrect email or password.',
@@ -1655,9 +1101,7 @@
 
   </script>
 
-  <script src="src/js/script.js"></script>
+  <script src="src/js/script.js?v=<?= filemtime(__DIR__ . '/src/js/script.js') ?>"></script>
 
 </body>
 </html>
-
-

@@ -105,177 +105,69 @@ document.addEventListener("DOMContentLoaded", () => {
 
     });
 
-    //act nav
-    const sections =
-        document.querySelectorAll(
-            "main section[id], footer[id]"
-        );
+    // Track the actual navigation targets, including Contact outside main.
+    const navSections = [...navLinks].map(link => {
+        const href = link.getAttribute('href');
+        return href?.startsWith('#') && href.length > 1
+            ? document.getElementById(href.slice(1))
+            : null;
+    }).filter(Boolean);
 
-    if ("IntersectionObserver" in window) {
-
-        const sectionObserver =
-            new IntersectionObserver(
-                entries => {
-
-                    entries.forEach(entry => {
-
-                        if (!entry.isIntersecting)
-                            return;
-
-                        const id =
-                            entry.target.id;
-
-                        navLinks.forEach(link => {
-
-                            link.classList.toggle(
-                                "active",
-                                link.getAttribute("href") ===
-                                `#${id}`
-                            );
-
-                        });
-
-                    });
-
-                },
-                {
-                    rootMargin:
-                        "-25% 0px -65% 0px",
-                    threshold: 0
-                }
-            );
-
-        sections.forEach(section => {
-            sectionObserver.observe(section);
+    function updateActiveNavigation() {
+        if (!navSections.length) return;
+        const marker = Math.max((header?.getBoundingClientRect().height || 0) + 16, window.innerHeight * 0.25);
+        let active = navSections[0];
+        navSections.forEach(section => {
+            if (section.getBoundingClientRect().top <= marker) active = section;
         });
-
+        // The final section may never reach the marker on a short page.
+        if (window.scrollY > 0 && window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
+            active = navSections[navSections.length - 1];
+        }
+        navLinks.forEach(link => {
+            const current = link.getAttribute('href') === '#' + active.id;
+            link.classList.toggle('active', current);
+            if (current) link.setAttribute('aria-current', 'location');
+            else link.removeAttribute('aria-current');
+        });
     }
 
-    //reveal animate
-    const revealItems =
-        document.querySelectorAll(".reveal");
+    let navigationFrame = null;
+    function scheduleNavigationUpdate() {
+        if (navigationFrame !== null) return;
+        navigationFrame = requestAnimationFrame(() => {
+            navigationFrame = null;
+            updateActiveNavigation();
+        });
+    }
+    window.addEventListener('scroll', scheduleNavigationUpdate, { passive: true });
+    window.addEventListener('resize', scheduleNavigationUpdate);
+    window.addEventListener('load', scheduleNavigationUpdate);
+    updateActiveNavigation();
 
-    if ("IntersectionObserver" in window) {
-
-        const revealObserver =
-            new IntersectionObserver(
-                entries => {
-
-                    entries.forEach(entry => {
-
-                        if (
-                            entry.isIntersecting
-                        ) {
-
-                            entry.target.classList.add(
-                                "visible"
-                            );
-
-                            revealObserver.unobserve(
-                                entry.target
-                            );
-
-                        }
-
-                    });
-
-                },
-                {
-                    threshold: 0.1
-                }
-            );
+    // One quiet reveal per element; content stays visible without JavaScript.
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const revealItems = [...document.querySelectorAll('.reveal')];
+    if ('IntersectionObserver' in window && !motionPreference.matches) {
+        const revealObserver = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+                entry.target.classList.add('visible');
+                revealObserver.unobserve(entry.target);
+            });
+        }, { threshold: 0, rootMargin: '0px 0px -24px 0px' });
 
         revealItems.forEach(item => {
+            const siblings = [...item.parentElement.children].filter(child => child.classList.contains('reveal'));
+            item.style.setProperty('--reveal-delay', Math.min(siblings.indexOf(item), 3) * 60 + 'ms');
+            item.classList.add('reveal-pending');
             revealObserver.observe(item);
         });
-
-    } else {
-
-        revealItems.forEach(item => {
-            item.classList.add("visible");
+        motionPreference.addEventListener('change', event => {
+            if (!event.matches) return;
+            revealObserver.disconnect();
+            revealItems.forEach(item => item.classList.add('visible'));
         });
-
-    }
-
-    const counterSection =
-        document.querySelector(".stats-section");
-
-    const counters =
-        document.querySelectorAll(".counter");
-
-    let countersStarted = false;
-
-    const animateCounter = element => {
-
-        const target =
-            Number(element.dataset.target);
-
-        const duration = 1300;
-
-        const start =
-            performance.now();
-
-        const tick = now => {
-
-            const progress =
-                Math.min(
-                    (now - start) / duration,
-                    1
-                );
-
-            const eased =
-                1 - Math.pow(
-                    1 - progress,
-                    3
-                );
-
-            element.textContent =
-                Math.round(
-                    target * eased
-                ).toLocaleString();
-
-            if (progress < 1) {
-                requestAnimationFrame(tick);
-            }
-
-        };
-
-        requestAnimationFrame(tick);
-
-    };
-
-    if (
-        counterSection &&
-        "IntersectionObserver" in window
-    ) {
-
-        const counterObserver =
-            new IntersectionObserver(
-                entries => {
-
-                    if (
-                        entries[0].isIntersecting &&
-                        !countersStarted
-                    ) {
-
-                        countersStarted = true;
-
-                        counters.forEach(
-                            animateCounter
-                        );
-
-                        counterObserver.disconnect();
-
-                    }
-
-                },
-                {
-                    threshold: 0.45
-                }
-            );
-
-        counterObserver.observe(counterSection);
-
     }
 
     //map toast
@@ -850,9 +742,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     recordsSearch.value = term;
                     recordsSearch.dispatchEvent(new Event('input'));
                     closeSearch();
-                    document.querySelector('#soil-data')?.scrollIntoView({ behavior: 'smooth' });
+                    document.querySelector('#soil-data')?.scrollIntoView({ behavior: motionPreference.matches ? 'instant' : 'smooth' });
                 } else {
-                    window.location.href = `pages/gis.php?q=${encodeURIComponent(term)}`;
+                    window.location.href = `views/gis.php?q=${encodeURIComponent(term)}`;
                 }
                 return;
             }
@@ -933,7 +825,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 document
                     .querySelector("#map")
                     ?.scrollIntoView({
-                        behavior: "smooth"
+                        behavior: motionPreference.matches ? "instant" : "smooth"
                     });
 
 
@@ -1019,7 +911,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     event.preventDefault();
 
                     target.scrollIntoView({
-                        behavior: "smooth",
+                        behavior: motionPreference.matches ? "instant" : "smooth",
                         block: "start"
                     });
 
