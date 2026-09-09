@@ -2,6 +2,9 @@
 <html lang="en">
 
 <head>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="src/js/hero-map.js?v=<?= filemtime(__DIR__ . '/src/js/hero-map.js') ?>"></script>
   <link rel="icon" type="image/png" href="src/images/logo.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -163,43 +166,20 @@
                 </span>
 
                 <strong>
-                  GIS DATA OVERVIEW
+                  Explore Southern Leyte
                 </strong>
 
               </div>
 
             </div>
 
-            <div class="mini-map">
-
-              <img src="src/images/sample_map.png" alt="Preview of Southern Leyte GIS soil map">
-
-              <div class="mini-map-overlay">
-
-                <div class="map-marker marker-1">
-                  <span></span>
-                </div>
-
-                <div class="map-marker marker-2">
-                  <span></span>
-                </div>
-
-                <div class="map-marker marker-3">
-                  <span></span>
-                </div>
-
-                <div class="map-marker marker-4">
-                  <span></span>
-                </div>
-
-              </div>
-
-              <div class="mini-map-label">
-                <i class="fa-solid fa-location-dot"></i>
-                Soil Data Locations
-              </div>
-
+            <div id="heroMap" class="mini-map" role="region" aria-label="Southern Leyte map preview with zoom controls"></div>
+            <div class="hero-map-actions">
+              <button id="heroMapReset" type="button" disabled>Reset view</button>
+              <a href="pages/gis.php">Explore full map <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
             </div>
+            <p id="heroMapStatus" class="hero-map-note" role="status">Loading map...</p>
+
 
           </div>
 

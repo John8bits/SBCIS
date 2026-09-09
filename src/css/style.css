@@ -87,6 +87,19 @@ img {
   max-width: 100%;
 }
 
+/* Hide tile seams without additive blending brightening the overlaps. */
+#heroMap .leaflet-tile,
+#gisMap .leaflet-tile {
+  width: 257px !important;
+  height: 257px !important;
+  max-width: none !important;
+  max-height: none !important;
+  mix-blend-mode: normal !important;
+  outline: none !important;
+  border: 0;
+  padding: 0;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -710,7 +723,7 @@ button {
 
   width: 100%;
 
-  max-width: 500px;
+  max-width: 440px;
 
   padding: 10px;
 
@@ -812,6 +825,49 @@ button {
 
   opacity: 0.93;
 }
+
+.hero-boundary-map {
+  display: block;
+  color: #0b3d2e;
+}
+
+.hero-boundary-map > img {
+  object-fit: contain;
+  opacity: 1;
+}
+
+.hero-boundary-map:focus-visible {
+  outline: 3px solid #b9d9c6;
+  outline-offset: 4px;
+}
+
+.hero-map-link {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  border: 1px solid #dce5e0;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.hero-boundary-map:hover .hero-map-link {
+  background: #e8f3ed;
+}
+
+#heroMap { height: 260px; z-index: 0; font-family: inherit; }
+.hero-map-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 4px 4px; }
+.hero-map-actions button, .hero-map-actions a { font: inherit; font-size: 11px; font-weight: 600; }
+.hero-map-actions button { padding: 6px 8px; border: 1px solid rgba(255,255,255,.3); border-radius: 6px; background: transparent; color: #fff; cursor: pointer; }
+.hero-map-actions a { color: #fff; }
+.hero-map-actions button:disabled { opacity: .6; cursor: default; }
+.hero-map-note { margin: 0; padding: 6px 4px 2px; color: rgba(255,255,255,.75); font-size: 10px; line-height: 1.5; }
+@media (max-width: 480px) { #heroMap { height: 220px; } }
 
 .mini-map-overlay {
 
