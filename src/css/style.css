@@ -131,6 +131,11 @@ button {
   text-align: center;
 }
 
+.soil-coverage { margin-bottom: 24px; }
+.soil-coverage .stat-card { align-items: flex-start; }
+.soil-coverage .stat-card .stat-unavailable { font-size: 17px; }
+.soil-table-caption { padding: 12px 16px; text-align: left; color: var(--muted); font-size: 13px; }
+
 .soil-empty-icon {
   display: inline-grid;
   place-items: center;
