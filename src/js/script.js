@@ -744,7 +744,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     closeSearch();
                     document.querySelector('#soil-data')?.scrollIntoView({ behavior: motionPreference.matches ? 'instant' : 'smooth' });
                 } else {
-                    window.location.href = `pages/gis.php?q=${encodeURIComponent(term)}`;
+                    window.location.href = `views/gis.php?q=${encodeURIComponent(term)}`;
                 }
                 return;
             }
