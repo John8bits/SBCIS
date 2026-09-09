@@ -10,12 +10,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="src/css/style.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="css/gis.css">
+  <link rel="stylesheet" href="src/css/gis.css">
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script defer src="js/gis.js"></script>
-  <script defer src="js/login-modal.js"></script>
+  <script defer src="src/js/gis.js"></script>
+  <script defer src="src/js/login-modal.js"></script>
 </head>
 <body class="gis-page">
   <a class="gis-skip" href="#gisMap">Skip to map</a>
@@ -24,7 +24,7 @@
     <nav class="navbar container" aria-label="Primary navigation">
       <a href="index.php#home" class="brand">
         <span class="brand-mark">
-          <img src="images/logo.png" alt="Southern Leyte Soil Information System logo">
+          <img src="src/images/logo.png" alt="Southern Leyte Soil Information System logo">
         </span>
         <span class="brand-copy">
           <strong>SOUTHERN LEYTE</strong>
@@ -118,7 +118,7 @@
       <div class="login-form-wrapper">
         <div class="modal-logo">
           <div class="modal-logo-mark">
-            <img src="images/logo.png" alt="Southern Leyte Soil Information System logo">
+            <img src="src/images/logo.png" alt="Southern Leyte Soil Information System logo">
           </div>
 
           <div class="modal-logo-copy">

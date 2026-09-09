@@ -14,7 +14,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="src/css/style.css">
 
 </head>
 
@@ -27,7 +27,7 @@
       <a href="#home" class="brand">
 
         <span class="brand-mark">
-          <img src="images/logo.png" alt="Southern Leyte Soil Information System logo">
+          <img src="src/images/logo.png" alt="Southern Leyte Soil Information System logo">
         </span>
 
         <span class="brand-copy">
@@ -167,7 +167,7 @@
 
             <div class="mini-map">
 
-              <img src="images/sample_map.png" alt="Preview of Southern Leyte GIS soil map">
+              <img src="src/images/sample_map.png" alt="Preview of Southern Leyte GIS soil map">
 
               <div class="mini-map-overlay">
 
@@ -682,7 +682,7 @@
 
           <div class="about-image reveal">
 
-            <img src="images/soil_data.jpg" alt="Southern Leyte landscape">
+            <img src="src/images/soil_data.jpg" alt="Southern Leyte landscape">
 
             <div class="about-image-caption">
 
@@ -1087,7 +1087,7 @@
 
           <span class="footer-logo">
 
-            <img src="images/logo.png" alt="Southern Leyte logo">
+            <img src="src/images/logo.png" alt="Southern Leyte logo">
 
           </span>
 
@@ -1297,7 +1297,7 @@
 
           <div class="modal-logo-mark">
 
-            <img src="images/logo.png" alt="Southern Leyte Soil Information System logo">
+            <img src="src/images/logo.png" alt="Southern Leyte Soil Information System logo">
 
           </div>
 
@@ -1605,7 +1605,7 @@
 
   </script>
 
-  <script src="js/script.js"></script>
+  <script src="src/js/script.js"></script>
 
 </body>
 

@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="css/login.css">
+    <link rel="stylesheet" href="src/css/login.css">
 </head>
 
 <body>
@@ -36,7 +36,7 @@
                     <a href="index.php" class="brand">
                         <span class="brand-mark">
                             <img
-                                src="images/logo.png"
+                                src="src/images/logo.png"
                                 alt="Southern Leyte Soil Information System logo">
                         </span>
 
@@ -125,7 +125,7 @@
                     <div class="mobile-logo">
                         <div class="mobile-logo-mark">
                             <img
-                                src="images/logo.png"
+                                src="src/images/logo.png"
                                 alt="Southern Leyte logo">
                         </div>
 
