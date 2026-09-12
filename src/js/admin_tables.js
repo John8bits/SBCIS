@@ -8,6 +8,8 @@ document.querySelectorAll('.panel > .table-wrap').forEach(wrap => {
     const toolbar = document.createElement('div'); toolbar.className = 'table-toolbar';
     const label = document.createElement('label'); label.append('Search records');
     const search = document.createElement('input'); search.type = 'search'; search.placeholder = 'Type a name, code, or value'; label.append(search); toolbar.append(label);
+    const requestedSearch = new URLSearchParams(window.location.search).get('search');
+    if (requestedSearch) search.value = requestedSearch;
     const footer = document.createElement('div'); footer.className = 'table-footer';
     const status = document.createElement('span'); status.setAttribute('aria-live', 'polite');
     const pages = document.createElement('div'); pages.className = 'table-pages';

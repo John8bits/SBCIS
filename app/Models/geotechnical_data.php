@@ -217,7 +217,7 @@ function sbcis_find_or_create_barangay(PDO $db, ?int $municipalityId, string $na
     return $id ? (int) $id : null;
 }
 
-function sbcis_create_geotechnical_record(PDO $db, array $input): int
+function sbcis_normalize_geotechnical_input(array $input): array
 {
     $code = trim((string) ($input['borehole_code'] ?? ''));
     $depth = sbcis_nullable_float($input['borehole_depth_m'] ?? null);
@@ -275,18 +275,55 @@ function sbcis_create_geotechnical_record(PDO $db, array $input): int
         throw new InvalidArgumentException('Add at least one soil layer.');
     }
 
+    return [
+        'code' => $code,
+        'depth' => $depth,
+        'latitude' => $latitude,
+        'longitude' => $longitude,
+        'elevation' => sbcis_nullable_float($input['elevation_m'] ?? null),
+        'municipality_name' => trim((string)($input['municipality_name'] ?? '')),
+        'barangay_name' => trim((string)($input['barangay_name'] ?? '')),
+        'layers' => $layers,
+    ];
+}
+
+function sbcis_insert_layers(PDO $db, int $boreholeId, array $layers): void
+{
+    $layerStmt = $db->prepare("INSERT INTO soil_layers (
+        borehole_id, layer_number, soil_type, soil_classification, soil_description,
+        depth_from_m, depth_to_m, spt_n_value, bearing_capacity_kpa
+    ) VALUES (
+        :borehole_id, :layer_number, :soil_type, :soil_classification, :soil_description,
+        :depth_from_m, :depth_to_m, :spt_n_value, :bearing_capacity_kpa
+    )");
+    foreach ($layers as $index => $layer) {
+        $layerStmt->execute([
+            ':borehole_id' => $boreholeId, ':layer_number' => $index + 1,
+            ':soil_type' => $layer['soil_type'], ':soil_classification' => $layer['soil_classification'] ?: null,
+            ':soil_description' => $layer['soil_description'] ?: null, ':depth_from_m' => $layer['depth_from_m'],
+            ':depth_to_m' => $layer['depth_to_m'], ':spt_n_value' => $layer['spt_n_value'],
+            ':bearing_capacity_kpa' => $layer['bearing_capacity_kpa'],
+        ]);
+    }
+}
+
+function sbcis_create_geotechnical_record(PDO $db, array $input): int
+{
+    $data = sbcis_normalize_geotechnical_input($input);
+    ['code' => $code, 'depth' => $depth, 'latitude' => $latitude, 'longitude' => $longitude, 'layers' => $layers] = $data;
+
     $db->beginTransaction();
 
     try {
         $municipalityId = sbcis_find_or_create_municipality(
             $db,
-            (string) ($input['municipality_name'] ?? '')
+            $data['municipality_name']
         );
 
         $barangayId = sbcis_find_or_create_barangay(
             $db,
             $municipalityId,
-            (string) ($input['barangay_name'] ?? '')
+            $data['barangay_name']
         );
 
         $stmt = $db->prepare("
@@ -317,49 +354,12 @@ function sbcis_create_geotechnical_record(PDO $db, array $input): int
             ':borehole_depth_m' => $depth,
             ':latitude' => $latitude,
             ':longitude' => $longitude,
-            ':elevation_m' => sbcis_nullable_float($input['elevation_m'] ?? null),
+            ':elevation_m' => $data['elevation'],
         ]);
 
         $boreholeId = (int) $db->lastInsertId();
 
-        $layerStmt = $db->prepare("
-            INSERT INTO soil_layers (
-                borehole_id,
-                layer_number,
-                soil_type,
-                soil_classification,
-                soil_description,
-                depth_from_m,
-                depth_to_m,
-                spt_n_value,
-                bearing_capacity_kpa
-            )
-            VALUES (
-                :borehole_id,
-                :layer_number,
-                :soil_type,
-                :soil_classification,
-                :soil_description,
-                :depth_from_m,
-                :depth_to_m,
-                :spt_n_value,
-                :bearing_capacity_kpa
-            )
-        ");
-
-        foreach ($layers as $index => $layer) {
-            $layerStmt->execute([
-                ':borehole_id' => $boreholeId,
-                ':layer_number' => $index + 1,
-                ':soil_type' => $layer['soil_type'],
-                ':soil_classification' => $layer['soil_classification'] ?: null,
-                ':soil_description' => $layer['soil_description'] ?: null,
-                ':depth_from_m' => $layer['depth_from_m'],
-                ':depth_to_m' => $layer['depth_to_m'],
-                ':spt_n_value' => $layer['spt_n_value'],
-                ':bearing_capacity_kpa' => $layer['bearing_capacity_kpa'],
-            ]);
-        }
+        sbcis_insert_layers($db, $boreholeId, $layers);
 
         $db->commit();
 
@@ -367,5 +367,59 @@ function sbcis_create_geotechnical_record(PDO $db, array $input): int
     } catch (Throwable $e) {
         $db->rollBack();
         throw $e;
+    }
+}
+
+function sbcis_fetch_geotechnical_record(PDO $db, int $boreholeId): ?array
+{
+    if ($boreholeId < 1) return null;
+    $stmt = $db->prepare("SELECT b.*, m.municipality_name, br.barangay_name
+        FROM boreholes b LEFT JOIN municipalities m ON m.municipality_id = b.municipality_id
+        LEFT JOIN barangays br ON br.barangay_id = b.barangay_id WHERE b.borehole_id = ?");
+    $stmt->execute([$boreholeId]); $record = $stmt->fetch();
+    if (!$record) return null;
+    $stmt = $db->prepare('SELECT * FROM soil_layers WHERE borehole_id = ? ORDER BY layer_number');
+    $stmt->execute([$boreholeId]); $record['layers'] = $stmt->fetchAll();
+    return $record;
+}
+
+function sbcis_update_geotechnical_record(PDO $db, int $boreholeId, array $input): void
+{
+    if ($boreholeId < 1) throw new InvalidArgumentException('Choose a valid record to edit.');
+    $data = sbcis_normalize_geotechnical_input($input);
+    $db->beginTransaction();
+    try {
+        $lock = $db->prepare('SELECT borehole_id FROM boreholes WHERE borehole_id = ? FOR UPDATE');
+        $lock->execute([$boreholeId]);
+        if (!$lock->fetchColumn()) throw new InvalidArgumentException('This record no longer exists.');
+        $municipalityId = sbcis_find_or_create_municipality($db, $data['municipality_name']);
+        $barangayId = sbcis_find_or_create_barangay($db, $municipalityId, $data['barangay_name']);
+        $stmt = $db->prepare("UPDATE boreholes SET borehole_code=:code, municipality_id=:municipality,
+            barangay_id=:barangay, borehole_depth_m=:depth, latitude=:latitude, longitude=:longitude,
+            elevation_m=:elevation WHERE borehole_id=:id");
+        $stmt->execute([':code'=>$data['code'], ':municipality'=>$municipalityId, ':barangay'=>$barangayId,
+            ':depth'=>$data['depth'], ':latitude'=>$data['latitude'], ':longitude'=>$data['longitude'],
+            ':elevation'=>$data['elevation'], ':id'=>$boreholeId]);
+        $stmt = $db->prepare('DELETE FROM soil_layers WHERE borehole_id = ?'); $stmt->execute([$boreholeId]);
+        sbcis_insert_layers($db, $boreholeId, $data['layers']);
+        $db->commit();
+    } catch (Throwable $error) { if ($db->inTransaction()) $db->rollBack(); throw $error; }
+}
+
+function sbcis_delete_geotechnical_record(PDO $db, int $boreholeId): bool
+{
+    if ($boreholeId < 1) throw new InvalidArgumentException('Choose a valid record to delete.');
+    $db->beginTransaction();
+    try {
+        $stmt = $db->prepare('DELETE FROM soil_layers WHERE borehole_id = ?');
+        $stmt->execute([$boreholeId]);
+        $stmt = $db->prepare('DELETE FROM boreholes WHERE borehole_id = ?');
+        $stmt->execute([$boreholeId]);
+        $deleted = $stmt->rowCount() === 1;
+        $db->commit();
+        return $deleted;
+    } catch (Throwable $error) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $error;
     }
 }

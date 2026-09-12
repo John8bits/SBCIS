@@ -13,22 +13,26 @@ function sbcis_export_queries(): array
 
 function sbcis_csv_cell($value): string
 {
-    $text = $value === null ? '' : (string)$value;
+    $text = $value === null ? '' : (string) $value;
     // Spreadsheet programs must treat user-entered formulas as text.
-    if (preg_match('/^[\s\x00-\x1f]*[=+@-]/u', $text) && !preg_match('/^-?\d+(?:\.\d+)?$/D', $text)) $text = "'" . $text;
+    if (preg_match('/^[\s\x00-\x1f]*[=+@-]/u', $text) && !preg_match('/^-?\d+(?:\.\d+)?$/D', $text))
+        $text = "'" . $text;
     return $text;
 }
 
 function sbcis_write_csv(PDO $db, $stream, string $dataset): void
 {
     $query = sbcis_export_queries()[$dataset] ?? null;
-    if (!$query) throw new InvalidArgumentException('Choose a supported dataset.');
+    if (!$query)
+        throw new InvalidArgumentException('Choose a supported dataset.');
     $statement = $db->query($query);
     $headers = [];
-    for ($i = 0; $i < $statement->columnCount(); $i++) $headers[] = $statement->getColumnMeta($i)['name'];
+    for ($i = 0; $i < $statement->columnCount(); $i++)
+        $headers[] = $statement->getColumnMeta($i)['name'];
     fwrite($stream, "\xEF\xBB\xBF");
     fputcsv($stream, $headers, ',', '"', '');
-    while ($row = $statement->fetch(PDO::FETCH_NUM)) fputcsv($stream, array_map('sbcis_csv_cell', $row), ',', '"', '');
+    while ($row = $statement->fetch(PDO::FETCH_NUM))
+        fputcsv($stream, array_map('sbcis_csv_cell', $row), ',', '"', '');
 }
 
 function sbcis_write_backup(PDO $db, $stream): void
@@ -39,9 +43,11 @@ function sbcis_write_backup(PDO $db, $stream): void
         fwrite($stream, $definition . ";\n\n");
         $stmt = $db->query('SELECT * FROM `' . $table . '` ORDER BY 1');
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $columns = array_map(static function ($key) { return '`' . str_replace('`', '``', $key) . '`'; }, array_keys($row));
+            $columns = array_map(static function ($key) {
+                return '`' . str_replace('`', '``', $key) . '`'; }, array_keys($row));
             // Hex-encoded UTF-8 strings preserve quotes, newlines, and NULL vs empty text in any SQL mode.
-            $values = array_map(static function ($value) { return $value === null ? 'NULL' : "CONVERT(X'" . bin2hex((string)$value) . "' USING utf8mb4)"; }, array_values($row));
+            $values = array_map(static function ($value) {
+                return $value === null ? 'NULL' : "CONVERT(X'" . bin2hex((string) $value) . "' USING utf8mb4)"; }, array_values($row));
             fwrite($stream, 'INSERT INTO `' . $table . '` (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $values) . ");\n");
         }
         fwrite($stream, "\n");
@@ -51,18 +57,25 @@ function sbcis_write_backup(PDO $db, $stream): void
 
 function sbcis_prepare_export(PDO $db, string $dataset)
 {
-    if ($dataset !== 'backup' && !isset(sbcis_export_queries()[$dataset])) throw new InvalidArgumentException('Unknown export.');
+    if ($dataset !== 'backup' && !isset(sbcis_export_queries()[$dataset]))
+        throw new InvalidArgumentException('Unknown export.');
     $stream = fopen('php://temp/maxmemory:5242880', 'w+');
-    if (!$stream) throw new RuntimeException('Unable to prepare the download.');
+    if (!$stream)
+        throw new RuntimeException('Unable to prepare the download.');
     try {
         $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
         $db->beginTransaction();
-        if ($dataset === 'backup') sbcis_write_backup($db, $stream); else sbcis_write_csv($db, $stream, $dataset);
+        if ($dataset === 'backup')
+            sbcis_write_backup($db, $stream);
+        else
+            sbcis_write_csv($db, $stream, $dataset);
         $db->commit();
         rewind($stream);
         return $stream;
     } catch (Throwable $error) {
-        if ($db->inTransaction()) $db->rollBack();
-        fclose($stream); throw $error;
+        if ($db->inTransaction())
+            $db->rollBack();
+        fclose($stream);
+        throw $error;
     }
 }
