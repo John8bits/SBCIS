@@ -2,7 +2,7 @@
       <div id="gisMap" tabindex="0" role="region" aria-label="Interactive map of Southern Leyte"></div>
 
       <button id="toggleExplorer" class="gis-panel-toggle" type="button" aria-expanded="true" aria-controls="gisExplorer">
-        <span aria-hidden="true">⌕</span><span class="toggle-label">Hide explorer</span>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg><span class="toggle-label">Hide explorer</span>
       </button>
 
       <aside id="gisExplorer" class="gis-sidebar" aria-label="Location explorer">
@@ -13,7 +13,7 @@
         <p class="gis-sidebar-intro">Find a municipality or barangay and view its boundary.</p>
 
         <label class="gis-search-field" for="gisSearch">
-          <span aria-hidden="true">⌕</span>
+          <span class="gis-search-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg></span>
           <input id="gisSearch" type="search" placeholder="Search a location" disabled autocomplete="off" aria-controls="gisResults">
         </label>
         <div id="gisResults" class="gis-results" aria-label="Search results" aria-live="polite"></div>

@@ -8,7 +8,7 @@ const barangay = document.getElementById('barangay_name');
 let hasDraft = recordDialog.dataset.autoOpen === 'true' && !!document.getElementById('record-error');
 function openForm() {
     recordDialog.showModal(); document.body.classList.add('modal-open');
-    (document.getElementById('record-error') || document.getElementById('borehole_code')).focus();
+    document.getElementById('borehole_code').focus();
 }
 openRecord.addEventListener('click', openForm);
 recordDialog.querySelectorAll('[data-close-dialog]').forEach(button => button.addEventListener('click', () => recordDialog.close()));
@@ -33,11 +33,23 @@ document.getElementById('addLayer').addEventListener('click', () => {
     entry.querySelectorAll('input, textarea').forEach(field => { field.value = ''; field.defaultValue = ''; field.setCustomValidity(''); });
     entries.append(entry); numberLayers(); hasDraft = true; entry.querySelector('input').focus();
 });
-entries.addEventListener('click', event => {
+entries.addEventListener('click', async event => {
     const remove = event.target.closest('.layer-remove');
     if (!remove || entries.children.length <= 1) return;
     const entry = remove.closest('.layer-entry');
-    if ([...entry.querySelectorAll('input, textarea')].some(field => field.value !== '') && !window.confirm('Remove this layer from your draft?')) return;
+    if ([...entry.querySelectorAll('input, textarea')].some(field => field.value !== '')) {
+        const confirmed = window.Swal
+            ? (await Swal.fire({
+                toast: false, position: 'center',
+                icon: 'question', title: 'Remove this layer?',
+                text: 'The layer will be removed from this form. Save the record to apply the change.',
+                showCancelButton: true, focusCancel: true, reverseButtons: true,
+                confirmButtonText: 'Remove layer', cancelButtonText: 'Keep layer',
+                confirmButtonColor: '#8a3f3f', cancelButtonColor: '#6b747c'
+            })).isConfirmed
+            : window.confirm('Remove this layer from your draft?');
+        if (!confirmed) return;
+    }
     entry.remove(); numberLayers(); hasDraft = true; validateDepths();
 });
 function validateDepths() {

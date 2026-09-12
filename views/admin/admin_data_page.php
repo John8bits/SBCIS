@@ -181,6 +181,8 @@ $escape = static function ($value) {
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../../src/js/toast.js"></script>
+    <script src="../../src/js/admin_feedback.js" defer></script>
     <link rel="stylesheet" href="../../src/css/admin_dashb.css">
 <link rel="stylesheet" href="../../src/css/admin_simple.css">
 <script src="../../src/js/admin_tables.js" defer></script>
@@ -204,7 +206,6 @@ $escape = static function ($value) {
                 </div>
             </div>
             <div class="topbar-actions">
-                <a href="data_export.php" class="public-site">Export &amp; backup</a>
                 <a href="soil_records.php?new=1" class="public-site">
                     <i class="fa-solid fa-plus"></i>
                     <span>Add Soil Record</span>
@@ -213,22 +214,13 @@ $escape = static function ($value) {
         </header>
 
         <main class="content">
-            <div class="page-heading">
-                <div class="eyebrow"><?= $escape($page['eyebrow']) ?></div>
-                <h2><?= $escape($page['title']) ?></h2>
-                <p><?= $escape($page['subtitle']) ?></p>
-            </div>
-
             <?php if ($databaseError): ?>
-                <div class="system-message error">
-                    <strong>Database unavailable.</strong><br>
-                    <?= $escape($databaseError) ?>
-                </div>
+                <div hidden data-toast data-icon="error" data-title="Database unavailable"><?= $escape($databaseError) ?></div>
             <?php endif; ?>
 
             <section class="panel">
                 <div class="panel-header">
-                    <h3><?= $escape($page['title']) ?></h3>
+                    <h3>Saved records</h3>
                     <span><?= number_format(count($rows)) ?> records</span>
                 </div>
 
@@ -319,31 +311,10 @@ $escape = static function ($value) {
     <script>
         const mobileMenu = document.getElementById("mobileMenu");
         const sidebar = document.getElementById("sidebar");
-        const logoutButton = document.getElementById("logoutButton");
 
         if (mobileMenu && sidebar) {
             mobileMenu.addEventListener("click", function () {
                 sidebar.classList.toggle("open");
-            });
-        }
-
-        if (logoutButton) {
-            logoutButton.addEventListener("click", function (event) {
-                event.preventDefault();
-
-                Swal.fire({
-                    icon: "question",
-                    title: "Sign out?",
-                    text: "You will be returned to the public site.",
-                    showCancelButton: true,
-                    confirmButtonText: "Sign out",
-                    cancelButtonText: "Stay",
-                    confirmButtonColor: "#0b3d2e"
-                }).then(function (result) {
-                    if (result.isConfirmed) {
-                        window.location.href = logoutButton.href;
-                    }
-                });
             });
         }
     </script>

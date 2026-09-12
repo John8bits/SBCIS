@@ -30,6 +30,8 @@ $errorMessage = null;
 $recentBoreholes = [];
 $municipalityOptions = [];
 $barangayOptions = [];
+$formData = [];
+$editingId = 0;
 
 require_once __DIR__ . '/../../app/Models/locations.php';
 try {
@@ -49,6 +51,14 @@ try {
                 if (!is_string($_POST['csrf'] ?? null) || !hash_equals($_SESSION['record_csrf'], $_POST['csrf'])) {
                     throw new InvalidArgumentException('Your form session has expired. Please try saving again.');
                 }
+                $action = is_string($_POST['action'] ?? null) ? $_POST['action'] : 'save';
+                $recordId = filter_var($_POST['record_id'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
+                if ($action === 'delete') {
+                    if (!sbcis_delete_geotechnical_record($db, $recordId)) throw new InvalidArgumentException('This record no longer exists.');
+                    $_SESSION['record_success'] = 'The borehole and its soil layers were deleted.';
+                    header('Location: soil_records.php'); exit;
+                }
+                if ($action !== 'save') throw new InvalidArgumentException('Unknown record action.');
                 $chosenMunicipality = trim((string)($_POST['municipality_name'] ?? ''));
                 $chosenBarangay = trim((string)($_POST['barangay_name'] ?? ''));
                 if ($chosenMunicipality !== '' && !in_array($chosenMunicipality, $municipalityOptions, true)) {
@@ -57,16 +67,39 @@ try {
                 if ($chosenBarangay !== '' && !array_filter($barangayOptions, static fn($row) => $row['name'] === $chosenBarangay && $row['municipalityName'] === $chosenMunicipality)) {
                     throw new InvalidArgumentException('Choose a barangay belonging to the selected municipality.');
                 }
-                sbcis_create_geotechnical_record($db, $_POST);
-                $_SESSION['record_success'] = 'Your record has been saved and is now listed below.';
+                if ($recordId) sbcis_update_geotechnical_record($db, $recordId, $_POST);
+                else sbcis_create_geotechnical_record($db, $_POST);
+                $_SESSION['record_success'] = $recordId ? 'The record and its soil layers were updated.' : 'Your record has been saved and is now listed below.';
                 header('Location: soil_records.php'); exit;
             } catch (InvalidArgumentException $e) {
                 $errorMessage = $e->getMessage();
+                $formData = $_POST;
+                $editingId = (int)($_POST['record_id'] ?? 0);
             } catch (Throwable $e) {
                 error_log('Save soil record: ' . $e->getMessage());
                 $errorMessage = $e instanceof PDOException && $e->getCode() === '23000'
                     ? 'This borehole ID already exists or a value conflicts with saved data. Check the ID and try again.'
                     : 'We could not save this record. Your entries are still here. Please try again.';
+                $formData = $_POST;
+                $editingId = (int)($_POST['record_id'] ?? 0);
+            }
+        }
+
+        if (!$errorMessage && isset($_GET['edit'])) {
+            $editingId = filter_var($_GET['edit'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
+            $record = sbcis_fetch_geotechnical_record($db, $editingId);
+            if (!$record) {
+                $errorMessage = 'The record you selected no longer exists.';
+                $editingId = 0;
+            } else {
+                $formData = [
+                    'borehole_code' => $record['borehole_code'], 'borehole_depth_m' => $record['borehole_depth_m'],
+                    'latitude' => $record['latitude'], 'longitude' => $record['longitude'], 'elevation_m' => $record['elevation_m'],
+                    'municipality_name' => $record['municipality_name'], 'barangay_name' => $record['barangay_name'],
+                ];
+                foreach (['soil_type','soil_classification','soil_description','depth_from_m','depth_to_m','spt_n_value','bearing_capacity_kpa'] as $field) {
+                    $formData[$field] = array_column($record['layers'], $field);
+                }
             }
         }
 
@@ -79,12 +112,14 @@ try {
 
 function old_value(string $key, string $default = ''): string
 {
-    return htmlspecialchars((string) ($_POST[$key] ?? $default), ENT_QUOTES, 'UTF-8');
+    global $formData;
+    return htmlspecialchars((string) ($formData[$key] ?? $default), ENT_QUOTES, 'UTF-8');
 }
 
 function old_raw(string $key, string $default = ''): string
 {
-    return (string) ($_POST[$key] ?? $default);
+    global $formData;
+    return (string) ($formData[$key] ?? $default);
 }
 
 ?>
@@ -102,6 +137,8 @@ function old_raw(string $key, string $default = ''): string
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../../src/js/toast.js"></script>
+    <script src="../../src/js/admin_feedback.js" defer></script>
     <link rel="stylesheet" href="../../src/css/admin_dashb.css">
     <style>
         .data-layout {
@@ -282,6 +319,7 @@ function old_raw(string $key, string $default = ''): string
                 </div>
             </div>
             <div class="topbar-actions">
+                <button type="button" class="submit-button" id="openRecord" <?= $databaseAvailable ? '' : 'disabled' ?>><i class="fa-solid fa-plus" aria-hidden="true"></i> Add record</button>
                 <a href="admin_gis.php" class="public-site">
                     <i class="fa-solid fa-map-location-dot"></i>
                     <span>View Admin Map</span>
@@ -290,33 +328,20 @@ function old_raw(string $key, string $default = ''): string
         </header>
 
         <main class="content">
-            <div class="page-heading">
-                <div class="eyebrow">DATA ENTRY</div>
-                <h2>Soil records</h2>
-                <p>Browse saved records or add a new borehole and its soil layers.</p>
-                <div class="ov-actions"><button type="button" class="submit-button" id="openRecord" <?= $databaseAvailable ? '' : 'disabled' ?>>+ Add record</button><a class="public-site" href="data_export.php">Export &amp; backup</a></div>
-            </div>
-
-            <?php if ($successMessage): ?>
-                <div class="system-message">
-                    <strong>Saved.</strong><br>
-                    <?= $escape($successMessage) ?>
-                </div>
-            <?php endif; ?>
+            <?php if ($successMessage): ?><div hidden data-toast data-icon="success" data-title="Saved"><?= $escape($successMessage) ?></div><?php endif; ?>
 
             <?php if ($databaseError || !$databaseAvailable): ?>
-                <div class="system-message error">
-                    <strong>Unable to save data.</strong><br>
-                    <?= $escape($errorMessage ?: ($databaseError ?: 'Database connection is unavailable.')) ?>
-                </div>
+                <div hidden data-toast data-icon="error" data-title="Database unavailable"><?= $escape($databaseError ?: 'Database connection is unavailable.') ?></div>
             <?php endif; ?>
 
             <div class="data-layout">
-                <dialog class="entry-dialog" id="record-dialog" aria-labelledby="record-title" data-auto-open="<?= $errorMessage || isset($_GET['new']) ? 'true' : 'false' ?>">
+                <dialog class="entry-dialog" id="record-dialog" aria-labelledby="record-title" data-auto-open="<?= $errorMessage || isset($_GET['new']) || $editingId ? 'true' : 'false' ?>">
                 <form class="form-card" method="POST" action="soil_records.php" id="record-form">
                     <input type="hidden" name="csrf" value="<?= $escape($_SESSION['record_csrf']) ?>">
-                    <div class="dialog-heading"><div><h2 id="record-title">Add soil record</h2><p>Enter the borehole location, then add its soil layers.</p></div><button type="button" class="dialog-close" data-close-dialog aria-label="Close form">&times;</button></div>
-                    <?php if ($errorMessage): ?><div class="system-message error" role="alert" tabindex="-1" id="record-error"><?= $escape($errorMessage) ?></div><?php endif; ?>
+                    <input type="hidden" name="action" value="save">
+                    <input type="hidden" name="record_id" value="<?= $editingId ?: '' ?>">
+                    <div class="dialog-heading"><div><h2 id="record-title"><?= $editingId ? 'Edit soil record' : 'Add soil record' ?></h2><p><?= $editingId ? 'Update the borehole details and soil layers below.' : 'Enter the borehole location, then add its soil layers.' ?></p></div><button type="button" class="dialog-close" data-close-dialog aria-label="Close form">&times;</button></div>
+                    <?php if ($errorMessage): ?><div hidden data-toast data-icon="error" data-title="Unable to save" id="record-error"><?= $escape($errorMessage) ?></div><?php endif; ?>
                     <p class="entry-help">Fields marked * are required. Closing this window keeps your draft until you leave the page.</p>
                     <div class="section-title"><h3>1. Borehole and location</h3></div>
                     <div class="form-grid">
@@ -331,17 +356,17 @@ function old_raw(string $key, string $default = ''): string
                     <div class="section-title"><h3>2. Soil layers</h3><button class="plain-button" type="button" id="addLayer">+ Add layer</button></div>
                     <p class="entry-help">Add layers from shallowest to deepest. Depth ranges must not overlap or exceed the borehole depth.</p>
                     <div id="layerEntries">
-                    <?php $layerTotal = max(1, count(is_array($_POST['soil_type'] ?? null) ? $_POST['soil_type'] : [])); ?>
+                    <?php $layerTotal = max(1, count(is_array($formData['soil_type'] ?? null) ? $formData['soil_type'] : [])); ?>
                     <?php for ($i = 0; $i < $layerTotal; $i++): ?>
                         <fieldset class="layer-entry"><legend>Layer <?= $i + 1 ?></legend><div class="form-grid">
                         <?php foreach (['soil_type' => ['Soil type *','text','',100], 'soil_classification' => ['Classification (optional)','text','',100], 'depth_from_m' => ['From depth (m) *','number','0',null], 'depth_to_m' => ['To depth (m) *','number','0.01',null], 'spt_n_value' => ['SPT N-value (optional)','number','0',null], 'bearing_capacity_kpa' => ['Bearing capacity (kPa, optional)','number','0',null]] as $name => [$label,$type,$min,$length]): ?>
-                        <div class="field"><label><?= $label ?><input name="<?= $name ?>[]" type="<?= $type ?>" value="<?= $escape(is_scalar($_POST[$name][$i] ?? '') ? ($_POST[$name][$i] ?? '') : '') ?>" <?= in_array($name,['soil_type','depth_from_m','depth_to_m'],true) ? 'required' : '' ?> <?= $type === 'number' ? 'min="' . $min . '" step="' . ($name === 'spt_n_value' ? '1' : '0.01') . '"' : 'maxlength="' . $length . '"' ?>></label></div>
+                        <div class="field"><label><?= $label ?><input name="<?= $name ?>[]" type="<?= $type ?>" value="<?= $escape(is_scalar($formData[$name][$i] ?? '') ? ($formData[$name][$i] ?? '') : '') ?>" <?= in_array($name,['soil_type','depth_from_m','depth_to_m'],true) ? 'required' : '' ?> <?= $type === 'number' ? 'min="' . $min . '" step="' . ($name === 'spt_n_value' ? '1' : '0.01') . '"' : 'maxlength="' . $length . '"' ?>></label></div>
                         <?php endforeach; ?>
-                        <div class="field full-span"><label>Soil description (optional)<textarea name="soil_description[]" maxlength="60000" rows="2"><?= $escape(is_scalar($_POST['soil_description'][$i] ?? '') ? ($_POST['soil_description'][$i] ?? '') : '') ?></textarea></label></div>
+                        <div class="field full-span"><label>Soil description (optional)<textarea name="soil_description[]" maxlength="60000" rows="2"><?= $escape(is_scalar($formData['soil_description'][$i] ?? '') ? ($formData['soil_description'][$i] ?? '') : '') ?></textarea></label></div>
                         </div><button class="layer-remove" type="button">Remove layer</button></fieldset>
                     <?php endfor; ?>
                     </div>
-                    <div class="form-actions"><button class="plain-button" type="button" data-close-dialog>Close</button><button class="submit-button" type="submit" <?= $databaseAvailable ? '' : 'disabled' ?>>Save record</button></div>
+                    <div class="form-actions"><button class="plain-button" type="button" data-close-dialog>Close</button><button class="submit-button" type="submit" <?= $databaseAvailable ? '' : 'disabled' ?>><?= $editingId ? 'Save changes' : 'Save record' ?></button></div>
                 </form></dialog>
                 <noscript><p class="system-message">Enable JavaScript to open the record entry form.</p></noscript>
                 <section class="panel">
@@ -359,6 +384,7 @@ function old_raw(string $key, string $default = ''): string
                                         <th>Location</th>
                                         <th>Depth</th>
                                         <th>Layers</th>
+                                        <th class="record-actions-heading">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -368,6 +394,15 @@ function old_raw(string $key, string $default = ''): string
                                             <td><?= $escape(trim(($borehole['barangay_name'] ?: '') . ' ' . ($borehole['municipality_name'] ?: '')) ?: 'Not recorded') ?></td>
                                             <td><?= $escape($borehole['borehole_depth_m']) ?> m</td>
                                             <td><span class="badge"><?= number_format((int) $borehole['layer_count']) ?></span></td>
+                                            <td class="record-actions">
+                                                <a class="table-action" href="?edit=<?= (int)$borehole['borehole_id'] ?>" aria-label="Edit <?= $escape($borehole['borehole_code']) ?>">Edit</a>
+                                                <form method="POST" action="soil_records.php" class="delete-record-form" data-record-name="<?= $escape($borehole['borehole_code']) ?>">
+                                                    <input type="hidden" name="csrf" value="<?= $escape($_SESSION['record_csrf']) ?>">
+                                                    <input type="hidden" name="action" value="delete">
+                                                    <input type="hidden" name="record_id" value="<?= (int)$borehole['borehole_id'] ?>">
+                                                    <button class="table-action danger" type="submit">Delete</button>
+                                                </form>
+                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>

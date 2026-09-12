@@ -66,7 +66,19 @@ body, .overview-page { background:#f7f8fa; color:#253039; --text:#253039; --mute
 .entry-dialog .form-actions { position:sticky; bottom:-24px; background:white; border-top:1px solid #e5e9ec; padding:16px 0; margin-top:20px; }.entry-dialog .system-message { margin:0 0 20px; }
 .entry-dialog .entry-help { margin-bottom:18px; }.ov-actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }.ov-heading { gap:20px; }
 .page-heading .ov-actions { margin-top:18px; }.layer-remove:disabled { opacity:.4; cursor:default; }
-body.modal-open { overflow:hidden; }:focus-visible,.overview-page :focus-visible { outline:2px solid #708c7d; outline-offset:3px; }
+.record-actions { display:flex; align-items:center; gap:8px; white-space:nowrap; }.record-actions form { margin:0; }
+.table-action { display:inline-flex; align-items:center; justify-content:center; min-height:32px; padding:6px 10px; border:1px solid #dbe1e4; border-radius:5px; background:#fff; color:#46565e; font:inherit; font-size:12px; cursor:pointer; }
+.table-action:hover { background:#f4f6f7; }.table-action.danger { color:#8a3f3f; border-color:#ead8d8; }.table-action.danger:hover { background:#fbf3f3; }
+.record-actions-heading { min-width:145px; }
+body.modal-open { overflow:hidden; }
+.overview-page :where(a,button,summary,[tabindex]):focus-visible { outline:2px solid #708c7d; outline-offset:3px; }
+.overview-page input:not([type="checkbox"]):not([type="radio"]):focus-visible,
+.overview-page select:focus-visible,
+.overview-page textarea:focus-visible { outline:0; border-color:#708c7d; box-shadow:0 0 0 3px rgba(112,140,125,.14); }
+.overview-page .gis-search-field input:focus,
+.overview-page .gis-search-field input:focus-visible { border:0!important; outline:0!important; box-shadow:none!important; }
+.main,.topbar-title,.topbar-title>div { min-width:0; }
+.entry-dialog { overflow:auto; }
 @media(min-width:1400px) { .ov-heading h2 { font-size:28px; } }
 @media(max-width:1000px) { .backup-card { flex-direction:column; align-items:flex-start; } }
 @media(max-width:600px) { .entry-dialog .form-grid,.layer-entry .form-grid { grid-template-columns:1fr; }.entry-dialog .form-card { padding:18px; }.ov-heading h2,.page-heading h2 { font-size:23px; }.table-toolbar input { min-width:0; width:100%; }.table-toolbar label { width:100%; }.ov-stat-value { font-size:27px; }.backup-card .ov-button { white-space:normal; }.entry-dialog .form-actions { bottom:-18px; flex-wrap:wrap; }.topbar-actions .public-site span { display:inline; } }

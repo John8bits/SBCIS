@@ -70,18 +70,37 @@
 .gis-search-field {
   display: flex;
   align-items: center;
-  gap: 9px;
   min-height: 46px;
   margin-top: 20px;
-  padding: 0 12px;
+  padding: 0;
   border: 1px solid #cdd9d3;
   border-radius: 9px;
+  overflow: hidden;
   background: #fff;
   color: #68736e;
-  transition: border-color .18s ease, box-shadow .18s ease;
+  transition: border-color .18s ease;
 }
-.gis-search-field:focus-within { border-color: #3a8065; box-shadow: 0 0 0 3px rgba(58, 128, 101, .12); }
-.gis-search-field input { width: 100%; min-width: 0; padding: 11px 0; border: 0; outline: 0; background: transparent; color: #16231e; font-size: 13px; }
+.gis-search-field:focus-within { border-color: #3a8065; box-shadow:none; }
+.gis-search-icon { display:grid; width:42px; flex:0 0 42px; place-items:center; color:#68736e; pointer-events:none; }
+.gis-search-icon svg,.gis-panel-toggle svg { width:17px; height:17px; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; }
+.gis-map-shell .gis-search-field input {
+  width:100%;
+  min-width:0;
+  height:44px;
+  padding:0 12px 0 0;
+  appearance:none;
+  -webkit-appearance:none;
+  border:0!important;
+  border-radius:0;
+  outline:0!important;
+  box-shadow:none!important;
+  background:transparent;
+  color:#16231e;
+  font-size:13px;
+}
+.gis-map-shell .gis-search-field input:focus,
+.gis-map-shell .gis-search-field input:focus-visible { border:0!important; outline:0!important; box-shadow:none!important; }
+.gis-search-field input::-webkit-search-decoration { -webkit-appearance:none; }
 .gis-search-field input::placeholder { color: #89938e; }
 
 .gis-fields { display: grid; gap: 7px; margin-top: 18px; }
@@ -97,6 +116,7 @@
   font-size: 12px;
 }
 .gis-fields select:hover:enabled { border-color: #8ca99a; }
+.gis-fields select:focus-visible { outline:0; border-color:#3a8065; box-shadow:none; }
 
 .gis-details {
   margin-top: 20px;
@@ -239,7 +259,7 @@
   border: 1px solid #edf1ee;
 }
 
-.gis-page :focus-visible { outline: 3px solid #438caf; outline-offset: 3px; }
+.gis-page :where(a,button,summary,[tabindex]):focus-visible { outline: 3px solid #438caf; outline-offset: 3px; }
 .gis-page :disabled { cursor: not-allowed; opacity: .55; }
 .gis-skip { position: fixed; z-index: 2000; top: -80px; left: 14px; padding: 9px 14px; border-radius: 7px; background: #fff; color: #0b3d2e; }
 .gis-skip:focus { top: 10px; }
@@ -261,6 +281,21 @@
   .gis-search-field { margin-top: 12px; }
   .gis-fields { margin-top: 10px; }
   .gis-details { margin-top: 12px; }
+}
+
+@media (min-width: 761px) and (min-height: 561px) and (max-height: 760px) {
+  .admin-map-workspace .gis-sidebar { top:12px; bottom:12px; padding:17px 18px; scrollbar-gutter:stable; }
+  .admin-map-workspace .gis-sidebar h1 { font-size:21px; }
+  .admin-map-workspace .gis-sidebar-intro { margin-top:3px; }
+  .admin-map-workspace .gis-search-field { min-height:42px; margin-top:12px; }
+  .admin-map-workspace .gis-fields { gap:5px; margin-top:10px; }
+  .admin-map-workspace .gis-fields label { margin-top:3px; }
+  .admin-map-workspace .gis-fields select { min-height:39px; padding-block:7px; }
+  .admin-map-workspace .gis-source { margin-top:8px!important; }
+  .admin-map-workspace .gis-details { margin-top:10px; padding:11px 13px; }
+  .admin-map-workspace .gis-reset { min-height:38px; margin-top:8px; }
+  .admin-map-workspace .gis-legend { margin-top:8px; }
+  .admin-map-workspace .gis-legend summary { padding-top:9px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

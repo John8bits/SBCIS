@@ -22,10 +22,9 @@ try {
     $available = true;
 } catch (InvalidArgumentException $e) { http_response_code(400); $error = $e->getMessage(); }
 catch (Throwable $e) { error_log('Export: ' . $e->getMessage()); http_response_code(503); $error = 'Downloads are unavailable right now. Please check the database connection and try again.'; }
-$title = 'Export & Backup'; $activePage = 'data_export.php'; require __DIR__ . '/overview_shell.php';
+$title = 'Export & Backup'; $subtitle = 'Save a secure copy of all stored records'; $activePage = 'data_export.php'; require __DIR__ . '/overview_shell.php';
 ?>
-<div class="ov-heading"><div><h2>Export &amp; backup</h2><p>Save a copy of your records to your computer.</p></div><a class="ov-button secondary" href="admin_dashboard.php">Back to dashboard</a></div>
-<?php if ($error): ?><div class="ov-alert" role="alert"><?= $escape($error) ?></div><?php endif; ?>
+<?php if ($error): ?><div hidden data-toast data-icon="error" data-title="Export unavailable"><?= $escape($error) ?></div><?php endif; ?>
 <section class="ov-card backup-card"><div><h3>Complete data backup</h3><p>All municipalities, barangays, boreholes, and soil layers in one file, including IDs, relationships, and dates.</p><p class="ov-note">Choose this to keep a recoverable copy of your data. Restoring the SQL file requires a database administrator and an empty database. Account passwords are not included.</p></div>
 <?php if ($available): ?><a class="ov-button" href="?download=backup">Download complete backup (.sql)</a><?php endif; ?></section>
 <section class="ov-card"><div class="ov-card-head"><div><h3>Spreadsheet downloads</h3><p>Open CSV files in Excel or another spreadsheet app. Each download includes all saved records in that section.</p></div></div><div class="ov-table-scroll"><table class="ov-table"><thead><tr><th>Data</th><th>Saved records</th><th>Download</th></tr></thead><tbody>
