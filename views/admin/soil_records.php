@@ -23,52 +23,20 @@ $escape = static function ($value) {
 
 $databaseAvailable = false;
 $databaseError = null;
-$successMessage = null;
+$successMessage = $_SESSION['record_success'] ?? null;
+unset($_SESSION['record_success']);
+$_SESSION['record_csrf'] = $_SESSION['record_csrf'] ?? bin2hex(random_bytes(32));
 $errorMessage = null;
 $recentBoreholes = [];
 $municipalityOptions = [];
 $barangayOptions = [];
 
-$municipalityGeojson = json_decode(
-    (string) file_get_contents(__DIR__ . '/../../src/qgis/southern_leyte_municipalities.geojson'),
-    true
-);
-
-$barangayGeojson = json_decode(
-    (string) file_get_contents(__DIR__ . '/../../src/qgis/southern_leyte_barangays.geojson'),
-    true
-);
-
-foreach (($municipalityGeojson['features'] ?? []) as $feature) {
-    $properties = $feature['properties'] ?? [];
-
-    if (!empty($properties['GID_2']) && !empty($properties['NAME_2'])) {
-        $municipalityOptions[$properties['GID_2']] = $properties['NAME_2'];
-    }
-}
-
-foreach (($barangayGeojson['features'] ?? []) as $feature) {
-    $properties = $feature['properties'] ?? [];
-
-    if (
-        !empty($properties['GID_2']) &&
-        !empty($properties['GID_3']) &&
-        !empty($properties['NAME_3'])
-    ) {
-        $barangayOptions[] = [
-            'id' => $properties['GID_3'],
-            'municipalityId' => $properties['GID_2'],
-            'municipalityName' => $properties['NAME_2'] ?? '',
-            'name' => $properties['NAME_3'],
-        ];
-    }
-}
-
-asort($municipalityOptions, SORT_NATURAL | SORT_FLAG_CASE);
-
-usort($barangayOptions, static function (array $a, array $b) {
-    return [$a['municipalityName'], $a['name']] <=> [$b['municipalityName'], $b['name']];
-});
+require_once __DIR__ . '/../../app/Models/locations.php';
+try {
+    $locationDirectory = sbcis_locations();
+    $municipalityOptions = array_column($locationDirectory['municipalities'], 'name');
+    $barangayOptions = array_map(static fn($row) => ['id' => $row['code'], 'name' => $row['name'], 'municipalityName' => $row['municipalityName']], $locationDirectory['barangays']);
+} catch (Throwable $e) { error_log('Entry locations: ' . $e->getMessage()); }
 
 try {
     $db = sbcis_get_database();
@@ -78,18 +46,35 @@ try {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
+                if (!is_string($_POST['csrf'] ?? null) || !hash_equals($_SESSION['record_csrf'], $_POST['csrf'])) {
+                    throw new InvalidArgumentException('Your form session has expired. Please try saving again.');
+                }
+                $chosenMunicipality = trim((string)($_POST['municipality_name'] ?? ''));
+                $chosenBarangay = trim((string)($_POST['barangay_name'] ?? ''));
+                if ($chosenMunicipality !== '' && !in_array($chosenMunicipality, $municipalityOptions, true)) {
+                    throw new InvalidArgumentException('Choose a municipality from the location list.');
+                }
+                if ($chosenBarangay !== '' && !array_filter($barangayOptions, static fn($row) => $row['name'] === $chosenBarangay && $row['municipalityName'] === $chosenMunicipality)) {
+                    throw new InvalidArgumentException('Choose a barangay belonging to the selected municipality.');
+                }
                 sbcis_create_geotechnical_record($db, $_POST);
-                $successMessage = 'Soil information saved. It is now available on the admin and public maps.';
-                $_POST = [];
-            } catch (Throwable $e) {
+                $_SESSION['record_success'] = 'Your record has been saved and is now listed below.';
+                header('Location: soil_records.php'); exit;
+            } catch (InvalidArgumentException $e) {
                 $errorMessage = $e->getMessage();
+            } catch (Throwable $e) {
+                error_log('Save soil record: ' . $e->getMessage());
+                $errorMessage = $e instanceof PDOException && $e->getCode() === '23000'
+                    ? 'This borehole ID already exists or a value conflicts with saved data. Check the ID and try again.'
+                    : 'We could not save this record. Your entries are still here. Please try again.';
             }
         }
 
-        $recentBoreholes = sbcis_fetch_recent_boreholes($db, 20);
+        $recentBoreholes = sbcis_fetch_recent_boreholes($db, null);
     }
 } catch (Throwable $e) {
-    $databaseError = $e->getMessage();
+    error_log('Soil records: ' . $e->getMessage());
+    $databaseError = 'The database is unavailable. Please try again shortly.';
 }
 
 function old_value(string $key, string $default = ''): string
@@ -275,73 +260,12 @@ function old_raw(string $key, string $default = ''): string
             }
         }
     </style>
+<link rel="stylesheet" href="../../src/css/admin_simple.css">
+<script src="../../src/js/admin_tables.js" defer></script>
 </head>
 
 <body>
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-brand">
-            <img src="../../src/images/logo.png" alt="Southern Leyte SBCIS Logo">
-            <div class="brand-text">
-                <strong>SOUTHERN LEYTE</strong>
-                <span>SOIL INFORMATION SYSTEM</span>
-            </div>
-        </div>
-
-        <nav class="sidebar-nav">
-            <div class="nav-section-title">Main</div>
-            <a href="admin_dashboard.php" class="nav-item">
-                <i class="fa-solid fa-chart-line"></i>
-                <span>Dashboard</span>
-            </a>
-
-            <div class="nav-section-title">Soil &amp; Location Data</div>
-            <a href="soil_records.php" class="nav-item active">
-                <i class="fa-solid fa-database"></i>
-                <span>Soil Records</span>
-            </a>
-            <a href="boreholes.php" class="nav-item">
-                <i class="fa-solid fa-location-dot"></i>
-                <span>Boreholes</span>
-            </a>
-            <a href="soil_layers.php" class="nav-item">
-                <i class="fa-solid fa-layer-group"></i>
-                <span>Soil Layers</span>
-            </a>
-
-            <div class="nav-section-title">Locations</div>
-            <a href="municipalities.php" class="nav-item">
-                <i class="fa-solid fa-map-location-dot"></i>
-                <span>Municipalities</span>
-            </a>
-            <a href="barangays.php" class="nav-item">
-                <i class="fa-solid fa-location-crosshairs"></i>
-                <span>Barangays</span>
-            </a>
-
-            <div class="nav-section-title">GIS</div>
-            <a href="admin_gis.php" class="nav-item">
-                <i class="fa-solid fa-map"></i>
-                <span>GIS Map</span>
-            </a>
-
-            <div class="nav-section-title">Reports</div>
-            <a href="soil_reports.php" class="nav-item">
-                <i class="fa-solid fa-file-lines"></i>
-                <span>Soil Reports</span>
-            </a>
-            <a href="bearing_capacity.php" class="nav-item">
-                <i class="fa-solid fa-chart-column"></i>
-                <span>Bearing Capacity</span>
-            </a>
-        </nav>
-
-        <div class="sidebar-footer">
-            <a href="../../app/Controllers/logout.php" class="logout-link" id="logoutButton">
-                <i class="fa-solid fa-right-from-bracket"></i>
-                <span>Logout</span>
-            </a>
-        </div>
-    </aside>
+    <?php $sidebarPage = 'soil_records.php'; require __DIR__ . '/sidebar.php'; ?>
 
     <div class="main">
         <header class="topbar">
@@ -368,8 +292,9 @@ function old_raw(string $key, string $default = ''): string
         <main class="content">
             <div class="page-heading">
                 <div class="eyebrow">DATA ENTRY</div>
-                <h2>New Borehole and Soil Information</h2>
-                <p>Saved records become map markers for administrators and public users.</p>
+                <h2>Soil records</h2>
+                <p>Browse saved records or add a new borehole and its soil layers.</p>
+                <div class="ov-actions"><button type="button" class="submit-button" id="openRecord" <?= $databaseAvailable ? '' : 'disabled' ?>>+ Add record</button><a class="public-site" href="data_export.php">Export &amp; backup</a></div>
             </div>
 
             <?php if ($successMessage): ?>
@@ -379,7 +304,7 @@ function old_raw(string $key, string $default = ''): string
                 </div>
             <?php endif; ?>
 
-            <?php if ($errorMessage || $databaseError || !$databaseAvailable): ?>
+            <?php if ($databaseError || !$databaseAvailable): ?>
                 <div class="system-message error">
                     <strong>Unable to save data.</strong><br>
                     <?= $escape($errorMessage ?: ($databaseError ?: 'Database connection is unavailable.')) ?>
@@ -387,106 +312,42 @@ function old_raw(string $key, string $default = ''): string
             <?php endif; ?>
 
             <div class="data-layout">
-                <form class="form-card" method="POST" action="soil_records.php">
-                    <div id="borehole-data" class="section-title" style="margin-top:0">
-                        <h3>Borehole / Location Data</h3>
-                    </div>
-
+                <dialog class="entry-dialog" id="record-dialog" aria-labelledby="record-title" data-auto-open="<?= $errorMessage || isset($_GET['new']) ? 'true' : 'false' ?>">
+                <form class="form-card" method="POST" action="soil_records.php" id="record-form">
+                    <input type="hidden" name="csrf" value="<?= $escape($_SESSION['record_csrf']) ?>">
+                    <div class="dialog-heading"><div><h2 id="record-title">Add soil record</h2><p>Enter the borehole location, then add its soil layers.</p></div><button type="button" class="dialog-close" data-close-dialog aria-label="Close form">&times;</button></div>
+                    <?php if ($errorMessage): ?><div class="system-message error" role="alert" tabindex="-1" id="record-error"><?= $escape($errorMessage) ?></div><?php endif; ?>
+                    <p class="entry-help">Fields marked * are required. Closing this window keeps your draft until you leave the page.</p>
+                    <div class="section-title"><h3>1. Borehole and location</h3></div>
                     <div class="form-grid">
-                        <div class="field">
-                            <label for="borehole_code">Borehole ID</label>
-                            <input id="borehole_code" name="borehole_code" value="<?= old_value('borehole_code') ?>" required>
-                        </div>
-                        <div class="field">
-                            <label for="borehole_depth_m">Borehole Depth (m)</label>
-                            <input id="borehole_depth_m" name="borehole_depth_m" type="number" min="0.01" step="0.01" value="<?= old_value('borehole_depth_m') ?>" required>
-                        </div>
-                        <div class="field">
-                            <label for="latitude">Latitude</label>
-                            <input id="latitude" name="latitude" type="number" min="-90" max="90" step="0.0000001" value="<?= old_value('latitude') ?>" required>
-                        </div>
-                        <div class="field">
-                            <label for="longitude">Longitude</label>
-                            <input id="longitude" name="longitude" type="number" min="-180" max="180" step="0.0000001" value="<?= old_value('longitude') ?>" required>
-                        </div>
-                        <div class="field">
-                            <label for="elevation_m">Elevation (m)</label>
-                            <input id="elevation_m" name="elevation_m" type="number" step="0.01" value="<?= old_value('elevation_m') ?>">
-                        </div>
-                        <div class="field">
-                            <label for="municipality_name">Municipality / City</label>
-                            <select id="municipality_name" name="municipality_name">
-                                <option value="">All municipalities / cities</option>
-                                <?php foreach ($municipalityOptions as $municipalityName): ?>
-                                    <option
-                                        value="<?= $escape($municipalityName) ?>"
-                                        <?= old_raw('municipality_name') === $municipalityName ? 'selected' : '' ?>
-                                    >
-                                        <?= $escape($municipalityName) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="field full-span">
-                            <label for="barangay_name">Barangay</label>
-                            <select id="barangay_name" name="barangay_name" disabled>
-                                <option value="">Select a municipality first</option>
-                            </select>
-                        </div>
+                        <div class="field"><label for="borehole_code">Borehole ID *</label><input id="borehole_code" name="borehole_code" maxlength="50" value="<?= old_value('borehole_code') ?>" required placeholder="e.g. BH-001"></div>
+                        <div class="field"><label for="borehole_depth_m">Borehole depth (m) *</label><input id="borehole_depth_m" name="borehole_depth_m" type="number" min="0.01" max="999999.99" step="0.01" value="<?= old_value('borehole_depth_m') ?>" required></div>
+                        <div class="field"><label for="municipality_name">Municipality / city</label><select id="municipality_name" name="municipality_name"><option value="">Select municipality (optional)</option><?php foreach ($municipalityOptions as $municipalityName): ?><option value="<?= $escape($municipalityName) ?>" <?= old_raw('municipality_name') === $municipalityName ? 'selected' : '' ?>><?= $escape($municipalityName) ?></option><?php endforeach; ?></select></div>
+                        <div class="field"><label for="barangay_name">Barangay</label><select id="barangay_name" name="barangay_name" disabled><option value="">Select a municipality first</option></select></div>
+                        <div class="field"><label for="latitude">Latitude *</label><input id="latitude" name="latitude" type="number" min="-90" max="90" step="0.0000001" value="<?= old_value('latitude') ?>" required placeholder="e.g. 10.1335"></div>
+                        <div class="field"><label for="longitude">Longitude *</label><input id="longitude" name="longitude" type="number" min="-180" max="180" step="0.0000001" value="<?= old_value('longitude') ?>" required placeholder="e.g. 124.8447"></div>
+                        <div class="field"><label for="elevation_m">Elevation (m, optional)</label><input id="elevation_m" name="elevation_m" type="number" min="-999999.99" max="999999.99" step="0.01" value="<?= old_value('elevation_m') ?>"></div>
                     </div>
-
-                    <div id="soil-layers" class="section-title">
-                        <h3>Soil / Geotechnical Data</h3>
-                        <button class="icon-action secondary" type="button" id="addLayer" title="Add soil layer" aria-label="Add soil layer">
-                            <i class="fa-solid fa-plus"></i>
-                        </button>
+                    <div class="section-title"><h3>2. Soil layers</h3><button class="plain-button" type="button" id="addLayer">+ Add layer</button></div>
+                    <p class="entry-help">Add layers from shallowest to deepest. Depth ranges must not overlap or exceed the borehole depth.</p>
+                    <div id="layerEntries">
+                    <?php $layerTotal = max(1, count(is_array($_POST['soil_type'] ?? null) ? $_POST['soil_type'] : [])); ?>
+                    <?php for ($i = 0; $i < $layerTotal; $i++): ?>
+                        <fieldset class="layer-entry"><legend>Layer <?= $i + 1 ?></legend><div class="form-grid">
+                        <?php foreach (['soil_type' => ['Soil type *','text','',100], 'soil_classification' => ['Classification (optional)','text','',100], 'depth_from_m' => ['From depth (m) *','number','0',null], 'depth_to_m' => ['To depth (m) *','number','0.01',null], 'spt_n_value' => ['SPT N-value (optional)','number','0',null], 'bearing_capacity_kpa' => ['Bearing capacity (kPa, optional)','number','0',null]] as $name => [$label,$type,$min,$length]): ?>
+                        <div class="field"><label><?= $label ?><input name="<?= $name ?>[]" type="<?= $type ?>" value="<?= $escape(is_scalar($_POST[$name][$i] ?? '') ? ($_POST[$name][$i] ?? '') : '') ?>" <?= in_array($name,['soil_type','depth_from_m','depth_to_m'],true) ? 'required' : '' ?> <?= $type === 'number' ? 'min="' . $min . '" step="' . ($name === 'spt_n_value' ? '1' : '0.01') . '"' : 'maxlength="' . $length . '"' ?>></label></div>
+                        <?php endforeach; ?>
+                        <div class="field full-span"><label>Soil description (optional)<textarea name="soil_description[]" maxlength="60000" rows="2"><?= $escape(is_scalar($_POST['soil_description'][$i] ?? '') ? ($_POST['soil_description'][$i] ?? '') : '') ?></textarea></label></div>
+                        </div><button class="layer-remove" type="button">Remove layer</button></fieldset>
+                    <?php endfor; ?>
                     </div>
-
-                    <div class="table-wrap">
-                        <table class="layer-table">
-                            <thead>
-                                <tr>
-                                    <th>Soil Type</th>
-                                    <th>Classification</th>
-                                    <th>Description</th>
-                                    <th>From (m)</th>
-                                    <th>To (m)</th>
-                                    <th>SPT N</th>
-                                    <th>Capacity (kPa)</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody id="layerRows">
-                                <tr>
-                                    <td><input name="soil_type[]" required></td>
-                                    <td><input name="soil_classification[]"></td>
-                                    <td><textarea name="soil_description[]"></textarea></td>
-                                    <td><input name="depth_from_m[]" type="number" min="0" step="0.01" required></td>
-                                    <td><input name="depth_to_m[]" type="number" min="0.01" step="0.01" required></td>
-                                    <td><input name="spt_n_value[]" type="number" min="0" step="1"></td>
-                                    <td><input name="bearing_capacity_kpa[]" type="number" min="0" step="0.01"></td>
-                                    <td>
-                                        <button class="icon-action danger remove-layer" type="button" title="Remove layer" aria-label="Remove layer">
-                                            <i class="fa-solid fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="form-actions">
-                        <button class="plain-button" type="reset">Clear</button>
-                        <button class="submit-button" type="submit" <?= $databaseAvailable ? '' : 'disabled' ?>>
-                            Save Soil Information
-                        </button>
-                    </div>
-                </form>
-
+                    <div class="form-actions"><button class="plain-button" type="button" data-close-dialog>Close</button><button class="submit-button" type="submit" <?= $databaseAvailable ? '' : 'disabled' ?>>Save record</button></div>
+                </form></dialog>
+                <noscript><p class="system-message">Enable JavaScript to open the record entry form.</p></noscript>
                 <section class="panel">
                     <div class="panel-header">
-                        <h3>Recent Boreholes</h3>
-                        <span><?= number_format(count($recentBoreholes)) ?> shown</span>
+                        <h3>Saved boreholes</h3>
+                        <span><?= number_format(count($recentBoreholes)) ?> records</span>
                     </div>
 
                     <?php if ($recentBoreholes): ?>
@@ -520,124 +381,6 @@ function old_raw(string $key, string $default = ''): string
         </main>
     </div>
 
-    <script>
-        const locationBarangays =
-            <?= json_encode($barangayOptions, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?: '[]' ?>;
-
-        const selectedMunicipality =
-            <?= json_encode(old_raw('municipality_name'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
-
-        const selectedBarangay =
-            <?= json_encode(old_raw('barangay_name'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
-
-        const sidebar = document.getElementById("sidebar");
-        const mobileMenu = document.getElementById("mobileMenu");
-        const layerRows = document.getElementById("layerRows");
-        const addLayer = document.getElementById("addLayer");
-        const logoutButton = document.getElementById("logoutButton");
-        const municipalitySelect = document.getElementById("municipality_name");
-        const barangaySelect = document.getElementById("barangay_name");
-
-        if (mobileMenu && sidebar) {
-            mobileMenu.addEventListener("click", function () {
-                sidebar.classList.toggle("open");
-            });
-        }
-
-        function setBarangayOptions(selectedValue = "") {
-            const municipality = municipalitySelect.value;
-
-            barangaySelect.replaceChildren(
-                new Option(
-                    municipality ? "All barangays" : "Select a municipality first",
-                    ""
-                )
-            );
-
-            barangaySelect.disabled = !municipality;
-
-            if (!municipality) {
-                return;
-            }
-
-            locationBarangays
-                .filter(function (barangay) {
-                    return barangay.municipalityName === municipality;
-                })
-                .sort(function (a, b) {
-                    return a.name.localeCompare(b.name);
-                })
-                .forEach(function (barangay) {
-                    barangaySelect.add(
-                        new Option(barangay.name, barangay.name)
-                    );
-                });
-
-            barangaySelect.value = selectedValue;
-        }
-
-        municipalitySelect.addEventListener("change", function () {
-            setBarangayOptions("");
-        });
-
-        if (selectedMunicipality) {
-            municipalitySelect.value = selectedMunicipality;
-            setBarangayOptions(selectedBarangay);
-        } else {
-            setBarangayOptions("");
-        }
-
-        addLayer.addEventListener("click", function () {
-            const row = layerRows.rows[0].cloneNode(true);
-            row.querySelectorAll("input, textarea").forEach(function (field) {
-                field.value = "";
-            });
-            layerRows.appendChild(row);
-        });
-
-        layerRows.addEventListener("click", function (event) {
-            const button = event.target.closest(".remove-layer");
-
-            if (!button) {
-                return;
-            }
-
-            if (layerRows.rows.length === 1) {
-                layerRows.rows[0].querySelectorAll("input, textarea").forEach(function (field) {
-                    field.value = "";
-                });
-                return;
-            }
-
-            button.closest("tr").remove();
-        });
-
-        document.querySelector(".form-card").addEventListener("reset", function () {
-            window.setTimeout(function () {
-                setBarangayOptions("");
-            }, 0);
-        });
-
-        if (logoutButton) {
-            logoutButton.addEventListener("click", function (event) {
-                event.preventDefault();
-
-                Swal.fire({
-                    icon: "question",
-                    title: "Sign out?",
-                    text: "You will be returned to the public site.",
-                    showCancelButton: true,
-                    confirmButtonText: "Sign out",
-                    cancelButtonText: "Stay",
-                    confirmButtonColor: "#0b3d2e"
-                }).then(function (result) {
-                    if (result.isConfirmed) {
-                        window.location.href = logoutButton.href;
-                    }
-                });
-            });
-        }
-    </script>
-</body>
-
-</html>
+    <script type="application/json" id="record-config"><?= json_encode(['barangays' => $barangayOptions, 'selectedBarangay' => old_raw('barangay_name')], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?></script>
+    <script src="../../src/js/soil_records.js" defer></script>
+</body></html>

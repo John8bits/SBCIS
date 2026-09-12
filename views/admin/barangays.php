@@ -1,3 +1,3 @@
 <?php
-$activePage = 'barangays';
-require __DIR__ . '/admin_data_page.php';
+$locationKind = 'barangays';
+require __DIR__ . '/location_directory.php';

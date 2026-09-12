@@ -4,26 +4,13 @@
 $home = ['municipalities' => null, 'barangays' => null, 'boreholes' => null,
     'soilLayers' => null, 'records' => [], 'databaseAvailable' => false];
 
-foreach (['municipalities' => 'GID_2', 'barangays' => 'GID_3'] as $layer => $id) {
-    try {
-        $path = __DIR__ . '/../../src/qgis/southern_leyte_' . $layer . '.geojson';
-        $json = @file_get_contents($path);
-        if ($json === false) throw new RuntimeException('Boundary file unavailable.');
-        $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-        if (($data['type'] ?? '') !== 'FeatureCollection' || !isset($data['features'])) {
-            throw new RuntimeException('Invalid boundary data.');
-        }
-        $ids = [];
-        foreach ($data['features'] as $feature) {
-            $value = $feature['properties'][$id] ?? null;
-            if (!$value) throw new RuntimeException('Missing boundary identifier.');
-            $ids[$value] = true;
-        }
-        $home[$layer] = count($ids);
-    } catch (Throwable $error) {
-        error_log('Homepage boundary count: ' . $error->getMessage());
-    }
-}
+require_once __DIR__ . '/../Models/locations.php';
+try {
+    $directory = sbcis_locations();
+    $home['municipalities'] = count($directory['municipalities']);
+    $home['barangays'] = count($directory['barangays']);
+    $home['locationSource'] = $directory['status'];
+} catch (Throwable $error) { error_log('Homepage locations: ' . $error->getMessage()); }
 
 try {
     require __DIR__ . '/../../config/config.php';

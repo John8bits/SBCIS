@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/locations.php';
 
 function sbcis_get_database(): ?PDO
 {
@@ -86,8 +87,9 @@ function sbcis_fetch_map_boreholes(PDO $db): array
     return array_values($boreholes);
 }
 
-function sbcis_fetch_recent_boreholes(PDO $db, int $limit = 50): array
+function sbcis_fetch_recent_boreholes(PDO $db, ?int $limit = 50): array
 {
+    $limitClause = $limit === null ? '' : 'LIMIT :limit';
     $stmt = $db->prepare("
         SELECT
             b.borehole_id,
@@ -105,10 +107,10 @@ function sbcis_fetch_recent_boreholes(PDO $db, int $limit = 50): array
         LEFT JOIN soil_layers sl ON b.borehole_id = sl.borehole_id
         GROUP BY b.borehole_id
         ORDER BY b.created_at DESC, b.borehole_id DESC
-        LIMIT :limit
+        {$limitClause}
     ");
 
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    if ($limit !== null) $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->execute();
 
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -120,6 +122,9 @@ function sbcis_nullable_float($value): ?float
         return null;
     }
 
+    if (!is_scalar($value) || !is_numeric($value) || !is_finite((float)$value)) {
+        throw new InvalidArgumentException('Enter a valid number in each numeric field.');
+    }
     return (float) $value;
 }
 
@@ -129,6 +134,9 @@ function sbcis_nullable_int($value): ?int
         return null;
     }
 
+    if (!is_scalar($value) || !preg_match('/^\d+$/D', (string)$value) || (float)$value > 4294967295) {
+        throw new InvalidArgumentException('SPT N-values must be nonnegative whole numbers.');
+    }
     return (int) $value;
 }
 
@@ -139,6 +147,13 @@ function sbcis_find_or_create_municipality(PDO $db, string $name): ?int
     if ($name === '') {
         return null;
     }
+
+    // Reuse saved names such as Maasin / City of Maasin when the directory spelling differs.
+    $matches = [];
+    foreach ($db->query('SELECT municipality_id, municipality_name FROM municipalities')->fetchAll() as $row) {
+        if (sbcis_location_key($row['municipality_name']) === sbcis_location_key($name)) $matches[] = (int)$row['municipality_id'];
+    }
+    if (count($matches) === 1) return $matches[0];
 
     $stmt = $db->prepare("
         INSERT INTO municipalities (municipality_name)
@@ -167,6 +182,13 @@ function sbcis_find_or_create_barangay(PDO $db, ?int $municipalityId, string $na
     if ($name === '' || !$municipalityId) {
         return null;
     }
+
+    $saved = $db->prepare('SELECT barangay_id, barangay_name FROM barangays WHERE municipality_id = ?');
+    $saved->execute([$municipalityId]); $matches = [];
+    foreach ($saved->fetchAll() as $row) {
+        if (sbcis_location_key($row['barangay_name']) === sbcis_location_key($name)) $matches[] = (int)$row['barangay_id'];
+    }
+    if (count($matches) === 1) return $matches[0];
 
     $stmt = $db->prepare("
         INSERT INTO barangays (municipality_id, barangay_name)
@@ -206,8 +228,8 @@ function sbcis_create_geotechnical_record(PDO $db, array $input): int
         throw new InvalidArgumentException('Borehole ID, depth, latitude, and longitude are required.');
     }
 
-    if ($depth <= 0) {
-        throw new InvalidArgumentException('Borehole depth must be greater than zero.');
+    if ($depth <= 0 || $depth > 999999.99) {
+        throw new InvalidArgumentException('Borehole depth must be between 0.01 and 999999.99 metres.');
     }
 
     if ($latitude < -90 || $latitude > 90 || $longitude < -180 || $longitude > 180) {
@@ -216,12 +238,15 @@ function sbcis_create_geotechnical_record(PDO $db, array $input): int
 
     $soilTypes = $input['soil_type'] ?? [];
     $layers = [];
+    $previousEnd = 0;
+    if (!is_array($soilTypes) || count($soilTypes) > 100) throw new InvalidArgumentException('Enter between 1 and 100 soil layers.');
+    if (strlen($code) > 50) throw new InvalidArgumentException('Borehole ID must be at most 50 bytes.');
 
     foreach ($soilTypes as $index => $soilType) {
         $soilType = trim((string) $soilType);
 
         if ($soilType === '') {
-            continue;
+            throw new InvalidArgumentException('Enter a soil type for every layer.');
         }
 
         $from = sbcis_nullable_float($input['depth_from_m'][$index] ?? null);
@@ -230,6 +255,10 @@ function sbcis_create_geotechnical_record(PDO $db, array $input): int
         if ($from === null || $to === null || $from < 0 || $to <= $from) {
             throw new InvalidArgumentException('Each soil layer needs a valid depth range.');
         }
+        if ($from < $previousEnd || $to > $depth) throw new InvalidArgumentException('Enter layers in depth order, without overlap, within the borehole depth.');
+        $previousEnd = $to;
+        $capacity = sbcis_nullable_float($input['bearing_capacity_kpa'][$index] ?? null);
+        if ($capacity !== null && ($capacity < 0 || $capacity > 99999999.99)) throw new InvalidArgumentException('Bearing capacity must be between 0 and 99999999.99 kPa.');
 
         $layers[] = [
             'soil_type' => $soilType,
@@ -238,7 +267,7 @@ function sbcis_create_geotechnical_record(PDO $db, array $input): int
             'depth_from_m' => $from,
             'depth_to_m' => $to,
             'spt_n_value' => sbcis_nullable_int($input['spt_n_value'][$index] ?? null),
-            'bearing_capacity_kpa' => sbcis_nullable_float($input['bearing_capacity_kpa'][$index] ?? null),
+            'bearing_capacity_kpa' => $capacity,
         ];
     }
 

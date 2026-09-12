@@ -10,29 +10,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     const workspace = document.querySelector('.gis-map-shell');
     const mobileLayout = window.matchMedia('(max-width: 760px)');
     function closeNavigation() {
-        navigation.classList.remove('open');
-        navToggle.setAttribute('aria-expanded', 'false');
-        navToggle.setAttribute('aria-label', 'Open navigation');
-        const icon = navToggle.querySelector('i');
+        navigation?.classList.remove('open');
+        navToggle?.setAttribute('aria-expanded', 'false');
+        navToggle?.setAttribute('aria-label', 'Open navigation');
+        const icon = navToggle?.querySelector('i');
         if (icon) icon.className = 'fa-solid fa-bars';
     }
     function setExplorer(open, returnFocus = false) {
         workspace.classList.toggle('explorer-open', open);
+        document.getElementById('gisExplorer').inert = !open;
         explorerToggle.setAttribute('aria-expanded', String(open));
         explorerLabel.textContent = open ? 'Hide explorer' : 'Explore locations';
         if (returnFocus) explorerToggle.focus();
     }
-    navToggle.addEventListener('click', () => {
+    navToggle?.addEventListener('click', () => {
         const open = navToggle.getAttribute('aria-expanded') !== 'true';
         navigation.classList.toggle('open', open);
-        navToggle.setAttribute('aria-expanded', String(open));
-        navToggle.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
-        const icon = navToggle.querySelector('i');
+        navToggle?.setAttribute('aria-expanded', String(open));
+        navToggle?.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+        const icon = navToggle?.querySelector('i');
         if (icon) icon.className = open ? 'fa-solid fa-xmark' : 'fa-solid fa-bars';
         setExplorer(false);
     });
     navLinks.forEach(link => link.addEventListener('click', closeNavigation));
-    searchTrigger.addEventListener('click', () => {
+    searchTrigger?.addEventListener('click', () => {
         setExplorer(true);
         closeNavigation();
         window.setTimeout(() => document.querySelector('#gisSearch').focus(), 250);
@@ -45,7 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     backdrop.addEventListener('click', () => setExplorer(false, true));
     document.addEventListener('keydown', event => {
         if (event.key !== 'Escape') return;
-        if (navigation.classList.contains('open')) { closeNavigation(); navToggle.focus(); }
+        if (navigation?.classList.contains('open')) { closeNavigation(); navToggle.focus(); }
         if (workspace.classList.contains('explorer-open')) setExplorer(false, true);
     });
     document.addEventListener('click', event => {
@@ -63,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     retry.addEventListener('click', () => window.location.reload());
     try {
         if (!window.L) throw new Error('The map library could not load. Check your internet connection and retry.');
-        const map = L.map('gisMap', { preferCanvas: true, minZoom: 8, maxZoom: 19, zoomControl: false });
+        const map = L.map('gisMap', { preferCanvas: true, minZoom: 8, maxZoom: 19, zoomControl: false, scrollWheelZoom: !document.body.classList.contains('gis-embedded') });
         L.control.zoom({ position: 'topright' }).addTo(map);
         const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             tileSize: 256,
@@ -72,13 +73,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         tiles.on('tileerror', () => { status.textContent = 'Background map unavailable. You can still explore the boundaries.'; });
         L.control.scale({ imperial: false }).addTo(map);
         const datasets = await Promise.all(['boundary', 'municipalities', 'barangays'].map(async name => {
-            const response = await fetch(`../src/qgis/southern_leyte_${name}.geojson`);
+            const response = await fetch(`${window.SBCIS_MAP_BASE || '../'}src/qgis/southern_leyte_${name}.geojson`);
             if (!response.ok) throw new Error(`Unable to load ${name} boundaries. Please retry.`);
             const data = await response.json();
             if (data.type !== 'FeatureCollection' || !data.features?.length) throw new Error(`The ${name} boundary file is empty or invalid.`);
             return data;
         }));
         const [province, municipalities, barangays] = datasets;
+        const directoryResponse = await fetch((window.SBCIS_MAP_BASE || '../') + 'app/Controllers/locations.php');
+        if (!directoryResponse.ok) throw new Error('Location directory unavailable. Please retry.');
+        const directory = await directoryResponse.json();
+        const municipalitiesByCode = new Map(directory.municipalities.map(row => [row.code, row]));
+        const barangaysByCode = new Map(directory.barangays.map(row => [row.code, row]));
+        const municipalitiesByBoundary = new Map(directory.municipalities.filter(row => row.boundaryId).map(row => [row.boundaryId, row]));
+        const barangaysByBoundary = new Map(directory.barangays.filter(row => row.boundaryId).map(row => [row.boundaryId, row]));
+        document.getElementById('locationSource').textContent = 'PSGC location directory' + (directory.status === 'live' ? '' : ' - saved copy') + ' | Updated ' + new Date(directory.fetchedAt).toLocaleDateString();
         const municipalityById = new Map(municipalities.features.map(f => [f.properties.GID_2, f]));
         const barangayById = new Map(barangays.features.map(f => [f.properties.GID_3, f]));
         const municipalityStyle = { color: '#176b4d', weight: 2, fillColor: '#75b590', fillOpacity: .16 };
@@ -90,11 +99,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const label = document.createElement('span');
                 label.textContent = feature.properties.NAME_2;
                 layer.bindTooltip(label);
-                layer.on('click', () => selectMunicipality(feature.properties.GID_2));
+                layer.on('click', () => selectBoundary(feature, 'municipality'));
                 layer.on('mouseover', () => layer.setStyle({ weight: 3, fillOpacity: .28 }));
                 layer.on('mouseout', () => layer.setStyle({
                     ...municipalityStyle,
-                    fillOpacity: municipalitySelect.value && municipalitySelect.value !== feature.properties.GID_2 ? .04 : .16
+                    fillOpacity: municipalitySelect.value && municipalitiesByCode.get(municipalitySelect.value)?.boundaryId !== feature.properties.GID_2 ? .04 : .16
                 }));
             }
         }).addTo(map);
@@ -104,7 +113,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const label = document.createElement('span');
                 label.textContent = `${feature.properties.NAME_3}, ${feature.properties.NAME_2}`;
                 layer.bindTooltip(label);
-                layer.on('click', () => selectBarangay(feature.properties.GID_3));
+                layer.on('click', () => selectBoundary(feature, 'barangay'));
                 layer.on('mouseover', () => layer.setStyle({ weight: 2.5, fillOpacity: .28 }));
                 layer.on('mouseout', () => layer.setStyle(barangayStyle));
             }
@@ -112,7 +121,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const selection = L.geoJSON(null, { interactive: false, style: { color: '#d88516', weight: 3, fillColor: '#f3ba5a', fillOpacity: .3 } }).addTo(map);
         const boreholes = Array.isArray(window.SBCIS_BOREHOLES) ? window.SBCIS_BOREHOLES : [];
         const boreholeLayer = L.layerGroup().addTo(map);
-        const sortBy = key => (a, b) => a.properties[key].localeCompare(b.properties[key]);
         function escapeHtml(value) {
             if (value === null || value === undefined) return '';
             return String(value)
@@ -185,9 +193,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             marker.bindPopup(boreholePopup(borehole), { maxWidth: 380 });
             marker.addTo(boreholeLayer);
         });
-        function setOptions(select, features, key, label, placeholder) {
+        function setOptions(select, rows, placeholder) {
             select.replaceChildren(new Option(placeholder, ''));
-            features.forEach(feature => select.add(new Option(feature.properties[label], feature.properties[key])));
+            rows.forEach(row => select.add(new Option(row.name, row.code)));
         }
         function details(type, name, description) {
             document.querySelector('#locationType').textContent = type;
@@ -195,74 +203,72 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.querySelector('#locationDescription').textContent = description;
         }
         function fit(layer, maxZoom = 14) {
-            map.fitBounds(layer.getBounds(), { padding: [24, 24], maxZoom });
+            const panelWidth = workspace.classList.contains('explorer-open') && !mobileLayout.matches ? 370 : 24;
+            if (layer.getBounds().isValid()) map.fitBounds(layer.getBounds(), { paddingTopLeft: [panelWidth, 24], paddingBottomRight: [24, 24], maxZoom });
         }
-        function selectMunicipality(id, zoom = true) {
-            municipalitySelect.value = id;
-            selection.clearLayers();
-            barangayLayer.clearLayers();
-            const feature = municipalityById.get(id);
-            const children = barangays.features.filter(f => f.properties.GID_2 === id).sort(sortBy('NAME_3'));
-            setOptions(barangaySelect, children, 'GID_3', 'NAME_3', feature ? 'All barangays' : 'Select a municipality first');
-            barangaySelect.disabled = !feature;
-            municipalityLayer.setStyle(f => ({ ...municipalityStyle, fillOpacity: feature && f.properties.GID_2 !== id ? .04 : .16 }));
-            if (!feature) {
-                details('PROVINCE', 'Southern Leyte', `${municipalities.features.length} municipalities / cities · ${barangays.features.length} barangays · ${boreholes.length} borehole records.`);
+        function selectBoundary(feature, type) {
+            const record = type === 'municipality' ? municipalitiesByBoundary.get(feature.properties.GID_2) : barangaysByBoundary.get(feature.properties.GID_3);
+            if (record) { type === 'municipality' ? selectMunicipality(record.code) : selectBarangay(record.code); return; }
+            selection.clearLayers().addData(feature); fit(selection, 17);
+            details('BOUNDARY', feature.properties.NAME_3 || feature.properties.NAME_2, 'This boundary has no confirmed match in the PSGC directory.');
+            status.textContent = 'Boundary reference only';
+        }
+        function selectMunicipality(code, zoom = true) {
+            municipalitySelect.value = code; selection.clearLayers(); barangayLayer.clearLayers();
+            const record = municipalitiesByCode.get(code);
+            const feature = record ? municipalityById.get(record.boundaryId) : null;
+            const children = directory.barangays.filter(row => row.municipalityCode === code);
+            setOptions(barangaySelect, children, record ? 'All barangays' : 'Select a municipality first');
+            barangaySelect.disabled = !record;
+            municipalityLayer.setStyle(f => ({ ...municipalityStyle, fillOpacity: record && f.properties.GID_2 !== record.boundaryId ? .04 : .16 }));
+            if (!record) {
+                details('PROVINCE', 'Southern Leyte', directory.municipalities.length + ' municipalities / cities, ' + directory.barangays.length + ' barangays.');
                 if (zoom) fit(provinceLayer);
-                status.textContent = boreholes.length ? `${boreholes.length} borehole records shown` : 'Click a municipality or choose one from the list.';
+                status.textContent = window.SBCIS_RECORDS_AVAILABLE === false ? 'Soil records unavailable. Location search is available.' : boreholes.length + ' borehole records shown';
                 return;
             }
-            barangayLayer.addData({ type: 'FeatureCollection', features: children });
-            details('MUNICIPALITY / CITY', feature.properties.NAME_2, `${children.length} barangays. Choose a barangay or click its boundary to zoom in.`);
-            if (zoom) fit(L.geoJSON(feature));
-            status.textContent = `${feature.properties.NAME_2} · ${children.length} barangays`;
+            if (feature) {
+                barangayLayer.addData({type:'FeatureCollection', features:barangays.features.filter(f => f.properties.GID_2 === record.boundaryId)});
+                if (zoom) fit(L.geoJSON(feature));
+            } else if (zoom) fit(provinceLayer);
+            details('MUNICIPALITY / CITY', record.name, children.length + ' barangays. ' + (feature ? 'Choose a barangay to explore.' : 'A matching boundary is not available.'));
+            status.textContent = record.name + (feature ? '' : ' - boundary unavailable');
         }
-        function selectBarangay(id) {
-            const feature = barangayById.get(id);
-            if (!feature) { selectMunicipality(municipalitySelect.value); return; }
-            if (municipalitySelect.value !== feature.properties.GID_2) selectMunicipality(feature.properties.GID_2, false);
-            barangaySelect.value = id;
-            selection.clearLayers().addData(feature).bringToFront();
-            fit(selection, 17);
-            details('BARANGAY', feature.properties.NAME_3, `${feature.properties.NAME_2}, Southern Leyte`);
-            status.textContent = `${feature.properties.NAME_3} · ${feature.properties.NAME_2}`;
+        function selectBarangay(code) {
+            const record = barangaysByCode.get(code);
+            if (!record) { selectMunicipality(municipalitySelect.value); return; }
+            selectMunicipality(record.municipalityCode, false); barangaySelect.value = code;
+            const feature = barangayById.get(record.boundaryId);
+            if (feature) { selection.clearLayers().addData(feature).bringToFront(); fit(selection, 17); }
+            else {
+                const parent = municipalityById.get(municipalitiesByCode.get(record.municipalityCode)?.boundaryId);
+                fit(parent ? L.geoJSON(parent) : provinceLayer);
+            }
+            details('BARANGAY', record.name, record.municipalityName + ', Southern Leyte' + (feature ? '' : '. Exact barangay boundary unavailable; showing its municipality.'));
+            status.textContent = record.name + ' - ' + record.municipalityName + (feature ? '' : ' (boundary unavailable)');
         }
         function renderSearch() {
             results.replaceChildren();
-            const term = search.value.trim().toLocaleLowerCase();
-            if (!term) return;
-            const matches = [...municipalities.features, ...barangays.features].filter(f =>
-                `${f.properties.NAME_3 || ''} ${f.properties.NAME_2}`.toLocaleLowerCase().includes(term));
-            const count = document.createElement('p');
-            count.textContent = matches.length ? `${matches.length} locations found${matches.length > 30 ? ' · Showing first 30; refine your search.' : '.'}` : 'No locations found. Try another name.';
-            results.append(count);
-            matches.slice(0, 30).forEach(feature => {
-                const p = feature.properties;
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.textContent = p.GID_3 ? `${p.NAME_3} — ${p.NAME_2}` : `${p.NAME_2} — Municipality / City`;
-                button.addEventListener('click', () => {
-                    p.GID_3 ? selectBarangay(p.GID_3) : selectMunicipality(p.GID_2);
-                    results.replaceChildren();
-                    search.value = '';
-                    setExplorer(false, true);
-                });
-                results.append(button);
+            const term = search.value.trim().toLocaleLowerCase(); if (!term) return;
+            const matches = [...directory.municipalities, ...directory.barangays].filter(row => (row.name + ' ' + (row.municipalityName || '') + ' ' + row.code).toLocaleLowerCase().includes(term));
+            const count = document.createElement('p'); count.textContent = matches.length ? matches.length + ' locations found' + (matches.length > 30 ? '; showing first 30. Refine your search.' : '.') : 'No locations found. Try another name.'; results.append(count);
+            matches.slice(0,30).forEach(row => {
+                const button = document.createElement('button'); button.type = 'button'; button.textContent = row.name + ' - ' + (row.municipalityName || 'Municipality / City');
+                button.addEventListener('click', () => { row.municipalityCode ? selectBarangay(row.code) : selectMunicipality(row.code); results.replaceChildren(); search.value = ''; if (mobileLayout.matches) setExplorer(false, true); }); results.append(button);
             });
         }
-        setOptions(municipalitySelect, [...municipalities.features].sort(sortBy('NAME_2')), 'GID_2', 'NAME_2', 'All municipalities / cities');
+        setOptions(municipalitySelect, directory.municipalities, 'All municipalities / cities');
         municipalitySelect.disabled = search.disabled = reset.disabled = false;
         municipalitySelect.addEventListener('change', () => selectMunicipality(municipalitySelect.value));
-        barangaySelect.addEventListener('change', () => {
-            selectBarangay(barangaySelect.value);
-            if (barangaySelect.value) setExplorer(false, true);
-        });
+        barangaySelect.addEventListener('change', () => { selectBarangay(barangaySelect.value); if (barangaySelect.value && mobileLayout.matches) setExplorer(false, true); });
         search.addEventListener('input', renderSearch);
-        reset.addEventListener('click', () => { search.value = ''; results.replaceChildren(); selectMunicipality(''); setExplorer(false); });
+        reset.addEventListener('click', () => { search.value = ''; results.replaceChildren(); selectMunicipality(''); });
         new ResizeObserver(() => map.invalidateSize()).observe(document.querySelector('#gisMap'));
         selectMunicipality('');
-        const query = new URLSearchParams(window.location.search).get('q');
-        if (query) { search.value = query; renderSearch(); }
+        const query = new URLSearchParams(window.location.search);
+        if (query.has('barangay')) selectBarangay(query.get('barangay'));
+        else if (query.has('municipality')) selectMunicipality(query.get('municipality'));
+        if (query.get('q')) { setExplorer(true); search.value = query.get('q'); renderSearch(); }
     } catch (error) {
         status.textContent = error.message || 'Unable to load the map. Please retry.';
         status.classList.add('is-error');
