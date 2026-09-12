@@ -68,12 +68,12 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="stylesheet" href="src/css/style.css?v=<?= filemtime(__DIR__ . '/src/css/style.css') ?>">
+  <script defer src="src/js/hero-map.js?v=<?= filemtime(__DIR__ . '/src/js/hero-map.js') ?>"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="src/js/toast.js"></script>
 
 
-<link rel="stylesheet" href="src/css/map_frames.css">
 </head>
 
 <body>
@@ -203,8 +203,12 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
             </div>
 
-            <iframe class="shared-map-frame hero-shared-map" src="views/map_embed.php" title="Search Southern Leyte municipalities and barangays" loading="lazy"></iframe>
-            <div class="hero-map-actions"><a href="views/gis.php">Open full map</a></div>
+            <div id="heroMap" class="mini-map" role="region" aria-label="Southern Leyte map preview with zoom controls"></div>
+            <div class="hero-map-actions">
+              <button id="heroMapReset" type="button" disabled>Reset view</button>
+              <a href="views/gis.php">Open full map <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
+            </div>
+            <p id="heroMapStatus" class="hero-map-note" role="status">Loading map...</p>
 
 
           </div>
