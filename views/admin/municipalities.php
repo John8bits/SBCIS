@@ -1,5 +1,5 @@
 <?php
-$activePage = 'municipalities';
-require __DIR__ . '/admin_data_page.php';
+$locationKind = 'municipalities';
+require __DIR__ . '/location_directory.php';
 
 ?>

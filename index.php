@@ -54,7 +54,6 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 <head>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script defer src="src/js/hero-map.js?v=<?= filemtime(__DIR__ . '/src/js/hero-map.js') ?>"></script>
   <link rel="icon" type="image/png" href="src/images/logo.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -74,6 +73,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
   <script src="src/js/toast.js"></script>
 
 
+<link rel="stylesheet" href="src/css/map_frames.css">
 </head>
 
 <body>
@@ -203,12 +203,8 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
             </div>
 
-            <div id="heroMap" class="mini-map" role="region" aria-label="Southern Leyte map preview with zoom controls"></div>
-            <div class="hero-map-actions">
-              <button id="heroMapReset" type="button" disabled>Reset view</button>
-              <a href="views/gis.php">Explore full map <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
-            </div>
-            <p id="heroMapStatus" class="hero-map-note" role="status">Loading map...</p>
+            <iframe class="shared-map-frame hero-shared-map" src="views/map_embed.php" title="Search Southern Leyte municipalities and barangays" loading="lazy"></iframe>
+            <div class="hero-map-actions"><a href="views/gis.php">Open full map</a></div>
 
 
           </div>
@@ -224,12 +220,12 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
         <div class="section-heading centered reveal">
           <p class="section-kicker">MAP COVERAGE &amp; SOIL RECORDS</p>
           <h2 id="soil-data-title">Soil Data</h2>
-          <p>Boundary coverage and available soil records. Mapped areas do not indicate soil test locations.</p>
+          <p>Southern Leyte location directory and available soil records. A listed location does not indicate a soil test site.</p>
         </div>
         <div class="stats-grid soil-coverage">
           <?php foreach ([
-              ['municipalities', 'Municipalities / Cities', 'Areas in the boundary map', 'fa-map-location-dot'],
-              ['barangays', 'Barangays', 'Areas in the boundary map', 'fa-location-crosshairs'],
+              ['municipalities', 'Municipalities / Cities', 'Locations in the PSGC directory', 'fa-map-location-dot'],
+              ['barangays', 'Barangays', 'Locations in the PSGC directory', 'fa-location-crosshairs'],
               ['boreholes', 'Borehole Locations', 'Locations saved in soil records', 'fa-location-dot'],
               ['soilLayers', 'Soil Layer Records', 'Recorded layers, not individual tests', 'fa-layer-group'],
           ] as [$key, $label, $description, $icon]): ?>

@@ -3,7 +3,7 @@
 $host = 'localhost';
 $dbname = 'sbcdb';
 $dbUsername = 'root';
-$dbPassword = ''; 
+$dbPassword = 'shawnmarlogaldo@1122'; 
 
 $pdo = new PDO(
     "mysql:host=$host;dbname=$dbname;charset=utf8mb4",

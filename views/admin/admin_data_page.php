@@ -155,7 +155,7 @@ try {
 
         case 'boreholes':
         default:
-            $rows = sbcis_fetch_recent_boreholes($db, 200);
+            $rows = sbcis_fetch_recent_boreholes($db, null);
             break;
     }
 } catch (Throwable $e) {
@@ -164,10 +164,6 @@ try {
 
 $escape = static function ($value) {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
-};
-
-$activeClass = static function (string $pageName) use ($activePage) {
-    return $activePage === $pageName ? ' active' : '';
 };
 
 ?>
@@ -186,73 +182,12 @@ $activeClass = static function (string $pageName) use ($activePage) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="../../src/css/admin_dashb.css">
+<link rel="stylesheet" href="../../src/css/admin_simple.css">
+<script src="../../src/js/admin_tables.js" defer></script>
 </head>
 
 <body>
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-brand">
-            <img src="../../src/images/logo.png" alt="Southern Leyte SBCIS Logo">
-            <div class="brand-text">
-                <strong>SOUTHERN LEYTE</strong>
-                <span>SOIL INFORMATION SYSTEM</span>
-            </div>
-        </div>
-
-        <nav class="sidebar-nav">
-            <div class="nav-section-title">Main</div>
-            <a href="admin_dashboard.php" class="nav-item">
-                <i class="fa-solid fa-chart-line"></i>
-                <span>Dashboard</span>
-            </a>
-
-            <div class="nav-section-title">Soil &amp; Location Data</div>
-            <a href="soil_records.php" class="nav-item">
-                <i class="fa-solid fa-database"></i>
-                <span>Soil Records</span>
-            </a>
-            <a href="boreholes.php" class="nav-item<?= $activeClass('boreholes') ?>">
-                <i class="fa-solid fa-location-dot"></i>
-                <span>Boreholes</span>
-            </a>
-            <a href="soil_layers.php" class="nav-item<?= $activeClass('soil_layers') ?>">
-                <i class="fa-solid fa-layer-group"></i>
-                <span>Soil Layers</span>
-            </a>
-
-            <div class="nav-section-title">Locations</div>
-            <a href="municipalities.php" class="nav-item<?= $activeClass('municipalities') ?>">
-                <i class="fa-solid fa-map-location-dot"></i>
-                <span>Municipalities</span>
-            </a>
-            <a href="barangays.php" class="nav-item<?= $activeClass('barangays') ?>">
-                <i class="fa-solid fa-location-crosshairs"></i>
-                <span>Barangays</span>
-            </a>
-
-            <div class="nav-section-title">GIS</div>
-            <a href="admin_gis.php" class="nav-item">
-                <i class="fa-solid fa-map"></i>
-                <span>GIS Map</span>
-            </a>
-
-            <div class="nav-section-title">Reports</div>
-            <a href="soil_reports.php" class="nav-item<?= $activeClass('soil_reports') ?>">
-                <i class="fa-solid fa-file-lines"></i>
-                <span>Soil Reports</span>
-            </a>
-            <a href="bearing_capacity.php" class="nav-item<?= $activeClass('bearing_capacity') ?>">
-                <i class="fa-solid fa-chart-column"></i>
-                <span>Bearing Capacity</span>
-            </a>
-        </nav>
-
-        <div class="sidebar-footer">
-            <a href="../../app/Controllers/logout.php" class="logout-link" id="logoutButton">
-                <i class="fa-solid fa-right-from-bracket"></i>
-                <span>Logout</span>
-            </a>
-        </div>
-    </aside>
+    <?php $sidebarPage = $activePage . '.php'; require __DIR__ . '/sidebar.php'; ?>
 
     <div class="main">
         <header class="topbar">
@@ -269,7 +204,8 @@ $activeClass = static function (string $pageName) use ($activePage) {
                 </div>
             </div>
             <div class="topbar-actions">
-                <a href="soil_records.php" class="public-site">
+                <a href="data_export.php" class="public-site">Export &amp; backup</a>
+                <a href="soil_records.php?new=1" class="public-site">
                     <i class="fa-solid fa-plus"></i>
                     <span>Add Soil Record</span>
                 </a>
