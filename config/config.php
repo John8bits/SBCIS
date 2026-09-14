@@ -1,9 +1,13 @@
 <?php
 
+// $host = 'localhost';
+// $dbname = 'sbcdb';
+// $dbUsername = 'root';
+// $dbPassword = 'shawnmarlogaldo@1122'; 
 $host = 'localhost';
 $dbname = 'sbcdb';
 $dbUsername = 'root';
-$dbPassword = 'shawnmarlogaldo@1122'; 
+$dbPassword = ''; 
 
 $pdo = new PDO(
     "mysql:host=$host;dbname=$dbname;charset=utf8mb4",

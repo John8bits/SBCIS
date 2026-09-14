@@ -13,6 +13,7 @@ $sidebarLinks = [
     'soil_reports.php' => ['Soil Reports', 'fa-file-lines'],
     'bearing_capacity.php' => ['Bearing Capacity', 'fa-chart-column'],
     'data_export.php' => ['Export & Backup', 'fa-download'],
+    'settings.php' => ['Settings', 'fa-sliders'],
 ];
 ?>
 <aside class="sidebar admin-sidebar" id="sidebar">
