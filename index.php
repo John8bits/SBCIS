@@ -37,7 +37,7 @@ if (
 ) {
 
     header(
-        'Location: dashboard/admin/admin_dashboard.php'
+        'Location: views/admin/admin_dashboard.php'
     );
 
     exit;

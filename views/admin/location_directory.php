@@ -1,13 +1,20 @@
 <?php
-session_start(); header('Cache-Control: no-store');
-if (($_SESSION['admin_logged_in'] ?? false) !== true) { header('Location: ../../index.php?login=required'); exit; }
-require_once __DIR__ . '/../../app/Models/locations.php';
-$escape = static fn($v) => htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
-$kind = ($locationKind ?? '') === 'barangays' ? 'barangays' : 'municipalities';
+use App\Controllers\Admin\LocationDirectoryController;
+use App\Models\LocationDirectory;
+use App\Support\AdminSession;
+use App\Support\View;
+
+require_once __DIR__ . '/../../config/bootstrap.php';
+
+AdminSession::requireLogin();
+$pageData = (new LocationDirectoryController(new LocationDirectory()))->index($locationKind ?? '');
+$kind = $pageData['kind'];
+$directory = $pageData['directory'];
+$rows = $pageData['rows'];
+$error = $pageData['error'];
+$escape = [View::class, 'escape'];
 $title = $kind === 'barangays' ? 'Barangays' : 'Municipalities'; $subtitle = 'Southern Leyte locations from the PSGC directory'; $activePage = $kind . '.php';
 $topbarActions = [['href' => 'admin_gis.php', 'label' => 'Open map', 'icon' => 'fa-map-location-dot']];
-$directory = null; $rows = []; $error = null;
-try { $directory = sbcis_locations(); $rows = $directory[$kind]; } catch (Throwable $e) { error_log($e->getMessage()); $error = 'The location directory is unavailable. Please reload this page.'; }
 $extraHead = '<script defer src="../../src/js/admin_tables.js"></script>';
 require __DIR__ . '/overview_shell.php';
 ?>

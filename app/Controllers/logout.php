@@ -1,11 +1,9 @@
 <?php
 
-session_start();
-$_SESSION = [];
+declare(strict_types=1);
 
-session_destroy();
+use App\Controllers\AuthController;
 
-header('Location: ../../index.php?logout=success');
-exit;
+require_once __DIR__ . '/../../config/bootstrap.php';
 
-?>
+(new AuthController())->logout();

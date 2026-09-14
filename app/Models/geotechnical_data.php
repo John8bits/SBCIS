@@ -1,25 +1,11 @@
 <?php
+
+require_once __DIR__ . '/../../config/bootstrap.php';
 require_once __DIR__ . '/locations.php';
 
 function sbcis_get_database(): ?PDO
 {
-    $databaseFile = __DIR__ . '/../../config/config.php';
-
-    if (!file_exists($databaseFile)) {
-        return null;
-    }
-
-    require $databaseFile;
-
-    if (isset($pdo) && $pdo instanceof PDO) {
-        return $pdo;
-    }
-
-    if (isset($conn) && $conn instanceof PDO) {
-        return $conn;
-    }
-
-    return null;
+    return App\Database\Connection::get();
 }
 
 function sbcis_fetch_map_boreholes(PDO $db): array

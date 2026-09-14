@@ -1,13 +1,17 @@
 <?php
-session_start();
+use App\Database\Connection;
+use App\Support\AdminSession;
+use App\Support\View;
+
+require_once __DIR__ . '/../../config/bootstrap.php';
+
+AdminSession::start();
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
 if (($_SESSION['admin_logged_in'] ?? false) !== true || empty($_SESSION['admin_id'])) {
     header('Location: ../../index.php?login=required');
     exit;
 }
-
-require_once __DIR__ . '/../../app/Models/geotechnical_data.php';
 
 $_SESSION['settings_csrf'] = $_SESSION['settings_csrf'] ?? bin2hex(random_bytes(32));
 $settingsMessage = $_SESSION['settings_message'] ?? null;
@@ -20,7 +24,7 @@ $admin = [
 unset($_SESSION['settings_message']);
 
 try {
-    $db = sbcis_get_database();
+    $db = Connection::get();
     if (!$db instanceof PDO)
         throw new RuntimeException('Database connection is unavailable.');
     $adminStatement = $db->prepare('SELECT email, password, created_at FROM admins WHERE admin_id = :admin_id LIMIT 1');
@@ -76,7 +80,7 @@ try {
     $settingsError = 'The account could not be updated. Please try again.';
 }
 
-$escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+$escape = [View::class, 'escape'];
 $title = 'Settings';
 $subtitle = 'Manage your administrator account and sign-in security';
 $activePage = 'settings.php';

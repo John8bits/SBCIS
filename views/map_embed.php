@@ -1,8 +1,11 @@
 <?php
-require_once __DIR__ . '/../app/Models/geotechnical_data.php';
-$boreholes = []; $recordsAvailable = false;
-try { $db = sbcis_get_database(); if ($db) { $boreholes = sbcis_fetch_map_boreholes($db); $recordsAvailable = true; } }
-catch (Throwable $e) { error_log('Embedded map: ' . $e->getMessage()); }
+use App\Controllers\MapController;
+
+require_once __DIR__ . '/../config/bootstrap.php';
+
+$mapData = (new MapController())->data('Embedded map');
+$boreholes = $mapData['boreholes'];
+$recordsAvailable = $mapData['recordsAvailable'];
 ?>
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Southern Leyte map</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="../src/css/gis.css?v=<?= filemtime(__DIR__ . '/../src/css/gis.css') ?>">

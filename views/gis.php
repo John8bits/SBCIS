@@ -1,20 +1,12 @@
 <?php
 
-require_once __DIR__ . '/../app/Models/geotechnical_data.php';
+use App\Controllers\MapController;
 
-$boreholes = [];
-$recordsAvailable = false;
+require_once __DIR__ . '/../config/bootstrap.php';
 
-try {
-    $db = sbcis_get_database();
-
-    if ($db instanceof PDO) {
-        $boreholes = sbcis_fetch_map_boreholes($db);
-        $recordsAvailable = true;
-    }
-} catch (Throwable $e) {
-    $boreholes = [];
-}
+$mapData = (new MapController())->data('Public map');
+$boreholes = $mapData['boreholes'];
+$recordsAvailable = $mapData['recordsAvailable'];
 
 $mapJson = json_encode(
     $boreholes,

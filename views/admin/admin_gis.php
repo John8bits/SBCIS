@@ -1,23 +1,15 @@
 <?php
-session_start();
-header('Cache-Control: no-store');
-if (($_SESSION['admin_logged_in'] ?? false) !== true) {
-    header('Location: ../../index.php?login=required');
-    exit;
-}
-require_once __DIR__ . '/../../app/Models/geotechnical_data.php';
-$boreholes = [];
-$recordsAvailable = false;
-try {
-    $db = sbcis_get_database();
-    if ($db) {
-        $boreholes = sbcis_fetch_map_boreholes($db);
-        $recordsAvailable = true;
-    }
-} catch (Throwable $e) {
-    error_log('Admin map: ' . $e->getMessage());
-}
-$escape = static fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+use App\Controllers\MapController;
+use App\Support\AdminSession;
+use App\Support\View;
+
+require_once __DIR__ . '/../../config/bootstrap.php';
+
+AdminSession::requireLogin();
+$mapData = (new MapController())->data('Admin map');
+$boreholes = $mapData['boreholes'];
+$recordsAvailable = $mapData['recordsAvailable'];
+$escape = [View::class, 'escape'];
 $title = 'GIS Map';
 $activePage = 'admin_gis.php';
 $gisCssVersion = filemtime(__DIR__ . '/../../src/css/gis.css');

@@ -1,6 +1,12 @@
 <?php
+use App\Database\Connection;
+use App\Models\GeotechnicalRepository;
+use App\Support\AdminSession;
+use App\Support\View;
 
-session_start();
+require_once __DIR__ . '/../../config/bootstrap.php';
+
+AdminSession::start();
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Cache-Control: post-check=0, pre-check=0', false);
@@ -14,8 +20,6 @@ if (
     header('Location: ../../index.php?login=required');
     exit;
 }
-
-require_once __DIR__ . '/../../app/Models/geotechnical_data.php';
 
 $pages = [
     'boreholes' => [
@@ -62,7 +66,7 @@ $rows = [];
 $databaseError = null;
 
 try {
-    $db = sbcis_get_database();
+    $db = Connection::get();
 
     if (!$db instanceof PDO) {
         throw new RuntimeException('Database connection is unavailable.');
@@ -155,16 +159,14 @@ try {
 
         case 'boreholes':
         default:
-            $rows = sbcis_fetch_recent_boreholes($db, null);
+            $rows = (new GeotechnicalRepository($db))->recentBoreholes(null);
             break;
     }
 } catch (Throwable $e) {
     $databaseError = $e->getMessage();
 }
 
-$escape = static function ($value) {
-    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
-};
+$escape = [View::class, 'escape'];
 
 ?>
 <!DOCTYPE html>

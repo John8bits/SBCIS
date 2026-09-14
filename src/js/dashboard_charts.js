@@ -33,13 +33,33 @@
     Chart.defaults.font.family = bodyStyle.fontFamily || 'Inter, Arial, sans-serif';
     Chart.defaults.font.size = 12;
     Chart.defaults.color = colors.muted;
-    Chart.defaults.animation = reducedMotion ? false : { duration: 300 };
+    Chart.defaults.animation = reducedMotion ? false : {
+        duration: 350,
+        easing: 'easeOutQuart'
+    };
+    Chart.defaults.elements.arc.hoverOffset = 6;
+    Chart.defaults.elements.point.hitRadius = 14;
 
     const count = (value, label) => `${value} ${label}`;
     const total = (values) => values.reduce((sum, value) => sum + Number(value || 0), 0);
+    const charts = [];
+    const createChart = (canvas, configuration) => {
+        try {
+            const chart = new Chart(canvas, configuration);
+            charts.push(chart);
+            return chart;
+        } catch (error) {
+            console.error('Dashboard chart:', error);
+            canvas.parentElement.innerHTML = '<div class="ov-empty">This chart could not be displayed. Reload the page to try again.</div>';
+            return null;
+        }
+    };
     const pointerOnItem = (event, items) => {
         if (event.native?.target) {
-            event.native.target.style.cursor = items.length ? 'pointer' : 'default';
+            const cursor = items.length ? 'pointer' : 'default';
+            if (event.native.target.style.cursor !== cursor) {
+                event.native.target.style.cursor = cursor;
+            }
         }
     };
     const openRecords = (path, search = '') => {
@@ -54,11 +74,18 @@
     const common = {
         responsive: true,
         maintainAspectRatio: false,
-        devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2.5),
-        resizeDelay: 100,
+        devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+        resizeDelay: 120,
         normalized: true,
-        interaction: { mode: 'nearest', intersect: true },
+        interaction: { mode: 'nearest', axis: 'xy', intersect: true },
+        hover: { mode: 'nearest', intersect: true },
+        transitions: {
+            active: {
+                animation: { duration: reducedMotion ? 0 : 80 }
+            }
+        },
         onHover: pointerOnItem,
+        layout: { padding: 2 },
         plugins: {
             legend: {
                 labels: {
@@ -76,7 +103,9 @@
                 bodyColor: '#ffffff',
                 displayColors: true,
                 padding: 12,
-                cornerRadius: 7
+                cornerRadius: 7,
+                caretPadding: 8,
+                usePointStyle: true
             }
         }
     };
@@ -84,7 +113,7 @@
     const activityCanvas = document.getElementById('activityChart');
     let activityChart = null;
     if (activityCanvas) {
-        activityChart = new Chart(activityCanvas, {
+        activityChart = createChart(activityCanvas, {
             type: 'line',
             data: {
                 labels: [...data.activity.labels],
@@ -97,6 +126,7 @@
                         borderWidth: 2.5,
                         pointRadius: 4,
                         pointHoverRadius: 6,
+                        pointHitRadius: 14,
                         pointBackgroundColor: '#ffffff',
                         pointBorderWidth: 2,
                         tension: .28,
@@ -110,6 +140,7 @@
                         borderWidth: 2.5,
                         pointRadius: 4,
                         pointHoverRadius: 6,
+                        pointHitRadius: 14,
                         pointBackgroundColor: '#ffffff',
                         pointBorderWidth: 2,
                         tension: .28
@@ -139,6 +170,7 @@
 
         document.querySelectorAll('[data-chart-months]').forEach((button) => {
             button.addEventListener('click', () => {
+                if (!activityChart) return;
                 const months = Number(button.dataset.chartMonths);
                 const start = Math.max(0, data.activity.labels.length - months);
                 activityChart.data.labels = data.activity.labels.slice(start);
@@ -156,11 +188,11 @@
 
     const coverageCanvas = document.getElementById('coverageChart');
     if (coverageCanvas) {
-        new Chart(coverageCanvas, {
+        createChart(coverageCanvas, {
             type: 'bar',
             data: {
                 labels: data.coverage.labels,
-                datasets: [{ label: 'Boreholes', data: data.coverage.values, backgroundColor: colors.green, hoverBackgroundColor: '#355246', borderRadius: 5, barThickness: 18 }]
+                datasets: [{ label: 'Boreholes', data: data.coverage.values, backgroundColor: colors.green, hoverBackgroundColor: '#355246', borderRadius: 5, borderSkipped: false, maxBarThickness: 22 }]
             },
             options: {
                 ...common,
@@ -184,7 +216,7 @@
     const soilCanvas = document.getElementById('soilChart');
     if (soilCanvas) {
         const soilTotal = total(data.soils.values);
-        new Chart(soilCanvas, {
+        createChart(soilCanvas, {
             type: 'doughnut',
             data: {
                 labels: data.soils.labels,
@@ -200,6 +232,9 @@
             options: {
                 ...common,
                 cutout: '62%',
+                onResize: (chart, size) => {
+                    chart.options.plugins.legend.position = size.width < 520 ? 'bottom' : 'right';
+                },
                 onClick: (event, items) => {
                     if (!items.length) return;
                     const label = data.soils.labels[items[0].index];
@@ -208,7 +243,7 @@
                 plugins: {
                     ...common.plugins,
                     legend: {
-                        position: 'bottom',
+                        position: soilCanvas.parentElement.clientWidth < 520 ? 'bottom' : 'right',
                         labels: {
                             color: colors.text,
                             usePointStyle: true,
@@ -235,7 +270,7 @@
 
     const capacityCanvas = document.getElementById('capacityChart');
     if (capacityCanvas) {
-        new Chart(capacityCanvas, {
+        createChart(capacityCanvas, {
             type: 'bar',
             data: {
                 labels: data.capacities.labels,
@@ -265,4 +300,19 @@
             }
         });
     }
+
+    // The sidebar changes the chart grid width using a CSS transition. Resize
+    // once that transition ends so every canvas remains sharp and correctly sized.
+    const resizeCharts = () => window.requestAnimationFrame(() => {
+        charts.forEach((chart) => chart.resize());
+    });
+
+    document.querySelector('.sidebar')?.addEventListener('transitionend', (event) => {
+        if (event.propertyName === 'width' || event.propertyName === 'transform') {
+            resizeCharts();
+        }
+    });
+
+    window.addEventListener('beforeprint', () => charts.forEach((chart) => chart.resize(720, 360)));
+    window.addEventListener('afterprint', resizeCharts);
 })();
