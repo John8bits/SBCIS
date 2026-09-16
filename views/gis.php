@@ -35,6 +35,7 @@ $mapJson = json_encode(
     window.SBCIS_BOREHOLES = <?= $mapJson ?: '[]' ?>;
     window.SBCIS_RECORDS_AVAILABLE = <?= $recordsAvailable ? 'true' : 'false' ?>;
   </script>
+  <script defer src="../src/js/interpolation.js?v=<?= filemtime(__DIR__ . '/../src/js/interpolation.js') ?>"></script>
   <script defer src="../src/js/gis.js?v=<?= filemtime(__DIR__ . '/../src/js/gis.js') ?>"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script defer src="../src/js/toast.js"></script>
