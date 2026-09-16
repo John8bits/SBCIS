@@ -17,6 +17,21 @@ final class AdminSession
         }
     }
 
+    public static function isSuperAdmin(): bool
+    {
+        self::start();
+        return ($_SESSION['admin_role'] ?? 'admin') === 'super_admin';
+    }
+
+    public static function requireSuperAdmin(): void
+    {
+        self::requireLogin();
+        if (!self::isSuperAdmin()) {
+            http_response_code(403);
+            exit('Super administrator access required.');
+        }
+    }
+
     public static function start(): void
     {
         if (session_status() !== PHP_SESSION_ACTIVE) {

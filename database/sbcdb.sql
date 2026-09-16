@@ -149,16 +149,24 @@ CREATE TABLE admins (
     admin_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    role ENUM('admin', 'super_admin') NOT NULL DEFAULT 'admin',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO admins (email, password)
+INSERT INTO admins (email, password, role)
 VALUES
 (
     'shawngaldo@gmail.com',
-    '$2y$10$XEVTVz.b46jiwBdfdIkOkej1DxC.UCvTm5RCh.bVrCcVzyE6HCQDe'
+    '$2y$10$XEVTVz.b46jiwBdfdIkOkej1DxC.UCvTm5RCh.bVrCcVzyE6HCQDe',
+    'admin'
 ),
 (
     'jbitss@gmail.com',
-    '$2y$10$JEpD/ne4IfQl2wK6fVb.Pe/f/LDYq1jmxM4NMdPdF.1lNLqHvQ3vu'
+    '$2y$10$JEpD/ne4IfQl2wK6fVb.Pe/f/LDYq1jmxM4NMdPdF.1lNLqHvQ3vu',
+    'admin'
+),
+(
+    'thesisbuilders12345@gmail.com',
+    '$2y$10$g/KEWdAXWewlG1K9QNqiju.zTBOgVxYtmgfpqXslFk4.XDcc4obBi',
+    'super_admin'
 );

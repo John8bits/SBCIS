@@ -11,6 +11,8 @@
 
 /* Dashboard charts and single-header layout */
 .topbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.admin-panel-indicator{display:inline-flex;align-items:center;gap:8px;min-height:43px;padding:11px 15px;border:1px solid #dce4df;border-radius:9px;background:#f5f8f6;color:#315746;font-size:13px;font-weight:700}
+.role-management{margin-top:22px}.role-form{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.role-form select,.role-form input{min-height:38px;padding:8px 10px;border:1px solid #dce4df;border-radius:6px;background:#fff;color:#33463d;font:inherit;font-size:12px}.role-form input{width:150px}.role-form .submit-button{min-height:38px;padding:8px 12px}.settings-super-login{margin-top:4px}
 .ov-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
 .chart-card{display:flex;flex-direction:column;overflow:hidden;padding:0}
 .chart-card .ov-card-head{min-height:82px;margin:0;padding:21px 22px 17px;border-bottom:1px solid #edf0ee}

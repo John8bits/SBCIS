@@ -34,7 +34,7 @@ final class AuthController
                 throw new \RuntimeException('Database connection is unavailable.');
             }
             $statement = $database->prepare(
-                'SELECT admin_id, email, password FROM admins WHERE email = :email LIMIT 1'
+                'SELECT admin_id, email, password, role FROM admins WHERE email = :email LIMIT 1'
             );
             $statement->execute([':email' => $email]);
             $admin = $statement->fetch(PDO::FETCH_ASSOC);
@@ -44,6 +44,7 @@ final class AuthController
                 $_SESSION['admin_logged_in'] = true;
                 $_SESSION['admin_id'] = $admin['admin_id'];
                 $_SESSION['admin_email'] = $admin['email'];
+                $_SESSION['admin_role'] = $admin['role'] ?? 'admin';
                 $this->redirect('../../views/admin/admin_dashboard.php?login=success');
             }
 
@@ -57,9 +58,10 @@ final class AuthController
     public function logout(): void
     {
         $this->startSession();
+        $superAdminLogin = ($_GET['super_admin'] ?? '') === '1';
         $_SESSION = [];
         session_destroy();
-        $this->redirect('../../index.php?logout=success');
+        $this->redirect($superAdminLogin ? '../../index.php?super_admin=1' : '../../index.php?logout=success');
     }
 
     private function startSession(): void

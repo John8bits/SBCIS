@@ -11,7 +11,7 @@ final class DatabaseConfig
     private const HOST = 'localhost';
     private const DATABASE = 'sbcdb';
     private const USERNAME = 'root';
-    private const PASSWORD = 'shawnmarlogaldo@1122';
+    private const PASSWORD = '';
 
     public static function connect(): PDO
     {

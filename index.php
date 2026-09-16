@@ -814,7 +814,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
         </div>
 
         <div class="form-header">
-          <h2 id="loginTitle">Sign in</h2>
+          <h2 id="loginTitle"><?= ($_GET['super_admin'] ?? '') === '1' ? 'Super Admin sign in' : 'Sign in' ?></h2>
         </div>
 
         <p class="form-description">

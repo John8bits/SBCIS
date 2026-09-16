@@ -16,9 +16,12 @@ if (($_SESSION['admin_logged_in'] ?? false) !== true || empty($_SESSION['admin_i
 $_SESSION['settings_csrf'] = $_SESSION['settings_csrf'] ?? bin2hex(random_bytes(32));
 $settingsMessage = $_SESSION['settings_message'] ?? null;
 $settingsError = null;
+$isSuperAdmin = AdminSession::isSuperAdmin();
+$roleAccounts = [];
 $admin = [
     'email' => $_SESSION['admin_email'] ?? '',
     'password' => '',
+    'role' => $_SESSION['admin_role'] ?? 'admin',
     'created_at' => null,
 ];
 unset($_SESSION['settings_message']);
@@ -27,7 +30,7 @@ try {
     $db = Connection::get();
     if (!$db instanceof PDO)
         throw new RuntimeException('Database connection is unavailable.');
-    $adminStatement = $db->prepare('SELECT email, password, created_at FROM admins WHERE admin_id = :admin_id LIMIT 1');
+    $adminStatement = $db->prepare('SELECT email, password, role, created_at FROM admins WHERE admin_id = :admin_id LIMIT 1');
     $adminStatement->execute([':admin_id' => (int) $_SESSION['admin_id']]);
     $admin = $adminStatement->fetch(PDO::FETCH_ASSOC);
     if (!$admin) {
@@ -40,6 +43,37 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!is_string($_POST['csrf'] ?? null) || !hash_equals($_SESSION['settings_csrf'], $_POST['csrf']))
             throw new InvalidArgumentException('Your session expired. Reload the settings page and try again.');
+
+        if (($_POST['action'] ?? 'account_update') === 'role_update') {
+            if (!$isSuperAdmin)
+                throw new InvalidArgumentException('Only a super administrator can change account roles.');
+            $currentPassword = $_POST['current_password'] ?? '';
+            if (!is_string($currentPassword) || !password_verify($currentPassword, $admin['password']))
+                throw new InvalidArgumentException('Enter your current password to change an account role.');
+            $targetId = filter_var($_POST['admin_id'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
+            $role = $_POST['role'] ?? '';
+            if (!in_array($role, ['admin', 'super_admin'], true))
+                throw new InvalidArgumentException('Choose a valid account role.');
+            if ($targetId === (int) $_SESSION['admin_id'])
+                throw new InvalidArgumentException('You cannot change your own super administrator role.');
+
+            $targetStatement = $db->prepare('SELECT admin_id, role FROM admins WHERE admin_id = :admin_id LIMIT 1');
+            $targetStatement->execute([':admin_id' => $targetId]);
+            $target = $targetStatement->fetch(PDO::FETCH_ASSOC);
+            if (!$target)
+                throw new InvalidArgumentException('That administrator account no longer exists.');
+            if ($target['role'] === 'super_admin' && $role === 'admin') {
+                $superAdminCount = (int) $db->query("SELECT COUNT(*) FROM admins WHERE role = 'super_admin'")->fetchColumn();
+                if ($superAdminCount <= 1)
+                    throw new InvalidArgumentException('At least one super administrator must remain active.');
+            }
+
+            $updateRole = $db->prepare('UPDATE admins SET role = :role WHERE admin_id = :admin_id');
+            $updateRole->execute([':role' => $role, ':admin_id' => $targetId]);
+            $_SESSION['settings_message'] = 'The administrator role was updated.';
+            header('Location: settings.php');
+            exit;
+        }
 
         $currentPassword = $_POST['current_password'] ?? '';
         $email = trim($_POST['email'] ?? '');
@@ -73,6 +107,9 @@ try {
         header('Location: settings.php');
         exit;
     }
+    if ($isSuperAdmin) {
+        $roleAccounts = $db->query('SELECT admin_id, email, role, created_at FROM admins ORDER BY email')->fetchAll(PDO::FETCH_ASSOC);
+    }
 } catch (InvalidArgumentException $error) {
     $settingsError = $error->getMessage();
 } catch (Throwable $error) {
@@ -93,7 +130,7 @@ require __DIR__ . '/overview_shell.php';
     <section class="panel settings-panel">
         <div class="panel-header"><div><h3>Account and security</h3><span>Keep your administrator contact and sign-in details current.</span></div></div>
         <form class="settings-form" method="post" action="settings.php">
-            <input type="hidden" name="csrf" value="<?= $escape($_SESSION['settings_csrf']) ?>">
+            <input type="hidden" name="action" value="account_update"><input type="hidden" name="csrf" value="<?= $escape($_SESSION['settings_csrf']) ?>">
             <div class="settings-section">
                 <h4>Administrator email</h4>
                 <p class="settings-help">This address is used when you sign in to the Southern Leyte Soil Information System.</p>
@@ -118,9 +155,18 @@ require __DIR__ . '/overview_shell.php';
     <aside class="panel settings-summary">
         <div class="panel-header"><div><h3>Account overview</h3><span>Current administrator access</span></div></div>
         <div class="settings-summary-body">
-            <div class="settings-status"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><div><strong>Administrator access</strong><span>Protected account</span></div></div>
-            <dl><div><dt>Signed-in email</dt><dd><?= $escape($admin['email']) ?></dd></div><div><dt>Account created</dt><dd><?= $admin['created_at'] ? $escape(date('F j, Y', strtotime($admin['created_at']))) : 'Unavailable' ?></dd></div></dl>
+            <div class="settings-status"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><div><strong><?= $admin['role'] === 'super_admin' ? 'Super administrator access' : 'Administrator access' ?></strong><span>Protected account</span></div></div>
+            <dl><div><dt>Signed-in email</dt><dd><?= $escape($admin['email']) ?></dd></div><div><dt>Role</dt><dd><?= $admin['role'] === 'super_admin' ? 'Super admin' : 'Admin' ?></dd></div><div><dt>Account created</dt><dd><?= $admin['created_at'] ? $escape(date('F j, Y', strtotime($admin['created_at']))) : 'Unavailable' ?></dd></div></dl>
+            <?php if ($isSuperAdmin): ?><a class="ov-button secondary settings-super-login" href="../../app/Controllers/logout.php?super_admin=1"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Login as super admin</a><?php endif; ?>
             <p class="settings-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Sign out after changing your password on a shared computer.</p>
         </div>
     </aside>
 </div>
+<?php if ($isSuperAdmin): ?>
+<section class="panel role-management">
+    <div class="panel-header"><div><h3>Administrator roles</h3><span>Grant or remove super administrator access.</span></div></div>
+    <div class="table-wrap"><table><thead><tr><th>Email</th><th>Role</th><th>Change role</th></tr></thead><tbody>
+    <?php foreach ($roleAccounts as $account): ?><tr><td><strong><?= $escape($account['email']) ?></strong></td><td><?= $account['role'] === 'super_admin' ? 'Super admin' : 'Admin' ?></td><td><?php if ((int) $account['admin_id'] === (int) $_SESSION['admin_id']): ?><span class="settings-help">Current account</span><?php else: ?><form class="role-form" method="post" action="settings.php"><input type="hidden" name="action" value="role_update"><input type="hidden" name="csrf" value="<?= $escape($_SESSION['settings_csrf']) ?>"><input type="hidden" name="admin_id" value="<?= (int) $account['admin_id'] ?>"><select name="role" aria-label="Role for <?= $escape($account['email']) ?>"><option value="admin"<?= $account['role'] === 'admin' ? ' selected' : '' ?>>Admin</option><option value="super_admin"<?= $account['role'] === 'super_admin' ? ' selected' : '' ?>>Super admin</option></select><input type="password" name="current_password" placeholder="Your password" autocomplete="current-password" required><button class="submit-button" type="submit">Save role</button></form><?php endif; ?></td></tr><?php endforeach; ?>
+    </tbody></table></div>
+</section>
+<?php endif; ?>

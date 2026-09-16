@@ -37,12 +37,12 @@ if (!isset($title, $activePage, $escape) || ($_SESSION['admin_logged_in'] ?? fal
                     <p><?= $escape($subtitle ?? 'Southern Leyte / Administration') ?></p>
                 </div>
             </div>
-            <div class="topbar-actions"><?php foreach (($topbarActions ?? []) as $action): ?><a
+                <div class="topbar-actions"><?php if ($activePage === 'admin_dashboard.php'): ?><span class="admin-panel-indicator"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Admin panel</span><?php else: ?><?php foreach (($topbarActions ?? []) as $action): ?><a
                         class="ov-button <?= !empty($action['primary']) ? '' : 'secondary' ?>"
                         href="<?= $escape($action['href'] ?? '#') ?>"><?php if (!empty($action['icon'])): ?><i
                                 class="fa-solid <?= $escape($action['icon']) ?>"
-                                aria-hidden="true"></i><?php endif; ?><?= $escape($action['label'] ?? 'Open') ?></a><?php endforeach; ?><a
+                        aria-hidden="true"></i><?php endif; ?><?= $escape($action['label'] ?? 'Open') ?></a><?php endforeach; ?><a
                     class="ov-button secondary public-site-link" href="../../index.php">Public site <span
-                        aria-hidden="true">&#8599;</span></a></div>
+                    aria-hidden="true">&#8599;</span></a><?php endif; ?></div>
         </header>
         <main class="content ov-content">

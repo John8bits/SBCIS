@@ -11,6 +11,7 @@ AdminSession::requireLogin();
 $_SESSION['record_csrf'] = $_SESSION['record_csrf'] ?? bin2hex(random_bytes(32));
 $dashboardMessage = $_SESSION['dashboard_message'] ?? null;
 unset($_SESSION['dashboard_message']);
+$loginSuccess = ($_GET['login'] ?? '') === 'success';
 $dashboardError = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -126,6 +127,9 @@ require __DIR__ . '/overview_shell.php';
     id="dashboard-chart-data"><?= json_encode($chartData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <?php if ($dashboardMessage): ?>
     <div hidden data-toast data-icon="success" data-title="Deleted"><?= $escape($dashboardMessage) ?></div><?php endif; ?>
+<?php if ($loginSuccess): ?>
+    <div hidden data-toast data-icon="success" data-title="Login successful">Welcome back.</div>
+<?php endif; ?>
 <?php if ($dashboardError): ?>
     <div hidden data-toast data-icon="error" data-title="Unable to delete"><?= $escape($dashboardError) ?></div>
 <?php endif; ?>
