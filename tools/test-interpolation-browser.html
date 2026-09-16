@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Isolated interpolation browser check</title>
+<body><pre id="testResult">Running native browser checks...</pre>
+<div id="public" data-mode="public"><p data-interpolation="status"></p><p data-interpolation="legend"></p><div data-interpolation="scale"></div></div>
+<script>
+// A real browser fetch with the real module; no external map library or account is needed.
+window.L = { geoJSON: () => ({ addTo() { return this; }, clearLayers() {}, addData() {}, remove() {} }) };
+</script>
+<script src="../src/js/interpolation.js"></script>
+<script>
+(async () => {
+    const output = document.getElementById('testResult');
+    try {
+        let nativeFailure = '';
+        try { await ({ fetcher: fetch }).fetcher('data:application/json,{}'); }
+        catch (error) { nativeFailure = error.message; }
+        if (!nativeFailure.includes('Illegal invocation')) throw new Error('Original native-fetch failure not reproduced');
+        const root = document.getElementById('public');
+        const map = { createPane: () => ({style:{}}), once() {} };
+        const viewer = new SbcisInterpolation(map, {root, base:'../'});
+        // Use a fresh request to await completion; constructor also automatically starts loading.
+        await viewer.refresh();
+        if (root.dataset.state !== 'unavailable') throw new Error('Unexpected public state: ' + root.dataset.state);
+        if (root.querySelector('button,input,select')) throw new Error('Public technical control found');
+        const denied = await fetch('../app/Controllers/interpolation.php?action=regenerate', {method:'POST'});
+        if (denied.status !== 401) throw new Error('Anonymous generation was not rejected');
+        viewer.destroy();
+        output.textContent = 'PASS: old native fetch reproduces Illegal invocation; fixed module loads public no-result state; anonymous generation rejected; no public controls.';
+        for (const {page, width} of [{page:'gis.php',width:390},{page:'map_embed.php',width:390},
+            {page:'gis.php',width:1280},{page:'map_embed.php',width:1280}]) {
+            const frame = document.createElement('iframe');
+            frame.style.cssText = 'width:' + width + 'px;height:700px;border:0';
+            frame.src = '../views/' + page;
+            document.body.append(frame);
+            await new Promise((resolve, reject) => {
+                let attempts = 0;
+                const timer = setInterval(() => {
+                    const doc = frame.contentDocument;
+                    const select = doc?.getElementById('gisMunicipality');
+                    if (select && !select.disabled && doc.querySelector('#gisInterpolation')?.dataset.state !== 'loading') {
+                        clearInterval(timer); resolve();
+                    } else if (++attempts > 100) { clearInterval(timer); reject(new Error(page + ': real map did not finish loading')); }
+                }, 100);
+            });
+            const doc = frame.contentDocument;
+            const estimates = doc.getElementById('gisInterpolation');
+            if (estimates.querySelector('button,input,select')) throw new Error(page + ': public controls found');
+            if (estimates.dataset.state !== 'unavailable') throw new Error(page + ': unexpected live estimate state');
+            const municipality = doc.getElementById('gisMunicipality');
+            municipality.value = municipality.options[1].value;
+            municipality.dispatchEvent(new Event('change'));
+            if (doc.getElementById('locationType').textContent !== 'MUNICIPALITY / CITY') throw new Error(page + ': municipality failed');
+            const barangay = doc.getElementById('gisBarangay');
+            barangay.value = barangay.options[1].value;
+            barangay.dispatchEvent(new Event('change'));
+            if (doc.getElementById('locationType').textContent !== 'BARANGAY') throw new Error(page + ': barangay failed');
+            const search = doc.getElementById('gisSearch');
+            search.value = municipality.options[1].text;
+            search.dispatchEvent(new Event('input'));
+            const match = doc.querySelector('#gisResults button');
+            if (!match) throw new Error(page + ': location search failed');
+            match.click();
+            if (doc.getElementById('toggleExplorer').getAttribute('aria-expanded') !== 'true') doc.getElementById('toggleExplorer').click();
+            if (doc.getElementById('gisExplorer').inert) throw new Error(page + ': mobile explorer unreachable');
+            doc.getElementById('resetMap').click();
+            if (doc.getElementById('locationName').textContent !== 'Southern Leyte') throw new Error(page + ': reset failed');
+            output.textContent += ' PASS real ' + width + 'px ' + page + ': automatic result, no controls, search, municipality, barangay, explorer, reset.';
+            frame.remove();
+        }
+    } catch (error) { output.textContent = 'FAIL: ' + error.message; }
+})();
+</script></body></html>

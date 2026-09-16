@@ -16,10 +16,10 @@
 .chart-card .ov-card-head{min-height:82px;margin:0;padding:21px 22px 17px;border-bottom:1px solid #edf0ee}
 .chart-card .ov-card-head h3{font-size:16px;color:#2f3c42}
 .chart-card .ov-card-head p{margin-top:5px;line-height:1.45}
-.chart-canvas-wrap{position:relative;width:100%;height:300px;padding:18px 20px 8px}
-.chart-canvas-wrap.chart-wide,.chart-canvas-wrap.chart-tall{height:310px}
-.chart-canvas-wrap.chart-doughnut{height:330px;max-width:620px;margin:auto}
-.chart-canvas-wrap canvas{display:block;max-width:100%;image-rendering:auto}
+.chart-canvas-wrap{position:relative;width:100%;min-width:0;height:clamp(270px,28vw,340px);padding:18px 20px 8px}
+.chart-canvas-wrap.chart-wide,.chart-canvas-wrap.chart-tall{height:clamp(280px,29vw,350px)}
+.chart-canvas-wrap.chart-doughnut{height:clamp(300px,31vw,370px);max-width:680px;margin:auto}
+.chart-canvas-wrap canvas{display:block;max-width:100%;image-rendering:auto;touch-action:pan-y}
 .chart-summary{min-width:54px;text-align:right}
 .chart-summary strong{display:block;color:#33433b;font-size:20px;font-weight:650;line-height:1.1}
 .chart-summary span{display:block;margin-top:4px;color:#7a8580;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
@@ -39,8 +39,18 @@
     .topbar-actions .ov-button{min-height:36px;padding:8px 10px}
     .public-site-link{display:none}
     .chart-card .ov-card-head{min-height:0;padding:18px}
-    .chart-canvas-wrap,.chart-canvas-wrap.chart-wide,.chart-canvas-wrap.chart-tall{height:285px;padding:14px 12px 6px}
-    .chart-canvas-wrap.chart-doughnut{height:320px}
+    .chart-canvas-wrap,.chart-canvas-wrap.chart-wide,.chart-canvas-wrap.chart-tall{height:clamp(260px,72vw,320px);padding:14px 12px 6px}
+    .chart-canvas-wrap.chart-doughnut{height:clamp(320px,92vw,400px)}
     .chart-hint{margin-left:18px;margin-right:18px}
     .quality-card .ov-quality{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:480px){
+    .chart-card .ov-card-head{align-items:flex-start;flex-wrap:wrap}
+    .chart-summary{margin-left:auto}
+    .chart-range{width:100%}
+    .chart-range button{flex:1;min-height:36px}
+    .chart-hint{display:none}
+}
+@media print{
+    .chart-canvas-wrap,.chart-canvas-wrap.chart-wide,.chart-canvas-wrap.chart-tall,.chart-canvas-wrap.chart-doughnut{height:360px;max-width:none}
 }

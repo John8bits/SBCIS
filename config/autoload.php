@@ -3,23 +3,27 @@
 declare(strict_types=1);
 
 /**
- * Loads classes under the App namespace from the app directory.
- *
- * App\Database\Connection maps to app/Database/Connection.php.
+ * Loads application and configuration classes without manual includes.
  */
 spl_autoload_register(static function (string $class): void {
-    $namespacePrefix = 'App\\';
-    $baseDirectory = __DIR__ . '/../app/';
+    $namespaces = [
+        'App\\' => __DIR__ . '/../app/',
+        'Config\\' => __DIR__ . '/',
+    ];
 
-    if (strncmp($class, $namespacePrefix, strlen($namespacePrefix)) !== 0) {
+    foreach ($namespaces as $namespacePrefix => $baseDirectory) {
+        if (strncmp($class, $namespacePrefix, strlen($namespacePrefix)) !== 0) {
+            continue;
+        }
+
+        $relativeClass = substr($class, strlen($namespacePrefix));
+        $relativePath = str_replace('\\', DIRECTORY_SEPARATOR, $relativeClass);
+        $classFile = $baseDirectory . $relativePath . '.php';
+
+        if (is_file($classFile)) {
+            require_once $classFile;
+        }
+
         return;
-    }
-
-    $relativeClass = substr($class, strlen($namespacePrefix));
-    $relativePath = str_replace('\\', DIRECTORY_SEPARATOR, $relativeClass);
-    $classFile = $baseDirectory . $relativePath . '.php';
-
-    if (is_file($classFile)) {
-        require_once $classFile;
     }
 });

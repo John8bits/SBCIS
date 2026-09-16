@@ -1,6 +1,13 @@
 <?php
+use App\Database\Connection;
+use App\Models\GeotechnicalRepository;
+use App\Models\LocationDirectory;
+use App\Support\AdminSession;
+use App\Support\View;
 
-session_start();
+require_once __DIR__ . '/../../config/bootstrap.php';
+
+AdminSession::start();
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Cache-Control: post-check=0, pre-check=0', false);
@@ -15,11 +22,7 @@ if (
     exit;
 }
 
-require_once __DIR__ . '/../../app/Models/geotechnical_data.php';
-
-$escape = static function ($value) {
-    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
-};
+$escape = [View::class, 'escape'];
 
 $databaseAvailable = false;
 $databaseError = null;
@@ -33,17 +36,17 @@ $barangayOptions = [];
 $formData = [];
 $editingId = 0;
 
-require_once __DIR__ . '/../../app/Models/locations.php';
 try {
-    $locationDirectory = sbcis_locations();
+    $locationDirectory = (new LocationDirectory())->all();
     $municipalityOptions = array_column($locationDirectory['municipalities'], 'name');
     $barangayOptions = array_map(static fn($row) => ['id' => $row['code'], 'name' => $row['name'], 'municipalityName' => $row['municipalityName']], $locationDirectory['barangays']);
 } catch (Throwable $e) { error_log('Entry locations: ' . $e->getMessage()); }
 
 try {
-    $db = sbcis_get_database();
+    $db = Connection::get();
 
     if ($db instanceof PDO) {
+        $records = new GeotechnicalRepository($db);
         $databaseAvailable = true;
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -54,7 +57,7 @@ try {
                 $action = is_string($_POST['action'] ?? null) ? $_POST['action'] : 'save';
                 $recordId = filter_var($_POST['record_id'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
                 if ($action === 'delete') {
-                    if (!sbcis_delete_geotechnical_record($db, $recordId)) throw new InvalidArgumentException('This record no longer exists.');
+                    if (!$records->delete($recordId)) throw new InvalidArgumentException('This record no longer exists.');
                     $_SESSION['record_success'] = 'The borehole and its soil layers were deleted.';
                     header('Location: soil_records.php'); exit;
                 }
@@ -67,8 +70,8 @@ try {
                 if ($chosenBarangay !== '' && !array_filter($barangayOptions, static fn($row) => $row['name'] === $chosenBarangay && $row['municipalityName'] === $chosenMunicipality)) {
                     throw new InvalidArgumentException('Choose a barangay belonging to the selected municipality.');
                 }
-                if ($recordId) sbcis_update_geotechnical_record($db, $recordId, $_POST);
-                else sbcis_create_geotechnical_record($db, $_POST);
+                if ($recordId) $records->update($recordId, $_POST);
+                else $records->create($_POST);
                 $_SESSION['record_success'] = $recordId ? 'The record and its soil layers were updated.' : 'Your record has been saved and is now listed below.';
                 header('Location: soil_records.php'); exit;
             } catch (InvalidArgumentException $e) {
@@ -87,7 +90,7 @@ try {
 
         if (!$errorMessage && isset($_GET['edit'])) {
             $editingId = filter_var($_GET['edit'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
-            $record = sbcis_fetch_geotechnical_record($db, $editingId);
+            $record = $records->find($editingId);
             if (!$record) {
                 $errorMessage = 'The record you selected no longer exists.';
                 $editingId = 0;
@@ -103,7 +106,7 @@ try {
             }
         }
 
-        $recentBoreholes = sbcis_fetch_recent_boreholes($db, null);
+        $recentBoreholes = $records->recentBoreholes(null);
     }
 } catch (Throwable $e) {
     error_log('Soil records: ' . $e->getMessage());

@@ -1,20 +1,12 @@
 <?php
 
-require_once __DIR__ . '/../app/Models/geotechnical_data.php';
+use App\Controllers\MapController;
 
-$boreholes = [];
-$recordsAvailable = false;
+require_once __DIR__ . '/../config/bootstrap.php';
 
-try {
-    $db = sbcis_get_database();
-
-    if ($db instanceof PDO) {
-        $boreholes = sbcis_fetch_map_boreholes($db);
-        $recordsAvailable = true;
-    }
-} catch (Throwable $e) {
-    $boreholes = [];
-}
+$mapData = (new MapController())->data('Public map');
+$boreholes = $mapData['boreholes'];
+$recordsAvailable = $mapData['recordsAvailable'];
 
 $mapJson = json_encode(
     $boreholes,
@@ -43,6 +35,7 @@ $mapJson = json_encode(
     window.SBCIS_BOREHOLES = <?= $mapJson ?: '[]' ?>;
     window.SBCIS_RECORDS_AVAILABLE = <?= $recordsAvailable ? 'true' : 'false' ?>;
   </script>
+  <script defer src="../src/js/interpolation.js?v=<?= filemtime(__DIR__ . '/../src/js/interpolation.js') ?>"></script>
   <script defer src="../src/js/gis.js?v=<?= filemtime(__DIR__ . '/../src/js/gis.js') ?>"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script defer src="../src/js/toast.js"></script>

@@ -1,12 +1,13 @@
 <?php
-session_start();
-header('Cache-Control: no-store');
-if (($_SESSION['admin_logged_in'] ?? false) !== true) {
-    header('Location: ../../index.php?login=required');
-    exit;
-}
-require_once __DIR__ . '/../../app/Models/geotechnical_data.php';
-require_once __DIR__ . '/../../app/Models/locations.php';
+use App\Database\Connection;
+use App\Models\GeotechnicalRepository;
+use App\Models\LocationDirectory;
+use App\Support\AdminSession;
+use App\Support\View;
+
+require_once __DIR__ . '/../../config/bootstrap.php';
+
+AdminSession::requireLogin();
 $_SESSION['record_csrf'] = $_SESSION['record_csrf'] ?? bin2hex(random_bytes(32));
 $dashboardMessage = $_SESSION['dashboard_message'] ?? null;
 unset($_SESSION['dashboard_message']);
@@ -18,8 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (($_POST['action'] ?? '') !== 'delete')
             throw new InvalidArgumentException('Unknown record action.');
         $recordId = filter_var($_POST['record_id'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
-        $deleteDb = sbcis_get_database();
-        if (!$deleteDb || !sbcis_delete_geotechnical_record($deleteDb, $recordId))
+        $deleteDb = Connection::get();
+        if (!$deleteDb || !(new GeotechnicalRepository($deleteDb))->delete($recordId))
             throw new InvalidArgumentException('This record no longer exists.');
         $_SESSION['dashboard_message'] = 'The borehole and all of its soil layers were deleted.';
         header('Location: admin_dashboard.php');
@@ -33,12 +34,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 $directory = null;
 try {
-    $directory = sbcis_locations();
+    $directory = (new LocationDirectory())->all();
 } catch (Throwable $error) {
     error_log('Dashboard locations: ' . $error->getMessage());
 }
-$escape = static function ($v) {
-    return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8'); };
+$escape = [View::class, 'escape'];
 $available = false;
 $stats = [];
 $coverage = [];
@@ -55,7 +55,7 @@ for ($monthsAgo = 11; $monthsAgo >= 0; $monthsAgo--) {
     $activityBuckets[$key] = ['boreholes' => 0, 'layers' => 0];
 }
 try {
-    $db = sbcis_get_database();
+    $db = Connection::get();
     if (!$db)
         throw new RuntimeException('Database unavailable.');
     $stats = $db->query('SELECT
@@ -101,7 +101,7 @@ try {
         $activity['boreholes'][] = $bucket['boreholes'];
         $activity['layers'][] = $bucket['layers'];
     }
-    $recent = sbcis_fetch_recent_boreholes($db, 5);
+    $recent = (new GeotechnicalRepository($db))->recentBoreholes(5);
     $available = true;
 } catch (Throwable $error) {
     error_log('Dashboard: ' . $error->getMessage());
@@ -118,7 +118,8 @@ $title = 'Dashboard';
 $subtitle = 'Soil investigation overview and recent activity';
 $activePage = 'admin_dashboard.php';
 $topbarActions = [['href' => 'soil_records.php?new=1', 'label' => 'Add record', 'icon' => 'fa-plus', 'primary' => true]];
-$extraHead = '<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script><script defer src="../../src/js/dashboard_charts.js"></script>';
+$chartScriptVersion = filemtime(__DIR__ . '/../../src/js/dashboard_charts.js');
+$extraHead = '<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script><script defer src="../../src/js/dashboard_charts.js?v=' . $chartScriptVersion . '"></script>';
 require __DIR__ . '/overview_shell.php';
 ?>
 <script type="application/json"
