@@ -6,6 +6,13 @@ use App\Support\View;
 require_once __DIR__ . '/../../config/bootstrap.php';
 
 AdminSession::requireLogin();
+
+// Boreholes are embedded in this page as JSON. Never serve a stale page after
+// an administrator saves or edits a record.
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 $mapData = (new MapController())->data('Admin map');
 $boreholes = $mapData['boreholes'];
 $recordsAvailable = $mapData['recordsAvailable'];

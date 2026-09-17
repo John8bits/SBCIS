@@ -11,6 +11,10 @@
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 1 0 2.34-5.66L4 8.7M4 4v4.7h4.7"></path></svg>
       <span>Reset</span>
     </button>
+    <button id="toggleSurface" class="gis-panel-toggle gis-surface-toggle" type="button" aria-label="Hide interpolation colors" aria-pressed="true">
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M3 12s3.2-5.5 9-5.5S21 12 21 12s-3.2 5.5-9 5.5S3 12 3 12Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
+      <span>Surface</span>
+    </button>
     <button id="toggleInsights" class="gis-panel-toggle gis-insights-toggle" type="button" aria-label="Open map data" aria-expanded="false" aria-controls="gisInsights">
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M5 5h14v14H5zM8 9h8M8 12h8M8 15h5"></path></svg>
       <span>Map data</span>
@@ -29,7 +33,7 @@
     </div>
     <label class="gis-search-field" for="gisSearch">
       <span class="gis-search-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg></span>
-      <input id="gisSearch" type="search" placeholder="Search municipality or barangay" disabled autocomplete="off" aria-controls="gisResults">
+      <input id="gisSearch" type="search" placeholder="Search location or Borehole ID" disabled autocomplete="off" aria-controls="gisResults">
     </label>
     <div id="gisResults" class="gis-results" aria-label="Search results" aria-live="polite"></div>
     <div class="gis-fields">

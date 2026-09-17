@@ -4,6 +4,12 @@ use App\Controllers\MapController;
 
 require_once __DIR__ . '/../config/bootstrap.php';
 
+// The map payload contains live borehole records; prevent an old page from
+// being reused after a record is added or edited in the administration panel.
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 $mapData = (new MapController())->data('Public map');
 $boreholes = $mapData['boreholes'];
 $recordsAvailable = $mapData['recordsAvailable'];

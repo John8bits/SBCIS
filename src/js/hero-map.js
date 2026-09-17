@@ -113,9 +113,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const latitude = Number(borehole.latitude);
             const longitude = Number(borehole.longitude);
             if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
-            L.circleMarker([latitude, longitude], {
-                pane: 'heroPointPane', radius: 3.5, weight: 1.2,
-                color: '#fff', fillColor: '#dc2626', fillOpacity: 1
+            L.marker([latitude, longitude], {
+                icon: L.divIcon({
+                    className: 'hero-borehole-marker',
+                    html: '<span aria-hidden="true"></span>',
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7]
+                }),
+                keyboard: true,
+                riseOnHover: true,
+                title: `${borehole.borehole_code || 'Borehole'}: view soil record`
             }).addTo(map).bindPopup(popupFor(borehole));
         });
 

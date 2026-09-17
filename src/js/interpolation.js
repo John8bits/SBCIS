@@ -12,29 +12,17 @@ class SbcisInterpolation {
         this.destroyed = false;
         this.busy = false;
         this.pane = map.createPane('interpolationPane');
-        Object.assign(this.pane.style, { zIndex: '425', pointerEvents: 'auto', opacity: '0.78' });
+        Object.assign(this.pane.style, { zIndex: '350', pointerEvents: 'none', opacity: '0.78' });
         this.layer = L.geoJSON(null, {
             pane: 'interpolationPane',
-            interactive: true,
+            interactive: false,
             style: feature => ({
                 color: SbcisInterpolation.bearingClass(feature.properties.value).color,
                 weight: 0.35,
                 opacity: 0.45,
                 fillColor: SbcisInterpolation.bearingClass(feature.properties.value).color,
                 fillOpacity: 0.82
-            }),
-            onEachFeature: (feature, layer) => {
-                const value = Number(feature.properties?.value);
-                const classification = SbcisInterpolation.bearingClass(value);
-                const area = feature.properties?.NAME_3 || feature.properties?.NAME_2 || 'Map area';
-                layer.bindTooltip(area + ' · ' + this.number(value) + ' kPa · ' + classification.label + ' · click to zoom');
-                layer.on('click', event => {
-                    L.DomEvent?.stopPropagation?.(event);
-                    if (typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
-                        window.dispatchEvent(new CustomEvent('sbcis:surface-selected', { detail: { feature } }));
-                    }
-                });
-            }
+            })
         }).addTo(map);
         if (this.admin) {
             this.on(this.element('regenerate'), 'click', () => this.refresh(true));
@@ -138,6 +126,10 @@ class SbcisInterpolation {
 
     setTicks(legend) {
         this.element('ticks').hidden = true;
+    }
+
+    setVisible(visible) {
+        this.pane.style.display = visible ? '' : 'none';
     }
 
     static bearingClass(value) {

@@ -45,7 +45,8 @@ const L = {
         for (const item of data?.features || []) options.onEachFeature?.(item, makeLayer());
         return layer;
     },
-    circleMarker: (position, options) => { const point = makeLayer(); point.position = position; point.options = options; points.push(point); return point; }
+    divIcon: options => options,
+    marker: (position, options) => { const point = makeLayer(); point.position = position; point.options = options; points.push(point); return point; }
 };
 window.L = L;
 

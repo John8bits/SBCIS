@@ -1,4 +1,11 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // Browsers can restore a prior GIS page from their back/forward cache,
+    // including its old inline borehole payload. Reload only that restored
+    // page so newly saved records are always represented on the map.
+    window.addEventListener('pageshow', event => {
+        if (event.persisted) window.location.reload();
+    }, { once: true });
+
     const navToggle = document.querySelector('.nav-toggle');
     const navigation = document.querySelector('.nav-panel');
     const navLinks = document.querySelectorAll('.nav-links a');
@@ -18,6 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const capacityCard = document.querySelector('#gisCapacityCard');
     const closeCapacityCard = document.querySelector('#closeCapacityCard');
     const capacityRecords = document.querySelector('#gisCapacityRecords');
+    const surfaceToggle = document.querySelector('#toggleSurface');
     const fullscreenToggle = document.querySelector('#toggleFullscreen');
     const fullscreenTarget = document.querySelector('.admin-map-workspace') || workspace;
     let modalReturnFocus = null;
@@ -145,7 +153,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         if (!window.L) throw new Error('The map library could not load. Check your internet connection and retry.');
         const map = L.map('gisMap', {
-            preferCanvas: true,
+            // SVG panes with disabled pointer events let the map receive the click
+            // consistently, then resolve the selected boundary from its coordinates.
+            preferCanvas: false,
             minZoom: 8,
             maxZoom: 19,
             zoomControl: false,
@@ -154,7 +164,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const boundaryPane = map.createPane('boundaryPane');
         const selectionPane = map.createPane('selectionPane');
         const availabilityPane = map.createPane('availabilityPane');
-        Object.assign(boundaryPane.style, { zIndex: '410', pointerEvents: 'auto' });
+        Object.assign(boundaryPane.style, { zIndex: '410', pointerEvents: 'none' });
         Object.assign(selectionPane.style, { zIndex: '430', pointerEvents: 'none' });
         Object.assign(availabilityPane.style, { zIndex: '450', pointerEvents: 'auto' });
         L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -192,30 +202,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             style: { color: '#0b3d2e', weight: 3.2, opacity: .95, fill: false }
         }).addTo(map);
         const municipalityLayer = L.geoJSON(municipalities, {
-            pane: 'boundaryPane',
+            pane: 'boundaryPane', interactive: false,
             style: municipalityStyle,
             onEachFeature: (feature, layer) => {
                 const label = document.createElement('span');
                 label.textContent = feature.properties.NAME_2 + ' — click to zoom';
                 layer.bindTooltip(label);
-                layer.on('click', () => selectBoundary(feature, 'municipality'));
-                layer.on('mouseover', () => layer.setStyle({ weight: 2.8, fillOpacity: .13 }));
-                layer.on('mouseout', () => layer.setStyle({
-                    ...municipalityStyle,
-                    fillOpacity: municipalitySelect.value && municipalitiesByCode.get(municipalitySelect.value)?.boundaryId !== feature.properties.GID_2 ? .015 : .035
-                }));
             }
         }).addTo(map);
         const barangayLayer = L.geoJSON(null, {
-            pane: 'boundaryPane',
+            pane: 'boundaryPane', interactive: false,
             style: barangayStyle,
             onEachFeature: (feature, layer) => {
                 const label = document.createElement('span');
                 label.textContent = `${feature.properties.NAME_3}, ${feature.properties.NAME_2} — click to zoom`;
                 layer.bindTooltip(label);
-                layer.on('click', () => selectBoundary(feature, 'barangay'));
-                layer.on('mouseover', () => layer.setStyle({ weight: 2.1, fillOpacity: .13 }));
-                layer.on('mouseout', () => layer.setStyle(barangayStyle));
             }
         }).addTo(map);
         const selection = L.geoJSON(null, {
@@ -223,11 +224,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             style: { color: '#d17a12', weight: 3.2, fillColor: '#f4bd63', fillOpacity: .16 }
         }).addTo(map);
         const availabilityLayer = L.layerGroup().addTo(map);
+        const boreholeLayer = L.layerGroup().addTo(map);
 
         const boreholes = Array.isArray(window.SBCIS_BOREHOLES) ? window.SBCIS_BOREHOLES : [];
         document.getElementById('visibleBoreholeCount').textContent = String(boreholes.length);
         const dataKey = document.getElementById('gisDataKey');
         dataKey.hidden = boreholes.length === 0;
+        const boreholePins = new Map();
+        let boreholePinsVisible = true;
         let selectedDataFeature = null;
         let selectedDataType = null;
         let selectedCapacityFeature = null;
@@ -276,11 +280,48 @@ document.addEventListener('DOMContentLoaded', async () => {
             const latitude = Number(borehole.latitude);
             const longitude = Number(borehole.longitude);
             if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
-            L.circleMarker([latitude, longitude], {
-                pane: 'availabilityPane', radius: 4, weight: 1.5,
-                color: '#fff', fillColor: '#dc2626', fillOpacity: .95
-            }).addTo(map).bindPopup(boreholePopup(borehole));
+            // Use a marker-pane pin instead of a vector circle in a custom
+            // pane. It remains visible above the interpolated surface across
+            // Leaflet renderers and is easier to select on touch devices.
+            const marker = L.marker([latitude, longitude], {
+                icon: L.divIcon({
+                    className: 'gis-borehole-marker',
+                    html: '<span aria-hidden="true"></span>',
+                    iconSize: [18, 18],
+                    iconAnchor: [9, 9]
+                }),
+                keyboard: true,
+                riseOnHover: true,
+                title: `${borehole.borehole_code || 'Borehole'}: view soil record`
+            }).addTo(boreholeLayer).bindPopup(boreholePopup(borehole));
+            boreholePins.set(String(borehole.borehole_code || '').toLocaleLowerCase(), marker);
         });
+
+        // Wide views stay readable: aggregated availability badges are shown
+        // instead of dozens of overlapping pins. Pins reappear when zoomed in.
+        function updateBoreholePinVisibility() {
+            if (typeof map.getZoom !== 'function' || typeof map.addLayer !== 'function' || typeof map.removeLayer !== 'function') return;
+            const shouldShowPins = map.getZoom() >= 12;
+            if (shouldShowPins === boreholePinsVisible) return;
+            boreholePinsVisible = shouldShowPins;
+            if (shouldShowPins) map.addLayer(boreholeLayer);
+            else map.removeLayer(boreholeLayer);
+        }
+        map.on('zoomend', updateBoreholePinVisibility);
+
+        function focusBorehole(borehole) {
+            const latitude = Number(borehole.latitude);
+            const longitude = Number(borehole.longitude);
+            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+            if (!boreholePinsVisible && typeof map.addLayer === 'function') {
+                map.addLayer(boreholeLayer);
+                boreholePinsVisible = true;
+            }
+            if (typeof map.setView === 'function') map.setView([latitude, longitude], 16);
+            const marker = boreholePins.get(String(borehole.borehole_code || '').toLocaleLowerCase());
+            marker?.openPopup?.();
+            status.textContent = `${borehole.borehole_code || 'Borehole'} selected — click the pin for its saved soil record.`;
+        }
 
         function pointInRing(longitude, latitude, ring) {
             let inside = false;
@@ -505,18 +546,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             showCapacity(feature, type);
         }
 
-        window.addEventListener('sbcis:surface-selected', event => {
-            const feature = event.detail?.feature;
-            const properties = feature?.properties;
-            if (!properties) return;
+        // Resolve clicks from the map coordinate instead of relying on the
+        // visually topmost layer. This keeps every colored area clickable.
+        map.on('click', event => {
+            const latitude = Number(event.latlng?.lat);
+            const longitude = Number(event.latlng?.lng);
+            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
             const activeMunicipality = municipalitiesByCode.get(municipalitySelect.value);
-            if (activeMunicipality?.boundaryId === properties.GID_2 && properties.GID_3) {
-                selectBoundary(barangayById.get(properties.GID_3) || feature, 'barangay');
-                return;
+            if (activeMunicipality?.boundaryId) {
+                const barangay = barangays.features.find(feature =>
+                    feature.properties?.GID_2 === activeMunicipality.boundaryId && pointInFeature(longitude, latitude, feature));
+                if (barangay) {
+                    selectBoundary(barangay, 'barangay');
+                    return;
+                }
             }
-            const municipality = municipalityById.get(properties.GID_2);
+            const municipality = municipalities.features.find(feature => pointInFeature(longitude, latitude, feature));
             if (municipality) selectBoundary(municipality, 'municipality');
-            else if (properties.GID_3) selectBoundary(barangayById.get(properties.GID_3) || feature, 'barangay');
         });
 
         function selectMunicipality(code, zoom = true, showDetails = false) {
@@ -577,13 +623,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             results.replaceChildren();
             const term = search.value.trim().toLocaleLowerCase();
             if (!term) return;
-            const matches = [...directory.municipalities, ...directory.barangays].filter(row =>
+            const locationMatches = [...directory.municipalities, ...directory.barangays].filter(row =>
                 (row.name + ' ' + (row.municipalityName || '') + ' ' + row.code).toLocaleLowerCase().includes(term));
+            const boreholeMatches = boreholes.filter(borehole =>
+                String(borehole.borehole_code || '').toLocaleLowerCase().includes(term));
             const count = document.createElement('p');
-            count.textContent = matches.length ? matches.length + ' locations found' +
-                (matches.length > 30 ? '; showing first 30. Refine your search.' : '.') : 'No locations found. Try another name.';
+            const total = locationMatches.length + boreholeMatches.length;
+            count.textContent = total ? total + ' result' + (total === 1 ? '' : 's') + ' found' +
+                (total > 30 ? '; showing first 30. Refine your search.' : '.') : 'No location or Borehole ID found. Try another name.';
             results.append(count);
-            matches.slice(0, 30).forEach(row => {
+            boreholeMatches.slice(0, 10).forEach(borehole => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = `${borehole.borehole_code || 'Borehole'} — ${[borehole.barangay_name, borehole.municipality_name].filter(Boolean).join(', ') || 'Southern Leyte'}`;
+                button.addEventListener('click', () => {
+                    focusBorehole(borehole);
+                    results.replaceChildren();
+                    search.value = '';
+                    setExplorer(false, true);
+                });
+                results.append(button);
+            });
+            locationMatches.slice(0, Math.max(0, 30 - boreholeMatches.length)).forEach(row => {
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.textContent = row.name + ' — ' + (row.municipalityName || 'Municipality / City');
@@ -619,8 +680,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         new ResizeObserver(() => map.invalidateSize()).observe(document.querySelector('#gisMap'));
         try {
             if (!window.SbcisInterpolation) throw new Error('Estimate controls unavailable');
-            new window.SbcisInterpolation(map, {
+            const interpolationViewer = new window.SbcisInterpolation(map, {
                 base: window.SBCIS_MAP_BASE || '../'
+            });
+            surfaceToggle?.addEventListener('click', () => {
+                const visible = surfaceToggle.getAttribute('aria-pressed') !== 'true';
+                interpolationViewer.setVisible(visible);
+                surfaceToggle.setAttribute('aria-pressed', String(visible));
+                surfaceToggle.setAttribute('aria-label', visible ? 'Hide interpolation colors' : 'Show interpolation colors');
+                surfaceToggle.querySelector('span').textContent = visible ? 'Surface' : 'Show surface';
+                document.querySelector('.gis-surface-legend').hidden = !visible;
             });
         } catch (error) {
             const estimateStatus = document.querySelector('#gisInterpolation [data-interpolation="status"]');
@@ -631,6 +700,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const query = new URLSearchParams(window.location.search);
         if (query.has('barangay')) selectBarangay(query.get('barangay'), true);
         else if (query.has('municipality')) selectMunicipality(query.get('municipality'), true, true);
+        else if (query.get('borehole')) {
+            const borehole = boreholes.find(record => String(record.borehole_code || '').toLocaleLowerCase() === query.get('borehole').toLocaleLowerCase());
+            if (borehole) focusBorehole(borehole);
+        }
         if (query.get('q')) { setExplorer(true); search.value = query.get('q'); renderSearch(); }
     } catch (error) {
         status.textContent = error.message || 'Unable to load the map. Please retry.';

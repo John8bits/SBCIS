@@ -891,6 +891,18 @@ button {
 .hero-map-card { max-width: 520px; }
 .hero-map-stage { position: relative; overflow: hidden; border-radius: 9px; }
 #heroMap { height: 310px; z-index: 0; border-radius: 9px; font-family: inherit; }
+.hero-borehole-marker {
+  display: grid;
+  width: 14px !important;
+  height: 14px !important;
+  place-items: center;
+  border: 1.5px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  background: #dc2626;
+  box-shadow: 0 1px 5px rgba(100, 20, 20, .45);
+  transform: rotate(-45deg);
+}
+.hero-borehole-marker span { width: 3px; height: 3px; border-radius: 50%; background: #fff; }
 .hero-interpolation-legend {
   position: absolute;
   right: 10px;

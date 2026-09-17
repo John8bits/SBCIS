@@ -35,12 +35,16 @@ async function testMap(mobile, base) {
     document.getElementById('gisDataModal').hidden = true;
     document.getElementById('gisCapacityCard').hidden = true;
     window.SBCIS_BOREHOLES = [{ borehole_code: 'Fixture', latitude: 10.15, longitude:124.85, layers: [] }];
-    const layers = new Set(), markers = [], circleMarkers = [], featureLayers = [];
+    const layers = new Set(), markers = [], featureLayers = [];
     const makeLayer = () => ({ addTo(parent) { layers.add(this); this.parent = parent; return this; },
         remove() { layers.delete(this); }, events: {}, on(key, fn) { this.events[key] = fn; return this; }, bindTooltip() {}, bindPopup(html) { this.popup = html; },
         setStyle() {}, clearLayers() { return this; }, addData() { return this; }, bringToFront() { return this; },
         getBounds: () => ({ isValid: () => true }) });
-    const map = { fitCount: 0, createPane: () => ({ style: {} }), once() {}, fitBounds() { this.fitCount++; }, invalidateSize() {} };
+    const map = {
+        fitCount: 0, events: {}, createPane: () => ({ style: {} }), once() {},
+        on(name, handler) { this.events[name] = handler; return this; },
+        fitBounds() { this.fitCount++; }, invalidateSize() {}
+    };
     const geoJSON = (data, options = {}) => {
         const group = makeLayer();
         const addFeatures = payload => {
@@ -57,7 +61,6 @@ async function testMap(mobile, base) {
     const L = { map: () => map, tileLayer: makeLayer, geoJSON, layerGroup: makeLayer, DomEvent: { stopPropagation() {} },
         divIcon: options => options,
         marker: (position, options) => { const marker = makeLayer(); marker.position = position; marker.options = options; markers.push(marker); return marker; },
-        circleMarker: () => { const marker = makeLayer(); circleMarkers.push(marker); return marker; },
         control: { zoom: makeLayer, scale: makeLayer } };
     window.L = L;
     const feature = { type: 'Feature', properties: { GID_2: 'm1', GID_3: 'b1', NAME_2: 'Maasin', NAME_3: 'Test Barangay' },
@@ -93,23 +96,23 @@ async function testMap(mobile, base) {
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(estimateRoot.dataset.state, base === '../../' ? 'no_data' : 'current');
     assert.equal(endpointCalls, base === '../../' ? 2 : 1);
-    const surfaceBoundary = featureLayers.find(entry => entry.feature.properties.value === 145 && entry.layer.events.click);
     const fitBeforeSurface = map.fitCount;
-    surfaceBoundary.layer.events.click();
-    assert.ok(map.fitCount > fitBeforeSurface, 'First colored-surface click zooms to its municipality');
+    map.events.click({ latlng: { lat: 10.15, lng: 124.85 } });
+    assert.ok(map.fitCount > fitBeforeSurface, 'Clicking any colored map area zooms to its municipality');
     assert.equal(get('locationName').textContent, 'Maasin');
     assert.equal(get('gisDataModal').hidden, true);
     const fitBeforeSurfaceBarangay = map.fitCount;
-    surfaceBoundary.layer.events.click();
-    assert.ok(map.fitCount > fitBeforeSurfaceBarangay, 'Second colored-surface click zooms to its barangay');
+    map.events.click({ latlng: { lat: 10.15, lng: 124.85 } });
+    assert.ok(map.fitCount > fitBeforeSurfaceBarangay, 'Second click zooms to its barangay');
     assert.equal(get('locationName').textContent, 'Test Barangay');
     assert.equal(get('gisDataModal').hidden, true);
-    assert.equal(circleMarkers.length, 1, 'Borehole point is rendered for the interpolation map');
-    assert.ok(circleMarkers[0].popup, 'Borehole point opens a data popup');
-    assert.ok(markers.length > 0, 'Area data-availability badge rendered');
-    assert.match(markers[0].options.title, /borehole.*available/, 'Availability badge has an accessible count');
+    const boreholePin = markers.find(marker => marker.options.title === 'Fixture: view soil record');
+    assert.ok(boreholePin, 'Borehole point is rendered above the interpolation map');
+    assert.ok(boreholePin.popup, 'Borehole point opens a data popup');
+    const availabilityBadge = markers.find(marker => /borehole.*available/.test(marker.options.title || ''));
+    assert.ok(availabilityBadge, 'Area data-availability badge rendered with an accessible count');
     const fitBeforeBadge = map.fitCount;
-    markers[0].events.click();
+    availabilityBadge.events.click();
     assert.ok(map.fitCount > fitBeforeBadge, 'Borehole badge zooms to its area');
     assert.equal(get('gisDataModal').hidden, true, 'Borehole badge does not open the records modal');
     assert.equal(get('gisCapacityCard').hidden, false, 'Borehole badge opens the bearing-capacity summary');
@@ -117,17 +120,17 @@ async function testMap(mobile, base) {
     assert.equal(get('gisDataModal').hidden, false, 'Records modal opens only from View borehole records');
     get('closeDataModal').fire('click');
     const fitBeforeLayer = map.fitCount;
-    featureLayers[0].layer.events.click();
-    assert.ok(map.fitCount > fitBeforeLayer, 'Municipality layer click zooms to the selected area');
+    get('quickResetMap').fire('click');
+    map.events.click({ latlng: { lat: 10.15, lng: 124.85 } });
+    assert.ok(map.fitCount > fitBeforeLayer, 'Municipality map-area click zooms to the selected area');
     assert.equal(get('gisDataModal').hidden, true, 'Boundary click does not open the records modal');
     assert.equal(get('gisCapacityCard').hidden, false, 'Boundary click opens the bearing-capacity readout');
     assert.equal(get('gisCapacityClass').textContent, 'Low');
     assert.equal(get('gisCapacityValue').textContent, '145 kPa');
     assert.equal(get('gisCapacitySwatch').style.backgroundColor, '#f59e0b');
-    const barangayBoundary = featureLayers.find((entry, index) => index > 0 && entry.feature.properties.GID_3 === 'b1' && entry.layer.events.click);
     const fitBeforeBarangay = map.fitCount;
-    barangayBoundary.layer.events.click();
-    assert.ok(map.fitCount > fitBeforeBarangay, 'Barangay layer click zooms closer to the selected barangay');
+    map.events.click({ latlng: { lat: 10.15, lng: 124.85 } });
+    assert.ok(map.fitCount > fitBeforeBarangay, 'Barangay map-area click zooms closer to the selected barangay');
     assert.equal(get('locationName').textContent, 'Test Barangay');
     assert.equal(get('gisDataModal').hidden, true, 'Barangay layer click does not open the records modal');
     get('gisCapacityRecords').fire('click');

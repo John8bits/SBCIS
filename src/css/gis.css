@@ -85,6 +85,32 @@
   background: #dfe8e4;
 }
 
+/* Live borehole records always sit above boundaries and interpolation. */
+.gis-borehole-marker {
+  display: grid;
+  width: 18px !important;
+  height: 18px !important;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  background: #dc2626;
+  box-shadow: 0 2px 8px rgba(100, 20, 20, .44);
+  transform: rotate(-45deg);
+}
+
+.gis-borehole-marker span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.gis-borehole-marker:hover,
+.gis-borehole-marker:focus-visible {
+  background: #991b1b;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, .24), 0 2px 8px rgba(100, 20, 20, .44);
+}
+
 .gis-sidebar,
 .gis-insights {
   position: absolute;
@@ -1158,6 +1184,10 @@
 
 .gis-map-shell path.leaflet-interactive {
   cursor: pointer;
+}
+
+.gis-map-shell .leaflet-container {
+  cursor: crosshair;
 }
 
 .gis-data-marker-wrap {

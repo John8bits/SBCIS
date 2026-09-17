@@ -61,8 +61,8 @@ const adminStatus = status => ({status, eligible_count:0,excluded_count:2,exclus
     viewer.refresh(); const pending = requests.shift(); viewer.destroy(); response(pending,published); await tick();
     assert.equal(layers.has(markers),true);
     assert.equal(layers.size,1,'Only estimate layer removed');
-    assert.equal(viewer.pane.style.zIndex,'425');
-    assert.equal(viewer.pane.style.pointerEvents,'auto');
+    assert.equal(viewer.pane.style.zIndex,'350');
+    assert.equal(viewer.pane.style.pointerEvents,'none');
 
     const adminRoot = new Element(); adminRoot.dataset = {mode:'admin',csrf:'isolated-token'};
     const admin = new Interpolation(map,{root:adminRoot,base:'../../'});
@@ -87,5 +87,5 @@ const adminStatus = status => ({status, eligible_count:0,excluded_count:2,exclus
     admin.refresh(); response(requests.shift(),{status:'unauthorized'},401); await tick();
     assert.equal(adminRoot.dataset.state,'unauthorized');
     admin.destroy(); console.error = logger;
-    console.log('JavaScript checks passed: interactive surface, native receiver, public loading, stale responses, numeric legend, admin POST/CSRF, no-data/insufficient/failure/retry.');
+    console.log('JavaScript checks passed: non-blocking surface, native receiver, public loading, stale responses, numeric legend, admin POST/CSRF, no-data/insufficient/failure/retry.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
