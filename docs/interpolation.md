@@ -43,21 +43,15 @@ php tools/regenerate-interpolation.php
 
 ## Data provenance
 
-Reserved `SYNTH-DEMO-*` records are never eligible for production. The guard also
-checks layer metadata for explicit markers such as `SYNTHETIC SAMPLE`,
-`ARTIFICIAL DEMO`, and `NOT MEASURED`, so renaming a sample borehole to `BH-*`
-does not turn it into engineering evidence.
+All valid in-boundary records now participate in the live map and interpolation
+pipeline. Seeded records are checked with the same coordinate, measurement,
+depth, duplicate-coordinate, and support-distance rules as manually entered
+records. The separate synthetic preview route has been removed.
 
-The September 16, 2026 audit found 52 stored boreholes: 50 are identifiable as
-sample data (including renamed sample codes), and two lie outside the Southern
-Leyte boundary. Therefore the honest production status is currently `no_data`.
-The earlier colored artifact is stale and is not served to the public map.
-
-Use [sample_interpolation_50.sql](../database/sample_interpolation_50.sql) for a
-repeatable development fixture. It writes to the real SBCIS tables and exercises
-the same GIS components, but remains sample-tagged and is shown through the
-admin **Preview map with sample data** link (`admin_gis.php?preview=synthetic`).
-The seed is idempotent and does not silently contaminate the production surface.
+Use [sample_interpolation_50.sql](../database/sample_interpolation_50.sql) to
+seed the live dataset when required. The script is idempotent. Its values are
+synthetic, so they must not be represented as field evidence or used for final
+engineering decisions even though they are visible on the final map.
 
 ## API
 

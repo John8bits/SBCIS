@@ -25,8 +25,11 @@ fclose($backup);
 verify(strpos($sql, 'CREATE TABLE `admins`') === false, 'No administrator table');
 verify(strpos($sql, 'INSERT INTO `admins`') === false, 'No administrator credentials');
 verify(strpos($sql, 'DROP TABLE') === false, 'No destructive restore commands');
+verify(strpos($sql, 'SET FOREIGN_KEY_CHECKS = 0;') !== false, 'Foreign-key-safe restore settings');
+verify(strpos($sql, 'START TRANSACTION;') !== false && strpos($sql, 'COMMIT;') !== false, 'Transactional data restore');
 foreach (array_keys(sbcis_export_queries()) as $table) {
     verify(strpos($sql, 'CREATE TABLE `' . $table . '`') !== false, 'Schema included for ' . $table);
+    verify(strpos($sql, '--   ' . $table . ': ' . (int) $db->query('SELECT COUNT(*) FROM `' . $table . '`')->fetchColumn() . ' row(s)') !== false, 'Manifest count for ' . $table);
     $stream = sbcis_prepare_export($db, $table);
     verify(fread($stream, 3) === "\xEF\xBB\xBF", 'Spreadsheet UTF-8 BOM');
     verify(count(fgetcsv($stream, 0, ',', '"', '')) > 0, 'CSV headers');

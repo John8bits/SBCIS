@@ -46,6 +46,8 @@ if (
 
 
 $home = require __DIR__ . '/app/Controllers/home.php';
+$heroMapData = (new App\Controllers\MapController())->data('Homepage map');
+$heroBoreholes = $heroMapData['boreholes'];
 $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 ?>
 <!DOCTYPE html>
@@ -54,6 +56,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 <head>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
   <link rel="icon" type="image/png" href="src/images/logo.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -68,6 +71,9 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="stylesheet" href="src/css/style.css?v=<?= filemtime(__DIR__ . '/src/css/style.css') ?>">
+  <link rel="stylesheet" href="src/css/map-theme.css?v=<?= filemtime(__DIR__ . '/src/css/map-theme.css') ?>">
+  <script>window.SBCIS_HERO_BOREHOLES = <?= json_encode($heroBoreholes, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
+  <script defer src="src/js/interpolation.js?v=<?= filemtime(__DIR__ . '/src/js/interpolation.js') ?>"></script>
   <script defer src="src/js/hero-map.js?v=<?= filemtime(__DIR__ . '/src/js/hero-map.js') ?>"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -196,14 +202,24 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
                 </span>
 
                 <strong>
-                  Explore Southern Leyte
+                  Soil Bearing Capacity
                 </strong>
 
               </div>
 
             </div>
 
-            <div id="heroMap" class="mini-map" role="region" aria-label="Southern Leyte map preview with zoom controls"></div>
+            <div class="hero-map-stage">
+              <div id="heroMap" class="mini-map" role="region" aria-label="Southern Leyte bearing capacity interpolation map"></div>
+              <div id="heroInterpolationLegend" class="hero-interpolation-legend" hidden>
+                <strong>Bearing capacity</strong>
+                <span><i class="range-very-low"></i>&lt; 100 <small>Very low</small></span>
+                <span><i class="range-low"></i>100–150 <small>Low</small></span>
+                <span><i class="range-moderate"></i>151–200 <small>Moderate</small></span>
+                <span><i class="range-high"></i>201–250 <small>High</small></span>
+                <span><i class="range-very-high"></i>&gt; 250 kPa <small>Very high</small></span>
+              </div>
+            </div>
             <div class="hero-map-actions">
               <button id="heroMapReset" type="button" disabled>Reset view</button>
               <a href="views/gis.php">Open full map <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>

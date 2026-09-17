@@ -25,7 +25,6 @@ final class InterpolationDataService
         $boreholeCandidates = [];
         $reasons = [];
         $outsideBoreholes = [];
-        $nonFieldBoreholes = [];
         foreach ($rows as $row) {
             $record = [];
             foreach (['borehole_id', 'borehole_code', 'soil_layer_id', 'soil_type', 'soil_description', 'latitude', 'longitude', 'depth_from_m', 'depth_to_m',
@@ -35,10 +34,7 @@ final class InterpolationDataService
             }
             $canonical[] = $record;
             $reason = null;
-            if (InterpolationConfig::isNonFieldRecord($record)) {
-                $reason = 'non_field_demo_record';
-                $nonFieldBoreholes[(string) $record['borehole_id']] = true;
-            } elseif (!BoundaryService::validCoordinates($record['latitude'], $record['longitude'])) {
+            if (!BoundaryService::validCoordinates($record['latitude'], $record['longitude'])) {
                 $reason = 'invalid_coordinates';
             } elseif (!$this->boundary->contains($record['latitude'], $record['longitude'])) {
                 $reason = 'outside_study_boundary';
@@ -101,7 +97,7 @@ final class InterpolationDataService
             'schema' => 1, 'boundary' => $this->boundary->version(), 'selection' => $selection,
             'public_variables' => $this->config->publicVariables(),
             'technical_minimum_points' => $this->config->minimumPoints(),
-            'non_field_code_prefixes' => InterpolationConfig::NON_FIELD_CODE_PREFIXES,
+            'record_policy' => 'include_all_valid_in-boundary_records',
             'duplicate_policy' => 'exclude_all',
             'depth_policy' => 'shallowest_valid_layer_per_borehole',
             'method' => InterpolationConfig::INTERPOLATION_METHOD,
@@ -118,7 +114,7 @@ final class InterpolationDataService
             'eligible_count' => count($points), 'excluded_count' => array_sum($reasons),
             'exclusion_reasons' => (object) $reasons,
             'outside_borehole_count' => count($outsideBoreholes),
-            'non_field_borehole_count' => count($nonFieldBoreholes),
+            'non_field_borehole_count' => 0,
             'points' => $points, 'available_variables' => $this->config->publicVariables(),
             'available_scopes' => ['province'],
             'technical_minimum_points' => $this->config->minimumPoints(),

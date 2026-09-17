@@ -883,3 +883,13 @@ body.modal-open {
         display: inline;
     }
 }
+
+.backup-provenance {
+    color: #5e6d65;
+    font-size: 13px;
+}
+
+.backup-provenance strong {
+    color: #183f30;
+    font-variant-numeric: tabular-nums;
+}

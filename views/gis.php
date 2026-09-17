@@ -4,6 +4,12 @@ use App\Controllers\MapController;
 
 require_once __DIR__ . '/../config/bootstrap.php';
 
+// The map payload contains live borehole records; prevent an old page from
+// being reused after a record is added or edited in the administration panel.
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 $mapData = (new MapController())->data('Public map');
 $boreholes = $mapData['boreholes'];
 $recordsAvailable = $mapData['recordsAvailable'];
@@ -30,7 +36,9 @@ $mapJson = json_encode(
   <link rel="stylesheet" href="../src/css/style.css?v=<?= filemtime(__DIR__ . '/../src/css/style.css') ?>">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="../src/css/gis.css?v=<?= filemtime(__DIR__ . '/../src/css/gis.css') ?>">
+  <link rel="stylesheet" href="../src/css/map-theme.css?v=<?= filemtime(__DIR__ . '/../src/css/map-theme.css') ?>">
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
   <script>
     window.SBCIS_BOREHOLES = <?= $mapJson ?: '[]' ?>;
     window.SBCIS_RECORDS_AVAILABLE = <?= $recordsAvailable ? 'true' : 'false' ?>;

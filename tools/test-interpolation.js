@@ -44,14 +44,19 @@ const adminStatus = status => ({status, eligible_count:0,excluded_count:2,exclus
     viewer.refresh(); response(requests.shift(),published); await tick();
     assert.equal(root.dataset.state,'current');
     assert.equal(viewer.layer.data.type,'FeatureCollection');
-    assert.ok(viewer.element('legend').textContent.includes('0 to 10 test units'));
+    assert.ok(viewer.element('legend').textContent.includes('Surface range: 0–10 test units'));
+    assert.equal(Interpolation.bearingClass(99).key, 'very-low');
+    assert.equal(Interpolation.bearingClass(100).key, 'low');
+    assert.equal(Interpolation.bearingClass(151).key, 'moderate');
+    assert.equal(Interpolation.bearingClass(201).key, 'high');
+    assert.equal(Interpolation.bearingClass(251).key, 'very-high');
     viewer.refresh(); response(requests.shift(),{status:'outdated',result:null}); await tick();
     assert.equal(viewer.layer.data,null,'Outdated surface removed');
     const errors = []; const logger = console.error;
     console.error = (...args) => errors.push(args);
     viewer.refresh(); response(requests.shift(),{},500,'text/html'); await tick();
     assert.equal(root.dataset.state,'system_error');
-    assert.equal(viewer.element('status').textContent,'No current approved interpolation is available. Measured records remain accessible through area details.');
+    assert.equal(viewer.element('status').textContent,'No current interpolation is available. Borehole records remain accessible on the map.');
     assert.equal(errors.length,1,'Technical failure logged');
     viewer.refresh(); const pending = requests.shift(); viewer.destroy(); response(pending,published); await tick();
     assert.equal(layers.has(markers),true);
@@ -65,7 +70,7 @@ const adminStatus = status => ({status, eligible_count:0,excluded_count:2,exclus
     response(requests.shift(),adminStatus('no_data')); await tick();
     response(requests.shift(),absent); await tick();
     assert.equal(adminRoot.dataset.state,'no_data');
-    assert.ok(admin.element('admin').textContent.includes('2 outside-boundary borehole(s)'));
+    assert.ok(admin.element('admin').textContent.includes('2 borehole(s) are outside the province boundary'));
     admin.element('regenerate').listeners.click();
     const regeneration = requests.shift();
     assert.equal(regeneration.options.method,'POST');
@@ -82,5 +87,5 @@ const adminStatus = status => ({status, eligible_count:0,excluded_count:2,exclus
     admin.refresh(); response(requests.shift(),{status:'unauthorized'},401); await tick();
     assert.equal(adminRoot.dataset.state,'unauthorized');
     admin.destroy(); console.error = logger;
-    console.log('JavaScript checks passed: native receiver, public automatic view-only loading, stale responses, stale surfaces, numeric legend, admin POST/CSRF, no-data/insufficient/failure/retry, marker isolation.');
+    console.log('JavaScript checks passed: non-blocking surface, native receiver, public loading, stale responses, numeric legend, admin POST/CSRF, no-data/insufficient/failure/retry.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

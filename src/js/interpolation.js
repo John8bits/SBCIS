@@ -4,21 +4,40 @@ class SbcisInterpolation {
         this.map = map;
         this.root = options.root || document.querySelector('#gisInterpolation');
         this.base = options.base || '../';
-        this.previewResult = options.previewResult || null;
         this.admin = this.root.dataset.mode === 'admin';
-        this.preview = this.root.dataset.mode === 'preview';
         // Keep Window as the receiver. Detached native fetch throws in Chrome.
         this.fetcher = options.fetcher || ((url, init) => window.fetch(url, init));
         this.requestId = 0;
         this.listeners = [];
         this.destroyed = false;
         this.busy = false;
+        this.shadowPane = map.createPane('interpolationShadowPane');
         this.pane = map.createPane('interpolationPane');
-        Object.assign(this.pane.style, { zIndex: '350', pointerEvents: 'none', opacity: '0.68' });
+        Object.assign(this.shadowPane.style, {
+            zIndex: '340', pointerEvents: 'none', opacity: '0.42',
+            transform: 'translate3d(2px, 3px, 0)'
+        });
+        Object.assign(this.pane.style, {
+            zIndex: '350', pointerEvents: 'none', opacity: '0.9',
+            filter: 'drop-shadow(0 2px 2px rgba(16, 58, 39, .22))'
+        });
+        this.shadowLayer = L.geoJSON(null, {
+            pane: 'interpolationShadowPane',
+            interactive: false,
+            style: { color: '#173f2d', weight: 1.8, opacity: .5, fillColor: '#173f2d', fillOpacity: .16 }
+        }).addTo(map);
         this.layer = L.geoJSON(null, {
             pane: 'interpolationPane',
             interactive: false,
-            style: feature => ({ color: this.color(feature.properties.value), weight: 0, fillOpacity: 1 })
+            style: feature => ({
+                color: this.surfaceColor(feature.properties.value),
+                // Low-contrast joins keep the categorical surface readable
+                // without presenting barangay estimates as contour lines.
+                weight: 0.2,
+                opacity: 0.18,
+                fillColor: this.surfaceColor(feature.properties.value),
+                fillOpacity: 0.64
+            })
         }).addTo(map);
         if (this.admin) {
             this.on(this.element('regenerate'), 'click', () => this.refresh(true));
@@ -37,7 +56,6 @@ class SbcisInterpolation {
     }
 
     async request(action, signal) {
-        if (this.previewResult && action === 'result') return this.previewResult;
         const regenerate = action === 'regenerate';
         const response = await this.fetcher(this.base + 'app/Controllers/interpolation.php?action=' + action, {
             method: regenerate ? 'POST' : 'GET',
@@ -65,6 +83,7 @@ class SbcisInterpolation {
         this.abort = new AbortController();
         this.busy = true;
         this.layer.clearLayers();
+        this.shadowLayer.clearLayers();
         this.element('legend').textContent = 'No approved estimated surface is displayed.';
         this.element('scale').hidden = true;
         this.element('ticks').hidden = true;
@@ -87,12 +106,26 @@ class SbcisInterpolation {
                     !Number.isFinite(result.legend?.min) || !Number.isFinite(result.legend?.max) || result.legend.min > result.legend.max ||
                     typeof result.legend.unit !== 'string') throw new Error('Invalid published interpolation result.');
                 this.legend = result.legend;
+                this.colorScale = this.createColorScale(result.legend);
                 window.SBCIS_ACTIVE_INTERPOLATION = result;
+                this.shadowLayer.addData(result.surface);
                 this.layer.addData(result.surface);
                 this.element('measurement').textContent = this.variableLabel(result.variable);
                 this.element('method').textContent = result.method;
-                this.element('legend').textContent = this.number(result.legend.min) + ' to ' + this.number(result.legend.max) + ' ' +
-                    result.legend.unit + ' — interpolated numeric values, not engineering suitability classes.';
+                const generated = result.generated_at ? new Date(result.generated_at) : null;
+                this.element('generated').textContent = generated && !Number.isNaN(generated.valueOf())
+                    ? 'Updated ' + generated.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+                    : 'Current published model';
+                const visibleCount = typeof document === 'undefined'
+                    ? '—'
+                    : (document.querySelector('#visibleBoreholeCount')?.textContent || '—');
+                this.element('observations').textContent = visibleCount + ' recorded';
+                this.element('model').textContent = result.method?.startsWith('IDW')
+                    ? (this.colorScale ? 'IDW + ColorBrewer' : 'IDW estimate')
+                    : (result.method || 'Published');
+                this.element('output-range').textContent = this.number(result.legend.min) + '–' + this.number(result.legend.max) + ' ' + result.legend.unit;
+                this.element('legend').textContent = 'Surface range: ' + this.number(result.legend.min) + '–' +
+                    this.number(result.legend.max) + ' ' + result.legend.unit + '.';
                 this.element('scale').hidden = false;
                 this.setTicks(result.legend);
                 if (typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
@@ -122,27 +155,47 @@ class SbcisInterpolation {
     }
 
     setTicks(legend) {
-        const midpoint = (legend.min + legend.max) / 2;
-        const nodes = this.element('ticks').querySelectorAll ? this.element('ticks').querySelectorAll('span') : [];
-        [legend.min, midpoint, legend.max].forEach((value, index) => {
-            if (nodes[index]) nodes[index].textContent = this.number(value) + (index === 2 ? ' ' + legend.unit : '');
-        });
-        this.element('ticks').hidden = false;
+        this.element('ticks').hidden = true;
+    }
+
+    setVisible(visible) {
+        this.pane.style.display = visible ? '' : 'none';
+        this.shadowPane.style.display = visible ? '' : 'none';
+    }
+
+    createColorScale(legend) {
+        const d3 = typeof window === 'undefined' ? null : window.d3;
+        const min = Number(legend?.min);
+        const max = Number(legend?.max);
+        // D3's ColorBrewer RdYlGn ramp gives a print-friendly, perceptually
+        // ordered low (red) to high (green) surface. The fixed range legend
+        // remains the authoritative engineering classification.
+        if (d3?.scaleSequential && typeof d3.interpolateRdYlGn === 'function' &&
+            Number.isFinite(min) && Number.isFinite(max) && max > min) {
+            return d3.scaleSequential(d3.interpolateRdYlGn).domain([min, max]);
+        }
+        return null;
+    }
+
+    surfaceColor(value) {
+        const numeric = Number(value);
+        if (this.colorScale && Number.isFinite(numeric)) return this.colorScale(numeric);
+        return SbcisInterpolation.bearingClass(numeric).color;
+    }
+
+    static bearingClass(value) {
+        const numeric = Number(value);
+        // Ordered, print-friendly engineering palette: low values are warmer;
+        // higher bearing capacity is greener. These bands match the legend.
+        if (numeric < 100) return { key: 'very-low', label: 'Very low', range: '< 100 kPa', color: '#d73027' };
+        if (numeric <= 150) return { key: 'low', label: 'Low', range: '100–150 kPa', color: '#f46d43' };
+        if (numeric <= 200) return { key: 'moderate', label: 'Moderate', range: '151–200 kPa', color: '#fee08b' };
+        if (numeric <= 250) return { key: 'high', label: 'High', range: '201–250 kPa', color: '#91cf60' };
+        return { key: 'very-high', label: 'Very high', range: '> 250 kPa', color: '#1a9850' };
     }
 
     color(value) {
-        const range = this.legend.max - this.legend.min;
-        const fraction = range ? Math.max(0, Math.min(1, (value - this.legend.min) / range)) : 0.5;
-        const stops = [
-            [44, 123, 182], [0, 166, 202], [0, 204, 188], [144, 235, 157],
-            [255, 255, 140], [249, 208, 87], [242, 158, 46], [231, 104, 24], [215, 25, 28]
-        ];
-        const position = fraction * (stops.length - 1);
-        const start = Math.floor(position);
-        const end = Math.min(stops.length - 1, start + 1);
-        const mix = position - start;
-        const rgb = stops[start].map((channel, index) => Math.round(channel + (stops[end][index] - channel) * mix));
-        return 'rgb(' + rgb.join(',') + ')';
+        return SbcisInterpolation.bearingClass(value).color;
     }
 
     number(value) {
@@ -156,7 +209,6 @@ class SbcisInterpolation {
 
     reasonLabel(reason) {
         const labels = {
-            non_field_demo_record: 'Demo / non-field records',
             outside_study_boundary: 'Outside Southern Leyte',
             invalid_coordinates: 'Invalid coordinates',
             no_observation: 'No soil observation',
@@ -180,7 +232,6 @@ class SbcisInterpolation {
             system_error: 'Service unavailable'
         };
         this.element('state-label').textContent = labels[status] || labels.system_error;
-        if (this.preview && status === 'current') this.element('state-label').textContent = 'Synthetic UI preview';
         if (status === 'loading' || status === 'system_error') {
             this.element('scale').hidden = true;
             this.element('ticks').hidden = true;
@@ -188,20 +239,18 @@ class SbcisInterpolation {
         if (!this.admin) {
             const countText = typeof document === 'undefined' ? '' : (document.querySelector('#visibleBoreholeCount')?.textContent || '');
             const noVisiblePoints = countText === '0';
-            this.element('status').textContent = status === 'current' ? (this.preview ?
-                'A synthetic area surface is displayed for interface review only. Click an area to inspect sample records.' :
-                'The latest approved estimated surface is displayed.') :
+            this.element('status').textContent = status === 'current' ? 'The latest interpolation is displayed.' :
                 status === 'loading' ? 'Loading the latest approved interpolation...' :
-                noVisiblePoints ? 'No verified borehole measurements within Southern Leyte are currently available to support interpolation.' :
-                'No current approved interpolation is available. Measured records remain accessible through area details.';
+                noVisiblePoints ? 'No borehole measurements are available for interpolation.' :
+                'No current interpolation is available. Borehole records remain accessible on the map.';
             return;
         }
         const messages = {
             loading: 'Checking interpolation readiness and publication status...',
-            current: 'The approved surface matches the current verified source data.',
-            needs_regeneration: 'Verified source data changed after the last publication.',
-            no_data: 'No verified field measurements within Southern Leyte are eligible for interpolation.',
-            insufficient_data: 'Not enough verified measurement locations are available.',
+            current: 'The surface matches the current source records.',
+            needs_regeneration: 'Source records changed. Update the surface.',
+            no_data: 'No valid records are available for interpolation.',
+            insufficient_data: 'Not enough valid measurement locations are available.',
             pending_configuration: 'An approved measurement, depth policy, method and coverage policy are still required.',
             generation_failed: 'Generation failed. Any previous result has been retained separately.',
             unauthorized: 'Your session has expired. Sign in again.',
@@ -211,7 +260,8 @@ class SbcisInterpolation {
         this.element('status').textContent = messages[status] || messages.system_error;
         this.element('regenerate').disabled = status === 'loading';
         this.element('retry').disabled = status === 'loading';
-        this.element('counts').textContent = data ? data.eligible_count + ' eligible observations; ' + data.excluded_count + ' excluded.' : '';
+        this.element('counts').textContent = data ? data.eligible_count + ' usable observation' + (data.eligible_count === 1 ? '' : 's') +
+            (data.excluded_count ? '; ' + data.excluded_count + ' excluded' : '') + '.' : '';
         this.element('reasons').textContent = data ? Object.entries(data.exclusion_reasons || {})
             .map(([reason, count]) => this.reasonLabel(reason) + ': ' + count).join('; ') : '';
         this.element('measurement').textContent = data ? this.variableLabel(data.variable) : 'Not configured';
@@ -220,15 +270,16 @@ class SbcisInterpolation {
             '. Method: ' + (data.method || 'not approved') + '. Last generated: ' + (data.last_generated_at || 'never') +
             (data.published_outdated ? ' (outdated; hidden from public map)' : '') +
             '. Last checked: ' + (data.last_attempt_at || 'never') + '. Source version: ' + data.source_hash : '';
-        this.element('admin').textContent = data ? (data.outside_borehole_count || 0) +
-            ' outside-boundary borehole(s); ' + (data.non_field_borehole_count || 0) +
-            ' non-field demo borehole(s). Exclusions do not modify source records.' : '';
+        this.element('admin').textContent = data?.outside_borehole_count ?
+            data.outside_borehole_count + ' borehole(s) are outside the province boundary.' : '';
     }
 
     destroy() {
         this.destroyed = true;
         this.requestId++;
         this.abort?.abort();
+        this.shadowLayer.clearLayers();
+        this.shadowLayer.remove();
         this.layer.clearLayers();
         this.layer.remove();
         this.listeners.forEach(remove => remove());

@@ -1,7 +1,9 @@
 <?php
 use App\Database\Connection;
+use App\Controllers\InterpolationController;
 use App\Models\GeotechnicalRepository;
 use App\Models\LocationDirectory;
+use App\Services\BoundaryService;
 use App\Support\AdminSession;
 use App\Support\View;
 
@@ -36,10 +38,43 @@ $barangayOptions = [];
 $formData = [];
 $editingId = 0;
 
+/**
+ * Publish a fresh surface whenever the underlying borehole data changes.
+ * A failed surface generation never removes the last valid published result.
+ */
+function refreshMapInterpolation(): string
+{
+    try {
+        $state = (new InterpolationController())->publication()->regenerate();
+        if (($state['status'] ?? '') === 'current') return ' The GIS interpolation has been refreshed.';
+        return ' The borehole marker is saved; the GIS surface will update when enough valid bearing-capacity records are available.';
+    } catch (Throwable $error) {
+        error_log('Interpolation refresh after record save: ' . $error->getMessage());
+        return ' The borehole marker is saved. The GIS surface can be refreshed from GIS Map.';
+    }
+}
+
+/** Ensure a coordinate agrees with the municipality/barangay selected in the form. */
+function coordinateIsInsideSelectedBoundary(string $file, string $property, ?string $boundaryId, $latitude, $longitude): bool
+{
+    if (!$boundaryId) return true;
+    $json = @file_get_contents(__DIR__ . '/../../src/qgis/' . $file);
+    if ($json === false) throw new RuntimeException('Location boundary validation is unavailable. Please retry.');
+    $collection = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+    foreach ($collection['features'] ?? [] as $feature) {
+        if (($feature['properties'][$property] ?? null) !== $boundaryId) continue;
+        return (new BoundaryService(['type' => 'FeatureCollection', 'features' => [$feature]]))->contains($latitude, $longitude);
+    }
+    throw new RuntimeException('The selected location boundary is unavailable. Please choose the location again.');
+}
+
 try {
     $locationDirectory = (new LocationDirectory())->all();
     $municipalityOptions = array_column($locationDirectory['municipalities'], 'name');
-    $barangayOptions = array_map(static fn($row) => ['id' => $row['code'], 'name' => $row['name'], 'municipalityName' => $row['municipalityName']], $locationDirectory['barangays']);
+    $barangayOptions = array_map(static fn($row) => [
+        'id' => $row['code'], 'name' => $row['name'], 'municipalityName' => $row['municipalityName'],
+        'boundaryId' => $row['boundaryId'] ?? null
+    ], $locationDirectory['barangays']);
 } catch (Throwable $e) { error_log('Entry locations: ' . $e->getMessage()); }
 
 try {
@@ -58,7 +93,7 @@ try {
                 $recordId = filter_var($_POST['record_id'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
                 if ($action === 'delete') {
                     if (!$records->delete($recordId)) throw new InvalidArgumentException('This record no longer exists.');
-                    $_SESSION['record_success'] = 'The borehole and its soil layers were deleted.';
+                    $_SESSION['record_success'] = 'The borehole and its soil layers were deleted.' . refreshMapInterpolation();
                     header('Location: soil_records.php'); exit;
                 }
                 if ($action !== 'save') throw new InvalidArgumentException('Unknown record action.');
@@ -70,10 +105,34 @@ try {
                 if ($chosenBarangay !== '' && !array_filter($barangayOptions, static fn($row) => $row['name'] === $chosenBarangay && $row['municipalityName'] === $chosenMunicipality)) {
                     throw new InvalidArgumentException('Choose a barangay belonging to the selected municipality.');
                 }
-                if ($recordId) $records->update($recordId, $_POST);
-                else $records->create($_POST);
-                $_SESSION['record_success'] = $recordId ? 'The record and its soil layers were updated.' : 'Your record has been saved and is now listed below.';
-                header('Location: soil_records.php'); exit;
+                if (!(new BoundaryService())->contains($_POST['latitude'] ?? null, $_POST['longitude'] ?? null)) {
+                    throw new InvalidArgumentException('Use coordinates inside Southern Leyte so this borehole can appear on the GIS map.');
+                }
+                $selectedMunicipality = $chosenMunicipality === '' ? null : array_values(array_filter(
+                    $locationDirectory['municipalities'],
+                    static fn($row) => $row['name'] === $chosenMunicipality
+                ))[0] ?? null;
+                $selectedBarangay = $chosenBarangay === '' ? null : array_values(array_filter(
+                    $barangayOptions,
+                    static fn($row) => $row['name'] === $chosenBarangay && $row['municipalityName'] === $chosenMunicipality
+                ))[0] ?? null;
+                if (!coordinateIsInsideSelectedBoundary('southern_leyte_municipalities.geojson', 'GID_2', $selectedMunicipality['boundaryId'] ?? null, $_POST['latitude'], $_POST['longitude'])) {
+                    throw new InvalidArgumentException('The coordinates are outside the selected municipality. Correct the coordinates or choose the matching municipality.');
+                }
+                if (!coordinateIsInsideSelectedBoundary('southern_leyte_barangays.geojson', 'GID_3', $selectedBarangay['boundaryId'] ?? null, $_POST['latitude'], $_POST['longitude'])) {
+                    throw new InvalidArgumentException('The coordinates are outside the selected barangay. Correct the coordinates or choose the matching barangay.');
+                }
+                if ($recordId) {
+                    $records->update($recordId, $_POST);
+                    $_SESSION['record_success'] = 'The record and its soil layers were updated.' . refreshMapInterpolation();
+                } else {
+                    $records->create($_POST);
+                    $_SESSION['record_success'] = 'Your record has been saved and is now listed below.' . refreshMapInterpolation();
+                }
+                // Take the administrator straight to the saved marker. The
+                // map's borehole query focuses that exact record at street level.
+                $savedCode = trim((string) ($_POST['borehole_code'] ?? ''));
+                header('Location: admin_gis.php?borehole=' . rawurlencode($savedCode)); exit;
             } catch (InvalidArgumentException $e) {
                 $errorMessage = $e->getMessage();
                 $formData = $_POST;
