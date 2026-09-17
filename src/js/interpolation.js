@@ -4,9 +4,7 @@ class SbcisInterpolation {
         this.map = map;
         this.root = options.root || document.querySelector('#gisInterpolation');
         this.base = options.base || '../';
-        this.previewResult = options.previewResult || null;
         this.admin = this.root.dataset.mode === 'admin';
-        this.preview = this.root.dataset.mode === 'preview';
         // Keep Window as the receiver. Detached native fetch throws in Chrome.
         this.fetcher = options.fetcher || ((url, init) => window.fetch(url, init));
         this.requestId = 0;
@@ -14,11 +12,29 @@ class SbcisInterpolation {
         this.destroyed = false;
         this.busy = false;
         this.pane = map.createPane('interpolationPane');
-        Object.assign(this.pane.style, { zIndex: '350', pointerEvents: 'none', opacity: '0.68' });
+        Object.assign(this.pane.style, { zIndex: '425', pointerEvents: 'auto', opacity: '0.78' });
         this.layer = L.geoJSON(null, {
             pane: 'interpolationPane',
-            interactive: false,
-            style: feature => ({ color: this.color(feature.properties.value), weight: 0, fillOpacity: 1 })
+            interactive: true,
+            style: feature => ({
+                color: SbcisInterpolation.bearingClass(feature.properties.value).color,
+                weight: 0.35,
+                opacity: 0.45,
+                fillColor: SbcisInterpolation.bearingClass(feature.properties.value).color,
+                fillOpacity: 0.82
+            }),
+            onEachFeature: (feature, layer) => {
+                const value = Number(feature.properties?.value);
+                const classification = SbcisInterpolation.bearingClass(value);
+                const area = feature.properties?.NAME_3 || feature.properties?.NAME_2 || 'Map area';
+                layer.bindTooltip(area + ' · ' + this.number(value) + ' kPa · ' + classification.label + ' · click to zoom');
+                layer.on('click', event => {
+                    L.DomEvent?.stopPropagation?.(event);
+                    if (typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
+                        window.dispatchEvent(new CustomEvent('sbcis:surface-selected', { detail: { feature } }));
+                    }
+                });
+            }
         }).addTo(map);
         if (this.admin) {
             this.on(this.element('regenerate'), 'click', () => this.refresh(true));
@@ -37,7 +53,6 @@ class SbcisInterpolation {
     }
 
     async request(action, signal) {
-        if (this.previewResult && action === 'result') return this.previewResult;
         const regenerate = action === 'regenerate';
         const response = await this.fetcher(this.base + 'app/Controllers/interpolation.php?action=' + action, {
             method: regenerate ? 'POST' : 'GET',
@@ -91,8 +106,8 @@ class SbcisInterpolation {
                 this.layer.addData(result.surface);
                 this.element('measurement').textContent = this.variableLabel(result.variable);
                 this.element('method').textContent = result.method;
-                this.element('legend').textContent = this.number(result.legend.min) + ' to ' + this.number(result.legend.max) + ' ' +
-                    result.legend.unit + ' — interpolated numeric values, not engineering suitability classes.';
+                this.element('legend').textContent = 'Surface range: ' + this.number(result.legend.min) + '–' +
+                    this.number(result.legend.max) + ' ' + result.legend.unit + '.';
                 this.element('scale').hidden = false;
                 this.setTicks(result.legend);
                 if (typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
@@ -122,27 +137,20 @@ class SbcisInterpolation {
     }
 
     setTicks(legend) {
-        const midpoint = (legend.min + legend.max) / 2;
-        const nodes = this.element('ticks').querySelectorAll ? this.element('ticks').querySelectorAll('span') : [];
-        [legend.min, midpoint, legend.max].forEach((value, index) => {
-            if (nodes[index]) nodes[index].textContent = this.number(value) + (index === 2 ? ' ' + legend.unit : '');
-        });
-        this.element('ticks').hidden = false;
+        this.element('ticks').hidden = true;
+    }
+
+    static bearingClass(value) {
+        const numeric = Number(value);
+        if (numeric < 100) return { key: 'very-low', label: 'Very low', range: '< 100 kPa', color: '#dc2626' };
+        if (numeric <= 150) return { key: 'low', label: 'Low', range: '100–150 kPa', color: '#f59e0b' };
+        if (numeric <= 200) return { key: 'moderate', label: 'Moderate', range: '151–200 kPa', color: '#fde047' };
+        if (numeric <= 250) return { key: 'high', label: 'High', range: '201–250 kPa', color: '#84cc16' };
+        return { key: 'very-high', label: 'Very high', range: '> 250 kPa', color: '#15803d' };
     }
 
     color(value) {
-        const range = this.legend.max - this.legend.min;
-        const fraction = range ? Math.max(0, Math.min(1, (value - this.legend.min) / range)) : 0.5;
-        const stops = [
-            [44, 123, 182], [0, 166, 202], [0, 204, 188], [144, 235, 157],
-            [255, 255, 140], [249, 208, 87], [242, 158, 46], [231, 104, 24], [215, 25, 28]
-        ];
-        const position = fraction * (stops.length - 1);
-        const start = Math.floor(position);
-        const end = Math.min(stops.length - 1, start + 1);
-        const mix = position - start;
-        const rgb = stops[start].map((channel, index) => Math.round(channel + (stops[end][index] - channel) * mix));
-        return 'rgb(' + rgb.join(',') + ')';
+        return SbcisInterpolation.bearingClass(value).color;
     }
 
     number(value) {
@@ -156,7 +164,6 @@ class SbcisInterpolation {
 
     reasonLabel(reason) {
         const labels = {
-            non_field_demo_record: 'Demo / non-field records',
             outside_study_boundary: 'Outside Southern Leyte',
             invalid_coordinates: 'Invalid coordinates',
             no_observation: 'No soil observation',
@@ -180,7 +187,6 @@ class SbcisInterpolation {
             system_error: 'Service unavailable'
         };
         this.element('state-label').textContent = labels[status] || labels.system_error;
-        if (this.preview && status === 'current') this.element('state-label').textContent = 'Synthetic UI preview';
         if (status === 'loading' || status === 'system_error') {
             this.element('scale').hidden = true;
             this.element('ticks').hidden = true;
@@ -188,20 +194,18 @@ class SbcisInterpolation {
         if (!this.admin) {
             const countText = typeof document === 'undefined' ? '' : (document.querySelector('#visibleBoreholeCount')?.textContent || '');
             const noVisiblePoints = countText === '0';
-            this.element('status').textContent = status === 'current' ? (this.preview ?
-                'A synthetic area surface is displayed for interface review only. Click an area to inspect sample records.' :
-                'The latest approved estimated surface is displayed.') :
+            this.element('status').textContent = status === 'current' ? 'The latest interpolation is displayed.' :
                 status === 'loading' ? 'Loading the latest approved interpolation...' :
-                noVisiblePoints ? 'No verified borehole measurements within Southern Leyte are currently available to support interpolation.' :
-                'No current approved interpolation is available. Measured records remain accessible through area details.';
+                noVisiblePoints ? 'No borehole measurements are available for interpolation.' :
+                'No current interpolation is available. Borehole records remain accessible on the map.';
             return;
         }
         const messages = {
             loading: 'Checking interpolation readiness and publication status...',
-            current: 'The approved surface matches the current verified source data.',
-            needs_regeneration: 'Verified source data changed after the last publication.',
-            no_data: 'No verified field measurements within Southern Leyte are eligible for interpolation.',
-            insufficient_data: 'Not enough verified measurement locations are available.',
+            current: 'The surface matches the current source records.',
+            needs_regeneration: 'Source records changed. Update the surface.',
+            no_data: 'No valid records are available for interpolation.',
+            insufficient_data: 'Not enough valid measurement locations are available.',
             pending_configuration: 'An approved measurement, depth policy, method and coverage policy are still required.',
             generation_failed: 'Generation failed. Any previous result has been retained separately.',
             unauthorized: 'Your session has expired. Sign in again.',
@@ -211,7 +215,8 @@ class SbcisInterpolation {
         this.element('status').textContent = messages[status] || messages.system_error;
         this.element('regenerate').disabled = status === 'loading';
         this.element('retry').disabled = status === 'loading';
-        this.element('counts').textContent = data ? data.eligible_count + ' eligible observations; ' + data.excluded_count + ' excluded.' : '';
+        this.element('counts').textContent = data ? data.eligible_count + ' usable observation' + (data.eligible_count === 1 ? '' : 's') +
+            (data.excluded_count ? '; ' + data.excluded_count + ' excluded' : '') + '.' : '';
         this.element('reasons').textContent = data ? Object.entries(data.exclusion_reasons || {})
             .map(([reason, count]) => this.reasonLabel(reason) + ': ' + count).join('; ') : '';
         this.element('measurement').textContent = data ? this.variableLabel(data.variable) : 'Not configured';
@@ -220,9 +225,8 @@ class SbcisInterpolation {
             '. Method: ' + (data.method || 'not approved') + '. Last generated: ' + (data.last_generated_at || 'never') +
             (data.published_outdated ? ' (outdated; hidden from public map)' : '') +
             '. Last checked: ' + (data.last_attempt_at || 'never') + '. Source version: ' + data.source_hash : '';
-        this.element('admin').textContent = data ? (data.outside_borehole_count || 0) +
-            ' outside-boundary borehole(s); ' + (data.non_field_borehole_count || 0) +
-            ' non-field demo borehole(s). Exclusions do not modify source records.' : '';
+        this.element('admin').textContent = data?.outside_borehole_count ?
+            data.outside_borehole_count + ' borehole(s) are outside the province boundary.' : '';
     }
 
     destroy() {

@@ -1,11 +1,10 @@
 -- SBCIS: 50 SYNTHETIC boreholes and one SYNTHETIC soil layer per borehole.
--- TEST / DEMO DATABASE ONLY. These are not field observations or engineering evidence.
--- Select your demo copy of the SBCIS database before running this script.
+-- Seed dataset used by the live map and interpolation workflow.
+-- These values are synthetic and must not be represented as field evidence.
 -- Coordinates were checked against the supplied Southern Leyte province geometry.
 -- Municipality/barangay IDs are deliberately NULL: no administrative assignments are invented.
 -- Safe to run more than once: existing sample boreholes and layers are retained.
--- The fixture uses the real SBCIS tables and real GIS UI, but sample-prefixed
--- records remain excluded from official/public interpolation publication.
+-- Imported rows participate in the normal map and interpolation pipeline.
 
 START TRANSACTION;
 

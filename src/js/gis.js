@@ -15,6 +15,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dataModal = document.querySelector('#gisDataModal');
     const closeDataModal = document.querySelector('#closeDataModal');
     const dataModalBackdrop = document.querySelector('#gisDataModalBackdrop');
+    const capacityCard = document.querySelector('#gisCapacityCard');
+    const closeCapacityCard = document.querySelector('#closeCapacityCard');
+    const capacityRecords = document.querySelector('#gisCapacityRecords');
+    const fullscreenToggle = document.querySelector('#toggleFullscreen');
+    const fullscreenTarget = document.querySelector('.admin-map-workspace') || workspace;
+    let modalReturnFocus = null;
 
     function closeNavigation() {
         navigation?.classList.remove('open');
@@ -28,7 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         workspace.classList.toggle('explorer-open', open);
         document.getElementById('gisExplorer').inert = !open;
         explorerToggle.setAttribute('aria-expanded', String(open));
-        explorerLabel.textContent = open ? 'Hide explorer' : 'Explore locations';
+        explorerLabel.textContent = open ? 'Hide locations' : 'Locations';
         if (open) setInsights(false);
         if (returnFocus) explorerToggle.focus();
     }
@@ -43,8 +49,34 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function setDataModal(open) {
         dataModal.hidden = !open;
-        if (open) closeDataModal.focus();
+        dataModal.setAttribute('aria-hidden', String(!open));
+        workspace.classList.toggle('modal-open', open);
+        if (open) {
+            modalReturnFocus = document.activeElement;
+            closeDataModal.focus();
+        } else if (modalReturnFocus && typeof modalReturnFocus.focus === 'function') {
+            modalReturnFocus.focus({ preventScroll: true });
+            modalReturnFocus = null;
+        }
     }
+
+    function setFullscreenState(active) {
+        fullscreenTarget.classList.toggle('is-map-fullscreen', active);
+        fullscreenToggle.setAttribute('aria-pressed', String(active));
+        fullscreenToggle.setAttribute('aria-label', active ? 'Exit map fullscreen' : 'View map fullscreen');
+        fullscreenToggle.querySelector('span').textContent = active ? 'Exit fullscreen' : 'Fullscreen';
+    }
+
+    fullscreenToggle.addEventListener('click', async () => {
+        try {
+            if (document.fullscreenElement) await document.exitFullscreen();
+            else if (fullscreenTarget.requestFullscreen) await fullscreenTarget.requestFullscreen();
+            else setFullscreenState(!fullscreenTarget.classList.contains('is-map-fullscreen'));
+        } catch (error) {
+            setFullscreenState(!fullscreenTarget.classList.contains('is-map-fullscreen'));
+        }
+    });
+    document.addEventListener('fullscreenchange', () => setFullscreenState(document.fullscreenElement === fullscreenTarget));
 
     navToggle?.addEventListener('click', () => {
         const open = navToggle.getAttribute('aria-expanded') !== 'true';
@@ -75,9 +107,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     closeDataModal.addEventListener('click', () => setDataModal(false));
     dataModalBackdrop.addEventListener('click', () => setDataModal(false));
+    closeCapacityCard.addEventListener('click', () => { capacityCard.hidden = true; });
     document.addEventListener('keydown', event => {
         if (event.key !== 'Escape') return;
         if (!dataModal.hidden) { setDataModal(false); return; }
+        if (!capacityCard.hidden) { capacityCard.hidden = true; return; }
+        if (!document.fullscreenElement && fullscreenTarget.classList.contains('is-map-fullscreen')) {
+            setFullscreenState(false);
+            fullscreenToggle.focus();
+            return;
+        }
         if (navigation?.classList.contains('open')) { closeNavigation(); navToggle.focus(); }
         if (workspace.classList.contains('insights-open')) setInsights(false, true);
         if (workspace.classList.contains('explorer-open')) setExplorer(false, true);
@@ -99,6 +138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const results = document.querySelector('#gisResults');
     const status = document.querySelector('#gisStatus');
     const reset = document.querySelector('#resetMap');
+    const quickReset = document.querySelector('#quickResetMap');
     const retry = document.querySelector('#retryMap');
     retry.addEventListener('click', () => window.location.reload());
 
@@ -156,7 +196,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             style: municipalityStyle,
             onEachFeature: (feature, layer) => {
                 const label = document.createElement('span');
-                label.textContent = feature.properties.NAME_2;
+                label.textContent = feature.properties.NAME_2 + ' — click to zoom';
                 layer.bindTooltip(label);
                 layer.on('click', () => selectBoundary(feature, 'municipality'));
                 layer.on('mouseover', () => layer.setStyle({ weight: 2.8, fillOpacity: .13 }));
@@ -171,7 +211,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             style: barangayStyle,
             onEachFeature: (feature, layer) => {
                 const label = document.createElement('span');
-                label.textContent = `${feature.properties.NAME_3}, ${feature.properties.NAME_2}`;
+                label.textContent = `${feature.properties.NAME_3}, ${feature.properties.NAME_2} — click to zoom`;
                 layer.bindTooltip(label);
                 layer.on('click', () => selectBoundary(feature, 'barangay'));
                 layer.on('mouseover', () => layer.setStyle({ weight: 2.1, fillOpacity: .13 }));
@@ -188,9 +228,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('visibleBoreholeCount').textContent = String(boreholes.length);
         const dataKey = document.getElementById('gisDataKey');
         dataKey.hidden = boreholes.length === 0;
-        dataKey.classList.toggle('is-sample', Boolean(window.SBCIS_INTERPOLATION_PREVIEW));
         let selectedDataFeature = null;
         let selectedDataType = null;
+        let selectedCapacityFeature = null;
+        let selectedCapacityType = null;
 
         function formatMetric(value, suffix) {
             if (value === null || value === undefined || value === '' || !Number.isFinite(Number(value))) return 'Not recorded';
@@ -201,6 +242,45 @@ document.addEventListener('DOMContentLoaded', async () => {
             const numeric = values.map(Number).filter(Number.isFinite);
             return numeric.length ? numeric.reduce((sum, value) => sum + value, 0) / numeric.length : null;
         }
+
+        function boreholePopup(borehole) {
+            const firstLayer = Array.isArray(borehole.layers) ? borehole.layers[0] : null;
+            const popup = document.createElement('article');
+            popup.className = 'soil-popup gis-borehole-popup';
+            const title = document.createElement('h3');
+            title.textContent = borehole.borehole_code || 'Borehole';
+            const location = document.createElement('p');
+            location.textContent = [borehole.barangay_name, borehole.municipality_name].filter(Boolean).join(', ') || 'Southern Leyte';
+            const grid = document.createElement('div');
+            grid.className = 'soil-popup-grid';
+            const values = [
+                ['Coordinates', Number(borehole.latitude).toFixed(5) + ', ' + Number(borehole.longitude).toFixed(5)],
+                ['Depth', formatMetric(borehole.borehole_depth_m, 'm')],
+                ['SPT N-value', firstLayer?.spt_n_value ?? 'Not recorded'],
+                ['Bearing capacity', formatMetric(firstLayer?.bearing_capacity_kpa, 'kPa')]
+            ];
+            values.forEach(([label, value]) => {
+                const item = document.createElement('span');
+                const heading = document.createElement('strong');
+                const content = document.createElement('small');
+                heading.textContent = label;
+                content.textContent = String(value);
+                item.append(heading, content);
+                grid.append(item);
+            });
+            popup.append(title, location, grid);
+            return popup;
+        }
+
+        boreholes.forEach(borehole => {
+            const latitude = Number(borehole.latitude);
+            const longitude = Number(borehole.longitude);
+            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+            L.circleMarker([latitude, longitude], {
+                pane: 'availabilityPane', radius: 4, weight: 1.5,
+                color: '#fff', fillColor: '#dc2626', fillOpacity: .95
+            }).addTo(map).bindPopup(boreholePopup(borehole));
+        });
 
         function pointInRing(longitude, latitude, ring) {
             let inside = false;
@@ -264,7 +344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const unit = records.length === 1 ? 'borehole' : 'boreholes';
                 const icon = L.divIcon({
                     className: 'gis-data-marker-wrap',
-                    html: `<span class="gis-data-availability-marker${window.SBCIS_INTERPOLATION_PREVIEW ? ' is-sample' : ''}"><i aria-hidden="true">✓</i><strong>${records.length}</strong></span>`,
+                    html: `<span class="gis-data-availability-marker"><i aria-hidden="true">✓</i><strong>${records.length}</strong></span>`,
                     iconSize: [34, 26],
                     iconAnchor: [17, 13]
                 });
@@ -272,7 +352,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     pane: 'availabilityPane', icon, keyboard: true, riseOnHover: true,
                     title: `${name}: ${records.length} ${unit} available`
                 }).addTo(availabilityLayer);
-                marker.bindTooltip(`${name}: ${records.length} ${unit}. Open area data.`, {
+                marker.bindTooltip(`${name}: ${records.length} ${unit}. View bearing-capacity summary.`, {
                     direction: 'top', offset: [0, -10]
                 });
                 marker.on('click', () => selectBoundary(feature, type));
@@ -294,6 +374,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             return average(matches.map(surface => surface.properties?.value));
         }
+
+        function showCapacity(feature, type) {
+            selectedCapacityFeature = feature;
+            selectedCapacityType = type;
+            const value = estimatedValueFor(feature, type);
+            const name = feature.properties?.NAME_3 || feature.properties?.NAME_2 || 'Selected area';
+            const classification = value === null ? null : window.SbcisInterpolation?.bearingClass(value);
+            document.getElementById('gisCapacityScope').textContent = type === 'barangay' ? 'BARANGAY ESTIMATE' : 'MUNICIPALITY / CITY ESTIMATE';
+            document.getElementById('gisCapacityName').textContent = name;
+            document.getElementById('gisCapacityValue').textContent = value === null ? '—' : formatMetric(value, 'kPa');
+            document.getElementById('gisCapacityClass').textContent = classification?.label || 'No estimate';
+            document.getElementById('gisCapacityRange').textContent = classification
+                ? classification.range + ' bearing-capacity range'
+                : 'No supported interpolation is available for this area.';
+            document.getElementById('gisCapacitySwatch').style.backgroundColor = classification?.color || '#d9e2dd';
+            capacityRecords.hidden = boreholesIn(feature).length === 0;
+            capacityCard.hidden = false;
+        }
+
+        capacityRecords.addEventListener('click', () => {
+            if (!selectedCapacityFeature) return;
+            openAreaData(selectedCapacityFeature, selectedCapacityType);
+        });
 
         function recordCard(borehole) {
             const article = document.createElement('article');
@@ -341,10 +444,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('gisDataModalScope').textContent = type === 'barangay' ? 'BARANGAY DATA' : 'MUNICIPALITY / CITY DATA';
             document.getElementById('gisDataModalTitle').textContent = name;
             document.getElementById('gisDataModalLocation').textContent = type === 'barangay' ? municipality + ', Southern Leyte' : 'Southern Leyte';
-            document.getElementById('gisDataModalBadge').textContent = window.SBCIS_INTERPOLATION_PREVIEW ? 'SAMPLE' : 'MEASURED';
-            document.getElementById('gisDataModalSource').textContent = window.SBCIS_INTERPOLATION_PREVIEW ?
-                'Synthetic sample observations assigned to this boundary for UI review.' :
-                'Verified stored borehole observations whose coordinates fall inside this boundary.';
+            document.getElementById('gisDataModalBadge').textContent = 'RECORDS';
+            document.getElementById('gisDataModalSource').textContent = 'Borehole records whose coordinates fall inside this boundary.';
             document.getElementById('modalBoreholeCount').textContent = String(matchingBoreholes.length);
             document.getElementById('modalLayerCount').textContent = String(layers.length);
             document.getElementById('modalBearingAverage').textContent = bearingAverage === null ? '—' : formatMetric(bearingAverage, 'kPa');
@@ -365,6 +466,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         window.addEventListener('sbcis:interpolation-updated', () => {
             if (selectedDataFeature && !dataModal.hidden) renderAreaData(selectedDataFeature, selectedDataType);
+            if (selectedCapacityFeature && !capacityCard.hidden) showCapacity(selectedCapacityFeature, selectedCapacityType);
         });
 
         function setOptions(select, rows, placeholder) {
@@ -392,14 +494,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ? municipalitiesByBoundary.get(feature.properties.GID_2)
                 : barangaysByBoundary.get(feature.properties.GID_3);
             if (record) {
-                type === 'municipality' ? selectMunicipality(record.code) : selectBarangay(record.code);
+                type === 'municipality'
+                    ? selectMunicipality(record.code, true, false)
+                    : selectBarangay(record.code, false);
             } else {
                 selection.clearLayers().addData(feature);
                 fit(selection, type === 'barangay' ? 17 : 14);
                 details('BOUNDARY', feature.properties.NAME_3 || feature.properties.NAME_2, 'This boundary has no confirmed PSGC directory match.');
             }
-            openAreaData(feature, type);
+            showCapacity(feature, type);
         }
+
+        window.addEventListener('sbcis:surface-selected', event => {
+            const feature = event.detail?.feature;
+            const properties = feature?.properties;
+            if (!properties) return;
+            const activeMunicipality = municipalitiesByCode.get(municipalitySelect.value);
+            if (activeMunicipality?.boundaryId === properties.GID_2 && properties.GID_3) {
+                selectBoundary(barangayById.get(properties.GID_3) || feature, 'barangay');
+                return;
+            }
+            const municipality = municipalityById.get(properties.GID_2);
+            if (municipality) selectBoundary(municipality, 'municipality');
+            else if (properties.GID_3) selectBoundary(barangayById.get(properties.GID_3) || feature, 'barangay');
+        });
 
         function selectMunicipality(code, zoom = true, showDetails = false) {
             municipalitySelect.value = code;
@@ -416,7 +534,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }));
             if (!record) {
                 renderAvailabilityMarkers('municipality');
-                details('PROVINCE', 'Southern Leyte', directory.municipalities.length + ' municipalities / cities, ' + directory.barangays.length + ' barangays. Click an area to view data.');
+                details('PROVINCE', 'Southern Leyte', directory.municipalities.length + ' municipalities / cities, ' + directory.barangays.length + ' barangays. Click a colored area to check its bearing-capacity range.');
                 if (zoom) fit(provinceLayer);
                 status.textContent = window.SBCIS_RECORDS_AVAILABLE === false ? 'Soil records unavailable. Location search remains available.' :
                     boreholes.length ? boreholes.length + ' source borehole record' + (boreholes.length === 1 ? '' : 's') + ' available through area details' :
@@ -425,16 +543,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (feature) {
                 selection.addData(feature);
-                barangayLayer.addData({ type: 'FeatureCollection', features: barangays.features.filter(candidate => candidate.properties.GID_2 === record.boundaryId) });
+                barangayLayer.addData({ type: 'FeatureCollection', features: barangays.features.filter(candidate => candidate.properties.GID_2 === record.boundaryId) }).bringToFront();
                 renderAvailabilityMarkers('barangay', record.boundaryId);
                 if (zoom) fit(selection);
             } else {
                 renderAvailabilityMarkers('municipality');
                 if (zoom) fit(provinceLayer);
             }
-            details('MUNICIPALITY / CITY', record.name, children.length + ' barangays. Click the municipality or a barangay boundary to view area data.');
-            status.textContent = record.name + (feature ? ' selected — click the area for data' : ' — boundary unavailable');
-            if (feature && showDetails) openAreaData(feature, 'municipality');
+            details('MUNICIPALITY / CITY', record.name, children.length + ' barangays. Click a colored area to check its bearing-capacity range.');
+            status.textContent = record.name + (feature ? ' selected — click the area for its estimate' : ' — boundary unavailable');
+            if (feature && showDetails) showCapacity(feature, 'municipality');
         }
 
         function selectBarangay(code, showDetails = false) {
@@ -452,7 +570,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             details('BARANGAY', record.name, record.municipalityName + ', Southern Leyte. Click the highlighted area to view data.');
             status.textContent = record.name + ' — ' + record.municipalityName + (feature ? ' selected' : ' (boundary unavailable)');
-            if (feature && showDetails) openAreaData(feature, 'barangay');
+            if (feature && showDetails) showCapacity(feature, 'barangay');
         }
 
         function renderSearch() {
@@ -480,25 +598,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         setOptions(municipalitySelect, directory.municipalities, 'All municipalities / cities');
-        municipalitySelect.disabled = search.disabled = reset.disabled = false;
+        municipalitySelect.disabled = search.disabled = reset.disabled = quickReset.disabled = false;
         municipalitySelect.addEventListener('change', () => selectMunicipality(municipalitySelect.value, true, Boolean(municipalitySelect.value)));
         barangaySelect.addEventListener('change', () => {
             selectBarangay(barangaySelect.value, Boolean(barangaySelect.value));
             if (barangaySelect.value) setExplorer(false, true);
         });
         search.addEventListener('input', renderSearch);
-        reset.addEventListener('click', () => {
+        const resetView = () => {
             search.value = '';
             results.replaceChildren();
             setDataModal(false);
+            capacityCard.hidden = true;
+            selectedCapacityFeature = null;
+            selectedCapacityType = null;
             selectMunicipality('');
-        });
+        };
+        reset.addEventListener('click', resetView);
+        quickReset.addEventListener('click', resetView);
         new ResizeObserver(() => map.invalidateSize()).observe(document.querySelector('#gisMap'));
         try {
             if (!window.SbcisInterpolation) throw new Error('Estimate controls unavailable');
             new window.SbcisInterpolation(map, {
-                base: window.SBCIS_MAP_BASE || '../',
-                previewResult: window.SBCIS_INTERPOLATION_PREVIEW || null
+                base: window.SBCIS_MAP_BASE || '../'
             });
         } catch (error) {
             const estimateStatus = document.querySelector('#gisInterpolation [data-interpolation="status"]');

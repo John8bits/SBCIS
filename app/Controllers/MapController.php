@@ -7,7 +7,6 @@ namespace App\Controllers;
 use App\Database\Connection;
 use App\Models\GeotechnicalRepository;
 use App\Services\BoundaryService;
-use Config\InterpolationConfig;
 use Throwable;
 
 final class MapController
@@ -26,7 +25,6 @@ final class MapController
             $boreholes = array_values(array_filter(
                 $repository->mapBoreholes(),
                 static fn(array $borehole): bool =>
-                    !InterpolationConfig::isNonFieldRecord($borehole) &&
                     $boundary->contains($borehole['latitude'] ?? null, $borehole['longitude'] ?? null)
             ));
 
