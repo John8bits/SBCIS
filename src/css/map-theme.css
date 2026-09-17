@@ -1,0 +1,185 @@
+/* Shared GIS presentation system — used by the admin, public and hero maps. */
+:root {
+  --map-font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --map-ink: #15352a;
+  --map-muted: #60736a;
+  --map-line: rgba(24, 75, 56, .15);
+  --map-surface: rgba(255, 255, 255, .9);
+  --map-surface-strong: rgba(255, 255, 255, .97);
+  --map-glass: blur(16px) saturate(150%);
+  --map-primary: #146b4d;
+  --map-primary-dark: #0b4935;
+  --map-radius-sm: 10px;
+  --map-radius: 14px;
+  --map-shadow-raised: 0 12px 28px rgba(10, 48, 35, .14), 0 2px 6px rgba(10, 48, 35, .08);
+  --map-shadow-float: 0 22px 54px rgba(8, 43, 31, .2), 0 3px 9px rgba(8, 43, 31, .08);
+  --map-shadow-pressed: inset 0 1px 2px rgba(9, 49, 35, .13), 0 2px 6px rgba(10, 48, 35, .1);
+  --map-focus: 0 0 0 3px rgba(31, 122, 85, .26);
+}
+
+.gis-map-shell,
+.hero-map-card {
+  font-family: var(--map-font);
+}
+
+.admin-map-workspace {
+  overflow: hidden;
+  border-color: rgba(27, 83, 62, .16);
+  border-radius: var(--map-radius);
+  box-shadow: var(--map-shadow-raised);
+}
+
+.gis-sidebar,
+.gis-insights {
+  border-color: var(--map-line);
+  border-radius: var(--map-radius);
+  background: linear-gradient(145deg, rgba(255,255,255,.96), rgba(242,248,245,.86));
+  box-shadow: var(--map-shadow-float);
+  backdrop-filter: var(--map-glass);
+}
+
+.gis-insights { border-radius: var(--map-radius) 0 0 var(--map-radius); }
+
+.gis-panel-toggle,
+.hero-map-actions button,
+.hero-map-actions a {
+  min-height: 42px;
+  border-color: rgba(24, 82, 60, .16);
+  border-radius: var(--map-radius-sm);
+  background: linear-gradient(145deg, rgba(255,255,255,.98), rgba(236,245,240,.92));
+  box-shadow: var(--map-shadow-raised), inset 0 1px 0 rgba(255,255,255,.95);
+  color: var(--map-ink);
+  font-family: var(--map-font);
+  font-weight: 750;
+  letter-spacing: .01em;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.gis-panel-toggle:hover,
+.hero-map-actions button:not(:disabled):hover,
+.hero-map-actions a:hover {
+  background: linear-gradient(145deg, #fff, #e5f2eb);
+  box-shadow: 0 16px 31px rgba(10, 55, 39, .19), inset 0 1px 0 #fff;
+  transform: translateY(-1px);
+}
+
+.gis-panel-toggle:active,
+.hero-map-actions button:not(:disabled):active,
+.hero-map-actions a:active {
+  box-shadow: var(--map-shadow-pressed);
+  transform: translateY(1px) scale(.985);
+}
+
+.gis-panel-toggle:focus-visible,
+.hero-map-actions button:focus-visible,
+.hero-map-actions a:focus-visible,
+.gis-borehole-marker:focus-visible,
+.hero-borehole-marker:focus-visible {
+  outline: none;
+  box-shadow: var(--map-focus), var(--map-shadow-raised);
+}
+
+.gis-borehole-marker,
+.hero-borehole-marker {
+  border-color: rgba(255,255,255,.96);
+  background: radial-gradient(circle at 32% 23%, #fff 0 7%, #fb8975 8% 21%, #dc3a31 43%, #a21d1a 100%);
+  box-shadow: 0 2px 0 rgba(109, 20, 17, .62), 0 7px 12px rgba(76, 18, 15, .35);
+}
+
+.gis-borehole-marker span,
+.hero-borehole-marker span {
+  background: radial-gradient(circle at 32% 28%, #fff, #f0f5f2);
+  box-shadow: 0 1px 2px rgba(87, 18, 15, .3);
+}
+
+.gis-borehole-marker:hover,
+.hero-borehole-marker:hover {
+  background: radial-gradient(circle at 32% 23%, #fff 0 7%, #ff9986 8% 21%, #e13a30 43%, #8d1614 100%);
+  box-shadow: 0 3px 0 rgba(109, 20, 17, .62), 0 10px 16px rgba(76, 18, 15, .4);
+}
+
+.gis-map-shell .leaflet-popup-content-wrapper,
+.gis-map-shell .leaflet-popup-tip,
+#heroMap .leaflet-popup-content-wrapper,
+#heroMap .leaflet-popup-tip {
+  border: 1px solid rgba(25, 76, 57, .14);
+  background: rgba(255,255,255,.96);
+  box-shadow: var(--map-shadow-float);
+  backdrop-filter: var(--map-glass);
+}
+
+.gis-map-shell .leaflet-popup-content,
+#heroMap .leaflet-popup-content { margin: 13px 15px; color: var(--map-ink); font-family: var(--map-font); }
+.gis-map-shell .leaflet-tooltip { border: 1px solid var(--map-line); border-radius: 8px; background: rgba(255,255,255,.95); box-shadow: var(--map-shadow-raised); color: var(--map-ink); font-family: var(--map-font); font-size: 11px; font-weight: 700; }
+
+.gis-stat-grid > div,
+.gis-model-summary,
+.gis-state-card {
+  border-color: rgba(28, 85, 63, .13);
+  box-shadow: 0 4px 12px rgba(13, 56, 40, .05), inset 0 1px 0 rgba(255,255,255,.88);
+}
+
+.gis-stat-grid > div { border-radius: var(--map-radius-sm); background: linear-gradient(145deg, #fff, #f1f7f3); }
+.gis-state-card { border-radius: var(--map-radius-sm); background: linear-gradient(135deg, #f8fcf9, #e9f5ed); }
+.gis-model-summary { border-radius: var(--map-radius-sm); }
+
+.gis-status,
+.gis-capacity-card,
+.gis-data-key {
+  border-color: var(--map-line);
+  border-radius: var(--map-radius-sm);
+  background: rgba(255,255,255,.88);
+  box-shadow: var(--map-shadow-raised);
+  backdrop-filter: var(--map-glass);
+}
+
+.gis-data-modal-card {
+  border-color: var(--map-line);
+  border-radius: var(--map-radius);
+  box-shadow: var(--map-shadow-float);
+  background: rgba(255,255,255,.97);
+  backdrop-filter: var(--map-glass);
+}
+
+.hero-map-card {
+  border-color: rgba(255,255,255,.24);
+  border-radius: var(--map-radius);
+  background: linear-gradient(145deg, rgba(255,255,255,.16), rgba(255,255,255,.065));
+  box-shadow: 0 26px 70px rgba(4, 27, 19, .28), inset 0 1px 0 rgba(255,255,255,.2);
+  backdrop-filter: var(--map-glass);
+}
+
+.hero-map-stage,
+#heroMap { border-radius: var(--map-radius-sm); }
+
+.hero-interpolation-legend {
+  border-color: var(--map-line);
+  border-radius: var(--map-radius-sm);
+  background: rgba(255,255,255,.9);
+  box-shadow: var(--map-shadow-raised);
+  backdrop-filter: var(--map-glass);
+}
+
+.hero-map-actions button,
+.hero-map-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 11px;
+  text-decoration: none;
+}
+
+.hero-map-actions button:disabled { box-shadow: none; opacity: .55; }
+
+@media (max-width: 760px) {
+  .gis-sidebar,
+  .gis-insights { border-radius: var(--map-radius) var(--map-radius) 0 0; }
+  .gis-panel-toggle { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gis-panel-toggle,
+  .hero-map-actions button,
+  .hero-map-actions a { transition: none; }
+}

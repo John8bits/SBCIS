@@ -8,7 +8,7 @@ $boreholes = $mapData['boreholes'];
 $recordsAvailable = $mapData['recordsAvailable'];
 ?>
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Southern Leyte map</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="../src/css/gis.css?v=<?= filemtime(__DIR__ . '/../src/css/gis.css') ?>">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="../src/css/gis.css?v=<?= filemtime(__DIR__ . '/../src/css/gis.css') ?>"><link rel="stylesheet" href="../src/css/map-theme.css?v=<?= filemtime(__DIR__ . '/../src/css/map-theme.css') ?>">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script defer src="../src/js/interpolation.js?v=<?= filemtime(__DIR__ . '/../src/js/interpolation.js') ?>"></script>

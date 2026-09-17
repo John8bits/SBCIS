@@ -71,6 +71,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="stylesheet" href="src/css/style.css?v=<?= filemtime(__DIR__ . '/src/css/style.css') ?>">
+  <link rel="stylesheet" href="src/css/map-theme.css?v=<?= filemtime(__DIR__ . '/src/css/map-theme.css') ?>">
   <script>window.SBCIS_HERO_BOREHOLES = <?= json_encode($heroBoreholes, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
   <script defer src="src/js/interpolation.js?v=<?= filemtime(__DIR__ . '/src/js/interpolation.js') ?>"></script>
   <script defer src="src/js/hero-map.js?v=<?= filemtime(__DIR__ . '/src/js/hero-map.js') ?>"></script>
