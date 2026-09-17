@@ -23,8 +23,9 @@ require __DIR__ . '/overview_shell.php';
         <h3>Complete data backup</h3>
         <p>All municipalities, barangays, boreholes, and soil layers in one file, including IDs, relationships, and
             dates.</p>
-        <p class="ov-note">Choose this to keep a recoverable copy of your data. Restoring the SQL file requires a
-            database administrator and an empty database. Account passwords are not included.</p>
+        <p class="ov-note">Each SQL file includes a source row-count manifest and restore-safe foreign-key settings.
+            Restore it into an empty database; it never deletes or overwrites existing tables. Administrator accounts
+            and password hashes are intentionally not included.</p>
     </div>
     <?php if ($available): ?><a class="ov-button" href="?download=backup">Download complete backup
             (.sql)</a><?php endif; ?>
@@ -33,8 +34,8 @@ require __DIR__ . '/overview_shell.php';
     <div class="ov-card-head">
         <div>
             <h3>Spreadsheet downloads</h3>
-            <p>Open CSV files in Excel or another spreadsheet app. Each download includes all saved records in that
-                section.</p>
+            <p>Open CSV files in Excel or another spreadsheet app. “Rows in download” is the exact number of rows
+                included in that file.</p>
         </div>
     </div>
     <div class="ov-table-scroll">
@@ -42,7 +43,8 @@ require __DIR__ . '/overview_shell.php';
             <thead>
                 <tr>
                     <th>Data</th>
-                    <th>Saved records</th>
+                    <th>Rows in download</th>
+                    <th>Record provenance</th>
                     <th>Download</th>
                 </tr>
             </thead>
@@ -50,7 +52,8 @@ require __DIR__ . '/overview_shell.php';
                 <?php foreach (['municipalities' => 'Municipalities', 'barangays' => 'Barangays', 'boreholes' => 'Boreholes', 'soil_layers' => 'Soil layers'] as $key => $label): ?>
                     <tr>
                         <td><strong><?= $label ?></strong></td>
-                        <td><?= $available ? number_format($counts[$key]) : 'Unavailable' ?></td>
+                        <td><?= $available ? number_format($counts[$key]['total']) : 'Unavailable' ?></td>
+                        <td><?php if (!$available): ?>Unavailable<?php elseif (isset($counts[$key]['field'])): ?><span class="backup-provenance"><strong><?= number_format($counts[$key]['field']) ?></strong> field / <strong><?= number_format($counts[$key]['sample']) ?></strong> sample</span><?php else: ?>Location directory rows<?php endif; ?></td>
                         <td><?php if ($available): ?><a class="ov-button secondary" href="?download=<?= $key ?>"
                                     aria-label="Download <?= $label ?> CSV">Download
                                     CSV</a><?php else: ?>Unavailable<?php endif; ?></td>
@@ -58,8 +61,8 @@ require __DIR__ . '/overview_shell.php';
             </tbody>
         </table>
     </div>
-    <p class="ov-note">Downloads include saved data only. Save any open form first. CSV files are for viewing and
-        sharing; use the complete backup to preserve the database structure and exact values.</p>
+    <p class="ov-note">Sample rows are included in the CSV and SQL backup so the backup exactly matches the current
+        database. They are identified separately from field records. Save any open form first.</p>
 </section>
 </main>
 </div>

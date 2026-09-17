@@ -37,10 +37,29 @@ function sbcis_write_csv(PDO $db, $stream, string $dataset): void
 
 function sbcis_write_backup(PDO $db, $stream): void
 {
-    fwrite($stream, "-- SBCIS data backup | " . gmdate('Y-m-d H:i:s') . " UTC\n-- Restore into an EMPTY MySQL database using a database administrator.\n-- Includes all location, borehole, and soil-layer records, IDs and timestamps.\n-- Administrator accounts and passwords are not included.\nSET NAMES utf8mb4;\nSET @SBCIS_OLD_SQL_MODE = @@SQL_MODE;\nSET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';\n\n");
-    foreach (array_keys(sbcis_export_queries()) as $table) {
+    $tables = array_keys(sbcis_export_queries());
+    fwrite($stream, "-- SBCIS data backup | " . gmdate('Y-m-d H:i:s') . " UTC\n" .
+        "-- Restore into an EMPTY MySQL database. This file never drops or overwrites tables.\n" .
+        "-- Includes location, borehole, and soil-layer records with their IDs, relationships, and timestamps.\n" .
+        "-- Administrator accounts and password hashes are intentionally excluded.\n" .
+        "-- Source row manifest:\n");
+    foreach ($tables as $table) {
+        $count = (int) $db->query('SELECT COUNT(*) FROM `' . $table . '`')->fetchColumn();
+        fwrite($stream, '--   ' . $table . ': ' . $count . " row(s)\n");
+    }
+    fwrite($stream, "SET NAMES utf8mb4;\n" .
+        "SET @SBCIS_OLD_SQL_MODE = @@SQL_MODE;\n" .
+        "SET @SBCIS_OLD_FOREIGN_KEY_CHECKS = @@FOREIGN_KEY_CHECKS;\n" .
+        "SET @SBCIS_OLD_UNIQUE_CHECKS = @@UNIQUE_CHECKS;\n" .
+        "SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';\n" .
+        "SET FOREIGN_KEY_CHECKS = 0;\n" .
+        "SET UNIQUE_CHECKS = 0;\n\n");
+    foreach ($tables as $table) {
         $definition = $db->query('SHOW CREATE TABLE `' . $table . '`')->fetch(PDO::FETCH_NUM)[1];
         fwrite($stream, $definition . ";\n\n");
+    }
+    fwrite($stream, "START TRANSACTION;\n\n");
+    foreach ($tables as $table) {
         $stmt = $db->query('SELECT * FROM `' . $table . '` ORDER BY 1');
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $columns = array_map(static function ($key) {
@@ -52,7 +71,9 @@ function sbcis_write_backup(PDO $db, $stream): void
         }
         fwrite($stream, "\n");
     }
-    fwrite($stream, "SET SQL_MODE = @SBCIS_OLD_SQL_MODE;\n-- End of SBCIS backup.\n");
+    fwrite($stream, "COMMIT;\nSET UNIQUE_CHECKS = @SBCIS_OLD_UNIQUE_CHECKS;\n" .
+        "SET FOREIGN_KEY_CHECKS = @SBCIS_OLD_FOREIGN_KEY_CHECKS;\n" .
+        "SET SQL_MODE = @SBCIS_OLD_SQL_MODE;\n-- End of SBCIS backup.\n");
 }
 
 function sbcis_prepare_export(PDO $db, string $dataset)
