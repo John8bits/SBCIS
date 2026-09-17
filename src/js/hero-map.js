@@ -30,10 +30,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         if (!window.L) throw new Error('Map unavailable. Open the full map to try again.');
         const map = L.map(container, { preferCanvas: true, scrollWheelZoom: false, minZoom: 7, maxZoom: 19 });
+        const shadowPane = map.createPane('heroInterpolationShadowPane');
         const surfacePane = map.createPane('heroInterpolationPane');
         const boundaryPane = map.createPane('heroBoundaryPane');
         const pointPane = map.createPane('heroPointPane');
-        Object.assign(surfacePane.style, { zIndex: '350', pointerEvents: 'none' });
+        Object.assign(shadowPane.style, { zIndex: '340', pointerEvents: 'none', opacity: '.36', transform: 'translate3d(1px, 2px, 0)' });
+        Object.assign(surfacePane.style, { zIndex: '350', pointerEvents: 'none', filter: 'drop-shadow(0 1px 2px rgba(16, 58, 39, .22))' });
         Object.assign(boundaryPane.style, { zIndex: '410', pointerEvents: 'auto' });
         Object.assign(pointPane.style, { zIndex: '450', pointerEvents: 'auto' });
 
@@ -59,13 +61,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         ]);
 
         const result = interpolationResponse.status === 'current' ? interpolationResponse.result : null;
+        const d3 = window.d3;
+        const surfaceScale = d3?.scaleSequential && typeof d3.interpolateRdYlGn === 'function' &&
+            Number.isFinite(Number(result?.legend?.min)) && Number.isFinite(Number(result?.legend?.max)) &&
+            Number(result.legend.max) > Number(result.legend.min)
+            ? d3.scaleSequential(d3.interpolateRdYlGn).domain([Number(result.legend.min), Number(result.legend.max)])
+            : null;
+        const surfaceColor = value => surfaceScale
+            ? surfaceScale(Number(value))
+            : window.SbcisInterpolation.bearingClass(value).color;
         if (result?.surface?.type === 'FeatureCollection' && window.SbcisInterpolation) {
+            L.geoJSON(result.surface, {
+                pane: 'heroInterpolationShadowPane', interactive: false,
+                style: { color: '#173f2d', weight: 1.4, opacity: .45, fillColor: '#173f2d', fillOpacity: .14 }
+            }).addTo(map);
             L.geoJSON(result.surface, {
                 pane: 'heroInterpolationPane',
                 interactive: false,
                 style: feature => {
-                    const classification = window.SbcisInterpolation.bearingClass(feature.properties.value);
-                    return { color: classification.color, fillColor: classification.color, weight: .25, opacity: .4, fillOpacity: .82 };
+                    const color = surfaceColor(feature.properties.value);
+                    return { color, fillColor: color, weight: .2, opacity: .18, fillOpacity: .64 };
                 }
             }).addTo(map);
             legend.hidden = false;

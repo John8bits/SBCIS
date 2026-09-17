@@ -924,11 +924,11 @@ button {
 .hero-interpolation-legend > span { display: grid; grid-template-columns: 15px 1fr auto; align-items: center; gap: 5px; font-size: 8px; font-weight: 700; }
 .hero-interpolation-legend i { width: 15px; height: 11px; border: 1px solid rgba(10,40,30,.12); border-radius: 2px; }
 .hero-interpolation-legend small { color: #6c7b74; font-size: 7px; font-weight: 500; }
-.hero-interpolation-legend .range-very-low { background: #dc2626; }
-.hero-interpolation-legend .range-low { background: #f59e0b; }
-.hero-interpolation-legend .range-moderate { background: #fde047; }
-.hero-interpolation-legend .range-high { background: #84cc16; }
-.hero-interpolation-legend .range-very-high { background: #15803d; }
+.hero-interpolation-legend .range-very-low { background: #d73027; }
+.hero-interpolation-legend .range-low { background: #f46d43; }
+.hero-interpolation-legend .range-moderate { background: #fee08b; }
+.hero-interpolation-legend .range-high { background: #91cf60; }
+.hero-interpolation-legend .range-very-high { background: #1a9850; }
 .hero-borehole-popup { display: grid; min-width: 150px; gap: 3px; font-family: Inter, sans-serif; }
 .hero-borehole-popup strong { color: #123d2e; font-size: 12px; }
 .hero-borehole-popup span, .hero-borehole-popup small { color: #64736c; font-size: 9px; }

@@ -37,6 +37,7 @@ $mapJson = json_encode(
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="../src/css/gis.css?v=<?= filemtime(__DIR__ . '/../src/css/gis.css') ?>">
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
   <script>
     window.SBCIS_BOREHOLES = <?= $mapJson ?: '[]' ?>;
     window.SBCIS_RECORDS_AVAILABLE = <?= $recordsAvailable ? 'true' : 'false' ?>;

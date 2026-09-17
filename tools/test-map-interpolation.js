@@ -127,7 +127,7 @@ async function testMap(mobile, base) {
     assert.equal(get('gisCapacityCard').hidden, false, 'Boundary click opens the bearing-capacity readout');
     assert.equal(get('gisCapacityClass').textContent, 'Low');
     assert.equal(get('gisCapacityValue').textContent, '145 kPa');
-    assert.equal(get('gisCapacitySwatch').style.backgroundColor, '#f59e0b');
+    assert.equal(get('gisCapacitySwatch').style.backgroundColor, '#f46d43');
     const fitBeforeBarangay = map.fitCount;
     map.events.click({ latlng: { lat: 10.15, lng: 124.85 } });
     assert.ok(map.fitCount > fitBeforeBarangay, 'Barangay map-area click zooms closer to the selected barangay');

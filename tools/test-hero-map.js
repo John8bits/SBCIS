@@ -62,9 +62,9 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../src/js/hero-map.js'), '
     assert.equal(elements.get('heroInterpolationLegend').hidden, false, 'Five-band interpolation legend is visible');
     assert.equal(points.length, 1, 'Hero map renders borehole locations');
     assert.ok(points[0].popup, 'Hero borehole location has a details popup');
-    const surfaceLayer = geoLayers.find(layer => layer.data === surface);
+    const surfaceLayer = geoLayers.find(layer => layer.data === surface && layer.options.pane === 'heroInterpolationPane');
     assert.ok(surfaceLayer, 'Published interpolation surface is rendered');
-    assert.equal(surfaceLayer.options.style(surface.features[0]).fillColor, '#f59e0b', '145 kPa uses the 100–150 kPa band');
+    assert.equal(surfaceLayer.options.style(surface.features[0]).fillColor, '#f46d43', '145 kPa uses the 100–150 kPa band');
     assert.equal(elements.get('heroMapReset').disabled, false, 'Hero reset is enabled');
     elements.get('heroMapReset').fire('click');
     assert.match(elements.get('heroMapStatus').textContent, /IDW surface.*1 boreholes/);

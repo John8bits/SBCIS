@@ -11,17 +11,32 @@ class SbcisInterpolation {
         this.listeners = [];
         this.destroyed = false;
         this.busy = false;
+        this.shadowPane = map.createPane('interpolationShadowPane');
         this.pane = map.createPane('interpolationPane');
-        Object.assign(this.pane.style, { zIndex: '350', pointerEvents: 'none', opacity: '0.78' });
+        Object.assign(this.shadowPane.style, {
+            zIndex: '340', pointerEvents: 'none', opacity: '0.42',
+            transform: 'translate3d(2px, 3px, 0)'
+        });
+        Object.assign(this.pane.style, {
+            zIndex: '350', pointerEvents: 'none', opacity: '0.9',
+            filter: 'drop-shadow(0 2px 2px rgba(16, 58, 39, .22))'
+        });
+        this.shadowLayer = L.geoJSON(null, {
+            pane: 'interpolationShadowPane',
+            interactive: false,
+            style: { color: '#173f2d', weight: 1.8, opacity: .5, fillColor: '#173f2d', fillOpacity: .16 }
+        }).addTo(map);
         this.layer = L.geoJSON(null, {
             pane: 'interpolationPane',
             interactive: false,
             style: feature => ({
-                color: SbcisInterpolation.bearingClass(feature.properties.value).color,
-                weight: 0.35,
-                opacity: 0.45,
-                fillColor: SbcisInterpolation.bearingClass(feature.properties.value).color,
-                fillOpacity: 0.82
+                color: this.surfaceColor(feature.properties.value),
+                // Low-contrast joins keep the categorical surface readable
+                // without presenting barangay estimates as contour lines.
+                weight: 0.2,
+                opacity: 0.18,
+                fillColor: this.surfaceColor(feature.properties.value),
+                fillOpacity: 0.64
             })
         }).addTo(map);
         if (this.admin) {
@@ -68,6 +83,7 @@ class SbcisInterpolation {
         this.abort = new AbortController();
         this.busy = true;
         this.layer.clearLayers();
+        this.shadowLayer.clearLayers();
         this.element('legend').textContent = 'No approved estimated surface is displayed.';
         this.element('scale').hidden = true;
         this.element('ticks').hidden = true;
@@ -90,10 +106,24 @@ class SbcisInterpolation {
                     !Number.isFinite(result.legend?.min) || !Number.isFinite(result.legend?.max) || result.legend.min > result.legend.max ||
                     typeof result.legend.unit !== 'string') throw new Error('Invalid published interpolation result.');
                 this.legend = result.legend;
+                this.colorScale = this.createColorScale(result.legend);
                 window.SBCIS_ACTIVE_INTERPOLATION = result;
+                this.shadowLayer.addData(result.surface);
                 this.layer.addData(result.surface);
                 this.element('measurement').textContent = this.variableLabel(result.variable);
                 this.element('method').textContent = result.method;
+                const generated = result.generated_at ? new Date(result.generated_at) : null;
+                this.element('generated').textContent = generated && !Number.isNaN(generated.valueOf())
+                    ? 'Updated ' + generated.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+                    : 'Current published model';
+                const visibleCount = typeof document === 'undefined'
+                    ? '—'
+                    : (document.querySelector('#visibleBoreholeCount')?.textContent || '—');
+                this.element('observations').textContent = visibleCount + ' recorded';
+                this.element('model').textContent = result.method?.startsWith('IDW')
+                    ? (this.colorScale ? 'IDW + ColorBrewer' : 'IDW estimate')
+                    : (result.method || 'Published');
+                this.element('output-range').textContent = this.number(result.legend.min) + '–' + this.number(result.legend.max) + ' ' + result.legend.unit;
                 this.element('legend').textContent = 'Surface range: ' + this.number(result.legend.min) + '–' +
                     this.number(result.legend.max) + ' ' + result.legend.unit + '.';
                 this.element('scale').hidden = false;
@@ -130,15 +160,38 @@ class SbcisInterpolation {
 
     setVisible(visible) {
         this.pane.style.display = visible ? '' : 'none';
+        this.shadowPane.style.display = visible ? '' : 'none';
+    }
+
+    createColorScale(legend) {
+        const d3 = typeof window === 'undefined' ? null : window.d3;
+        const min = Number(legend?.min);
+        const max = Number(legend?.max);
+        // D3's ColorBrewer RdYlGn ramp gives a print-friendly, perceptually
+        // ordered low (red) to high (green) surface. The fixed range legend
+        // remains the authoritative engineering classification.
+        if (d3?.scaleSequential && typeof d3.interpolateRdYlGn === 'function' &&
+            Number.isFinite(min) && Number.isFinite(max) && max > min) {
+            return d3.scaleSequential(d3.interpolateRdYlGn).domain([min, max]);
+        }
+        return null;
+    }
+
+    surfaceColor(value) {
+        const numeric = Number(value);
+        if (this.colorScale && Number.isFinite(numeric)) return this.colorScale(numeric);
+        return SbcisInterpolation.bearingClass(numeric).color;
     }
 
     static bearingClass(value) {
         const numeric = Number(value);
-        if (numeric < 100) return { key: 'very-low', label: 'Very low', range: '< 100 kPa', color: '#dc2626' };
-        if (numeric <= 150) return { key: 'low', label: 'Low', range: '100–150 kPa', color: '#f59e0b' };
-        if (numeric <= 200) return { key: 'moderate', label: 'Moderate', range: '151–200 kPa', color: '#fde047' };
-        if (numeric <= 250) return { key: 'high', label: 'High', range: '201–250 kPa', color: '#84cc16' };
-        return { key: 'very-high', label: 'Very high', range: '> 250 kPa', color: '#15803d' };
+        // Ordered, print-friendly engineering palette: low values are warmer;
+        // higher bearing capacity is greener. These bands match the legend.
+        if (numeric < 100) return { key: 'very-low', label: 'Very low', range: '< 100 kPa', color: '#d73027' };
+        if (numeric <= 150) return { key: 'low', label: 'Low', range: '100–150 kPa', color: '#f46d43' };
+        if (numeric <= 200) return { key: 'moderate', label: 'Moderate', range: '151–200 kPa', color: '#fee08b' };
+        if (numeric <= 250) return { key: 'high', label: 'High', range: '201–250 kPa', color: '#91cf60' };
+        return { key: 'very-high', label: 'Very high', range: '> 250 kPa', color: '#1a9850' };
     }
 
     color(value) {
@@ -225,6 +278,8 @@ class SbcisInterpolation {
         this.destroyed = true;
         this.requestId++;
         this.abort?.abort();
+        this.shadowLayer.clearLayers();
+        this.shadowLayer.remove();
         this.layer.clearLayers();
         this.layer.remove();
         this.listeners.forEach(remove => remove());

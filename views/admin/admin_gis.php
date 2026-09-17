@@ -24,7 +24,7 @@ $gisJsVersion = filemtime(__DIR__ . '/../../src/js/gis.js');
 $interpolationAdmin = true;
 $_SESSION['interpolation_csrf'] = $_SESSION['interpolation_csrf'] ?? bin2hex(random_bytes(32));
 $interpolationVersion = filemtime(__DIR__ . '/../../src/js/interpolation.js');
-$extraHead = '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="../../src/css/gis.css?v=' . $gisCssVersion . '"><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script defer src="../../src/js/interpolation.js?v=' . $interpolationVersion . '"></script><script defer src="../../src/js/gis.js?v=' . $gisJsVersion . '"></script>';
+$extraHead = '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="../../src/css/gis.css?v=' . $gisCssVersion . '"><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script defer src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script><script defer src="../../src/js/interpolation.js?v=' . $interpolationVersion . '"></script><script defer src="../../src/js/gis.js?v=' . $gisJsVersion . '"></script>';
 require __DIR__ . '/overview_shell.php';
 ?>
 <script>window.SBCIS_MAP_BASE = '../../'; window.SBCIS_BOREHOLES = <?= json_encode($boreholes, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>; window.SBCIS_RECORDS_AVAILABLE = <?= $recordsAvailable ? 'true' : 'false' ?>;</script>

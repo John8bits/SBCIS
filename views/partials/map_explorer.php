@@ -77,6 +77,16 @@
         <span class="gis-state-icon" aria-hidden="true"></span>
         <div><strong data-interpolation="state-label">Checking data</strong><p data-interpolation="status">Loading interpolation&hellip;</p></div>
       </div>
+      <section class="gis-model-summary" aria-label="Interpolation model summary">
+        <div class="gis-model-summary-heading"><span class="gis-model-live" aria-hidden="true"></span><strong>Published interpolation model</strong><span data-interpolation="generated" class="gis-model-time">Checking&hellip;</span></div>
+        <p class="gis-model-description">A spatial estimate built from recorded borehole measurements. It is not a substitute for a site investigation.</p>
+        <div class="gis-model-metrics">
+          <div><span>Input points</span><strong data-interpolation="observations">&mdash;</strong></div>
+          <div><span>Model</span><strong data-interpolation="model">Checking&hellip;</strong></div>
+          <div><span>Output range</span><strong data-interpolation="output-range">&mdash;</strong></div>
+        </div>
+        <div class="gis-model-keys"><span><i class="gis-observed-key" aria-hidden="true"></i>Observed borehole</span><span><i class="gis-estimate-key" aria-hidden="true"></i>Interpolated estimate</span></div>
+      </section>
       <section class="gis-info-section" aria-labelledby="areaTitle">
         <div class="gis-section-heading"><div><span class="gis-section-eyebrow">SELECTED</span><h3 id="areaTitle">Map area</h3></div></div>
         <p><strong id="insightAreaName">Southern Leyte</strong></p>
@@ -96,7 +106,7 @@
         </div>
         <div data-interpolation="ticks" class="gis-scale-ticks" hidden></div>
         <p data-interpolation="legend">No interpolation is displayed.</p>
-        <div class="gis-symbol-row"><span class="gis-area-key" aria-hidden="true"></span><span>Click an area to view records</span></div>
+        <div class="gis-symbol-row"><span class="gis-area-key" aria-hidden="true"></span><span>Area bands are estimates; select an area to inspect source records.</span></div>
       </section>
       <?php if (!empty($interpolationAdmin)): ?>
       <section class="gis-info-section gis-admin-tools" aria-labelledby="adminInterpolationTitle">
