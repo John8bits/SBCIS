@@ -12,7 +12,7 @@
 /* Dashboard charts and single-header layout */
 .topbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .admin-panel-indicator{display:inline-flex;align-items:center;gap:8px;min-height:43px;padding:11px 15px;border:1px solid #dce4df;border-radius:9px;background:#f5f8f6;color:#315746;font-size:13px;font-weight:700}
-.role-management{margin-top:22px}.role-form{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.role-form select,.role-form input{min-height:38px;padding:8px 10px;border:1px solid #dce4df;border-radius:6px;background:#fff;color:#33463d;font:inherit;font-size:12px}.role-form input{width:150px}.role-form .submit-button{min-height:38px;padding:8px 12px}.settings-super-login{margin-top:4px}
+.role-management{margin-top:22px}.admin-account-form{display:grid;grid-template-columns:1.2fr 1fr .8fr 1fr auto;align-items:end;gap:10px;padding:20px;border-bottom:1px solid #edf0ee}.admin-account-form label,.admin-edit-form>label{display:grid;gap:6px;color:#667b70;font-size:11px;font-weight:700}.admin-account-form input,.admin-account-form select,.admin-edit-form input,.admin-edit-form select{min-height:40px;padding:9px 10px;border:1px solid #dce4df;border-radius:6px;background:#fff;color:#33463d;font:inherit;font-size:12px}.admin-actions{display:flex;align-items:center;gap:8px}.icon-button{display:inline-grid;place-items:center;width:38px;height:38px;padding:0;border:1px solid #dce4df;border-radius:6px;background:#fff;color:#465e51;cursor:pointer}.icon-button:hover{background:#f0f5f1}.delete-admin-form{display:contents}.delete-admin-form .icon-button{color:#8a3f3f}.visually-hidden-input{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.settings-super-login{margin-top:4px}.admin-edit-dialog{position:fixed;inset:0;margin:auto;width:min(500px,calc(100% - 32px));padding:0;border:0;border-radius:10px;box-shadow:0 20px 60px rgba(18,38,29,.25)}.admin-edit-dialog::backdrop{background:rgba(16,39,29,.42)}.admin-edit-form{display:grid;gap:16px;padding:26px}.admin-edit-form label span{font-weight:400;color:#8a9690}.admin-edit-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}.admin-edit-dialog .dialog-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.admin-edit-dialog .dialog-heading h2{font-size:20px;color:#253039}.admin-edit-dialog .dialog-heading p{margin-top:5px;color:#687b72;font-size:12px;line-height:1.5}.admin-edit-dialog .dialog-close{border:0;background:transparent;color:#687b72;font-size:26px;line-height:1;cursor:pointer}
 .ov-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
 .chart-card{display:flex;flex-direction:column;overflow:hidden;padding:0}
 .chart-card .ov-card-head{min-height:82px;margin:0;padding:21px 22px 17px;border-bottom:1px solid #edf0ee}
@@ -52,6 +52,11 @@
     .chart-range{width:100%}
     .chart-range button{flex:1;min-height:36px}
     .chart-hint{display:none}
+}
+@media(max-width:800px){
+    .admin-account-form{grid-template-columns:1fr 1fr}
+    .admin-account-form .submit-button{width:100%}
+    .admin-edit-actions{flex-direction:column-reverse}.admin-edit-actions>*{width:100%}
 }
 @media print{
     .chart-canvas-wrap,.chart-canvas-wrap.chart-wide,.chart-canvas-wrap.chart-tall,.chart-canvas-wrap.chart-doughnut{height:360px;max-width:none}

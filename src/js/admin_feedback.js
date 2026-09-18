@@ -33,10 +33,25 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     document.addEventListener('submit', async event => {
-        const form = event.target.closest('.delete-record-form');
+        const form = event.target.closest('.delete-record-form, .delete-admin-form');
         if (!form || form.dataset.confirmed === 'true') return;
         event.preventDefault();
         event.stopImmediatePropagation();
+        if (form.classList.contains('delete-admin-form')) {
+            const email = form.dataset.adminEmail || 'this administrator';
+            const password = window.prompt('Enter your current password to delete this administrator.');
+            if (!password) return;
+            form.querySelector('[name="current_password"]').value = password;
+            if (await confirmAction({
+                icon: 'warning', title: 'Are you sure you want to delete this admin?',
+                text: `${email} will permanently lose access to the admin panel.`,
+                confirmText: 'Delete administrator', danger: true
+            })) {
+                form.dataset.confirmed = 'true';
+                form.submit();
+            }
+            return;
+        }
         const name = form.dataset.recordName || 'this borehole';
         if (await confirmAction({
             icon: 'warning', title: 'Delete this record?',

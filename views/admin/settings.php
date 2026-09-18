@@ -44,33 +44,78 @@ try {
         if (!is_string($_POST['csrf'] ?? null) || !hash_equals($_SESSION['settings_csrf'], $_POST['csrf']))
             throw new InvalidArgumentException('Your session expired. Reload the settings page and try again.');
 
-        if (($_POST['action'] ?? 'account_update') === 'role_update') {
+        $action = $_POST['action'] ?? 'account_update';
+        if (in_array($action, ['add_admin', 'edit_admin', 'delete_admin'], true)) {
             if (!$isSuperAdmin)
-                throw new InvalidArgumentException('Only a super administrator can change account roles.');
+                throw new InvalidArgumentException('Only a super administrator can manage administrator accounts.');
             $currentPassword = $_POST['current_password'] ?? '';
             if (!is_string($currentPassword) || !password_verify($currentPassword, $admin['password']))
-                throw new InvalidArgumentException('Enter your current password to change an account role.');
-            $targetId = filter_var($_POST['admin_id'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
-            $role = $_POST['role'] ?? '';
-            if (!in_array($role, ['admin', 'super_admin'], true))
-                throw new InvalidArgumentException('Choose a valid account role.');
-            if ($targetId === (int) $_SESSION['admin_id'])
-                throw new InvalidArgumentException('You cannot change your own super administrator role.');
+                throw new InvalidArgumentException('Enter your current password to manage administrator accounts.');
 
-            $targetStatement = $db->prepare('SELECT admin_id, role FROM admins WHERE admin_id = :admin_id LIMIT 1');
-            $targetStatement->execute([':admin_id' => $targetId]);
-            $target = $targetStatement->fetch(PDO::FETCH_ASSOC);
-            if (!$target)
-                throw new InvalidArgumentException('That administrator account no longer exists.');
-            if ($target['role'] === 'super_admin' && $role === 'admin') {
-                $superAdminCount = (int) $db->query("SELECT COUNT(*) FROM admins WHERE role = 'super_admin'")->fetchColumn();
-                if ($superAdminCount <= 1)
-                    throw new InvalidArgumentException('At least one super administrator must remain active.');
+            if ($action === 'add_admin') {
+                $email = trim((string) ($_POST['email'] ?? ''));
+                $password = $_POST['new_password'] ?? '';
+                $role = $_POST['role'] ?? 'admin';
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+                    throw new InvalidArgumentException('Enter a valid administrator email address.');
+                if (!is_string($password) || strlen($password) < 8)
+                    throw new InvalidArgumentException('New passwords must be at least 8 characters long.');
+                if (!in_array($role, ['admin', 'super_admin'], true))
+                    throw new InvalidArgumentException('Choose a valid account role.');
+                $duplicate = $db->prepare('SELECT admin_id FROM admins WHERE email = :email LIMIT 1');
+                $duplicate->execute([':email' => $email]);
+                if ($duplicate->fetch())
+                    throw new InvalidArgumentException('That email address is already used by another administrator.');
+                $insert = $db->prepare('INSERT INTO admins (email, password, role) VALUES (:email, :password, :role)');
+                $insert->execute([
+                    ':email' => $email,
+                    ':password' => password_hash($password, PASSWORD_DEFAULT),
+                    ':role' => $role,
+                ]);
+                $_SESSION['settings_message'] = 'The administrator account was added.';
+            } else {
+                $targetId = filter_var($_POST['admin_id'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
+                $targetStatement = $db->prepare('SELECT admin_id, email, password, role FROM admins WHERE admin_id = :admin_id LIMIT 1');
+                $targetStatement->execute([':admin_id' => $targetId]);
+                $target = $targetStatement->fetch(PDO::FETCH_ASSOC);
+                if (!$target)
+                    throw new InvalidArgumentException('That administrator account no longer exists.');
+                if ($action === 'delete_admin') {
+                    if ($targetId === (int) $_SESSION['admin_id'])
+                        throw new InvalidArgumentException('You cannot delete your own administrator account.');
+                    if ($target['role'] === 'super_admin' && (int) $db->query("SELECT COUNT(*) FROM admins WHERE role = 'super_admin'")->fetchColumn() <= 1)
+                        throw new InvalidArgumentException('At least one super administrator must remain active.');
+                    $delete = $db->prepare('DELETE FROM admins WHERE admin_id = :admin_id');
+                    $delete->execute([':admin_id' => $targetId]);
+                    $_SESSION['settings_message'] = 'The administrator account was deleted.';
+                } else {
+                    if ($targetId === (int) $_SESSION['admin_id'])
+                        throw new InvalidArgumentException('Manage your own email and password in the account settings above.');
+                    $email = trim((string) ($_POST['email'] ?? ''));
+                    $password = $_POST['new_password'] ?? '';
+                    $role = $_POST['role'] ?? '';
+                    if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+                        throw new InvalidArgumentException('Enter a valid administrator email address.');
+                    if ($password !== '' && (!is_string($password) || strlen($password) < 8))
+                        throw new InvalidArgumentException('New passwords must be at least 8 characters long.');
+                    if (!in_array($role, ['admin', 'super_admin'], true))
+                        throw new InvalidArgumentException('Choose a valid account role.');
+                    if ($target['role'] === 'super_admin' && $role === 'admin' && (int) $db->query("SELECT COUNT(*) FROM admins WHERE role = 'super_admin'")->fetchColumn() <= 1)
+                        throw new InvalidArgumentException('At least one super administrator must remain active.');
+                    $duplicate = $db->prepare('SELECT admin_id FROM admins WHERE email = :email AND admin_id <> :admin_id LIMIT 1');
+                    $duplicate->execute([':email' => $email, ':admin_id' => $targetId]);
+                    if ($duplicate->fetch())
+                        throw new InvalidArgumentException('That email address is already used by another administrator.');
+                    $update = $db->prepare('UPDATE admins SET email = :email, password = :password, role = :role WHERE admin_id = :admin_id');
+                    $update->execute([
+                        ':email' => $email,
+                        ':password' => $password === '' ? $target['password'] : password_hash($password, PASSWORD_DEFAULT),
+                        ':role' => $role,
+                        ':admin_id' => $targetId,
+                    ]);
+                    $_SESSION['settings_message'] = 'The administrator account was updated.';
+                }
             }
-
-            $updateRole = $db->prepare('UPDATE admins SET role = :role WHERE admin_id = :admin_id');
-            $updateRole->execute([':role' => $role, ':admin_id' => $targetId]);
-            $_SESSION['settings_message'] = 'The administrator role was updated.';
             header('Location: settings.php');
             exit;
         }
@@ -164,9 +209,49 @@ require __DIR__ . '/overview_shell.php';
 </div>
 <?php if ($isSuperAdmin): ?>
 <section class="panel role-management">
-    <div class="panel-header"><div><h3>Administrator roles</h3><span>Grant or remove super administrator access.</span></div></div>
-    <div class="table-wrap"><table><thead><tr><th>Email</th><th>Role</th><th>Change role</th></tr></thead><tbody>
-    <?php foreach ($roleAccounts as $account): ?><tr><td><strong><?= $escape($account['email']) ?></strong></td><td><?= $account['role'] === 'super_admin' ? 'Super admin' : 'Admin' ?></td><td><?php if ((int) $account['admin_id'] === (int) $_SESSION['admin_id']): ?><span class="settings-help">Current account</span><?php else: ?><form class="role-form" method="post" action="settings.php"><input type="hidden" name="action" value="role_update"><input type="hidden" name="csrf" value="<?= $escape($_SESSION['settings_csrf']) ?>"><input type="hidden" name="admin_id" value="<?= (int) $account['admin_id'] ?>"><select name="role" aria-label="Role for <?= $escape($account['email']) ?>"><option value="admin"<?= $account['role'] === 'admin' ? ' selected' : '' ?>>Admin</option><option value="super_admin"<?= $account['role'] === 'super_admin' ? ' selected' : '' ?>>Super admin</option></select><input type="password" name="current_password" placeholder="Your password" autocomplete="current-password" required><button class="submit-button" type="submit">Save role</button></form><?php endif; ?></td></tr><?php endforeach; ?>
+    <div class="panel-header"><div><h3>Administrator accounts</h3><span>Add, edit, delete, and change administrator access.</span></div><button class="submit-button" type="button" id="open-admin-add"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Add admin</button></div>
+    <div class="table-wrap"><table><thead><tr><th>Email</th><th>Role</th><th>Actions</th></tr></thead><tbody>
+    <?php foreach ($roleAccounts as $account): $isCurrentAccount = (int) $account['admin_id'] === (int) $_SESSION['admin_id']; ?><tr><td><strong><?= $escape($account['email']) ?></strong></td><td><?= $account['role'] === 'super_admin' ? 'Super admin' : 'Admin' ?></td><td><div class="admin-actions"><button class="icon-button edit-admin-button" type="button" title="<?= $isCurrentAccount ? 'Edit your account above' : 'Edit ' . $account['email'] ?>" aria-label="<?= $isCurrentAccount ? 'Edit your account above' : 'Edit ' . $account['email'] ?>" data-admin-id="<?= (int) $account['admin_id'] ?>" data-admin-email="<?= $escape($account['email']) ?>" data-admin-role="<?= $escape($account['role']) ?>"<?= $isCurrentAccount ? ' disabled' : '' ?>><i class="fa-solid fa-pen" aria-hidden="true"></i></button><form class="delete-admin-form" method="post" action="settings.php" data-admin-email="<?= $escape($account['email']) ?>"><input type="hidden" name="action" value="delete_admin"><input type="hidden" name="csrf" value="<?= $escape($_SESSION['settings_csrf']) ?>"><input type="hidden" name="admin_id" value="<?= (int) $account['admin_id'] ?>"><input type="password" name="current_password" class="visually-hidden-input" aria-label="Your password" autocomplete="current-password"><button class="icon-button danger-button" type="submit" title="<?= $isCurrentAccount ? 'You cannot delete your own account' : 'Delete ' . $account['email'] ?>" aria-label="<?= $isCurrentAccount ? 'You cannot delete your own account' : 'Delete ' . $account['email'] ?>"<?= $isCurrentAccount ? ' disabled' : '' ?>><i class="fa-solid fa-trash" aria-hidden="true"></i></button></form></div></td></tr><?php endforeach; ?>
     </tbody></table></div>
 </section>
+<dialog class="admin-edit-dialog" id="admin-add-dialog" aria-labelledby="admin-add-title">
+    <form class="admin-edit-form" method="post" action="settings.php">
+        <div class="dialog-heading"><div><h2 id="admin-add-title">Add administrator</h2><p>Create a new administrator account and assign its access level.</p></div><button class="dialog-close" type="button" data-close-admin-add aria-label="Close add administrator dialog">&times;</button></div>
+        <input type="hidden" name="action" value="add_admin"><input type="hidden" name="csrf" value="<?= $escape($_SESSION['settings_csrf']) ?>">
+        <label>Email address<input type="email" name="email" autocomplete="email" required></label>
+        <label>Temporary password<input type="password" name="new_password" minlength="8" autocomplete="new-password" required></label>
+        <label>Role<select name="role"><option value="admin">Admin</option><option value="super_admin">Super admin</option></select></label>
+        <label>Your password<input type="password" name="current_password" autocomplete="current-password" required></label>
+        <div class="admin-edit-actions"><button class="ov-button secondary" type="button" data-close-admin-add>Cancel</button><button class="submit-button" type="submit"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Add admin</button></div>
+    </form>
+</dialog>
+<dialog class="admin-edit-dialog" id="admin-edit-dialog" aria-labelledby="admin-edit-title">
+    <form class="admin-edit-form" method="post" action="settings.php">
+        <div class="dialog-heading"><div><h2 id="admin-edit-title">Edit administrator</h2><p>Update this administrator's access and sign-in details.</p></div><button class="dialog-close" type="button" data-close-admin-dialog aria-label="Close edit dialog">&times;</button></div>
+        <input type="hidden" name="action" value="edit_admin"><input type="hidden" name="csrf" value="<?= $escape($_SESSION['settings_csrf']) ?>"><input type="hidden" name="admin_id" id="edit-admin-id">
+        <label>Email address<input type="email" name="email" id="edit-admin-email" required></label>
+        <label>New password <span>(optional)</span><input type="password" name="new_password" minlength="8" autocomplete="new-password"></label>
+        <label>Role<select name="role" id="edit-admin-role"><option value="admin">Admin</option><option value="super_admin">Super admin</option></select></label>
+        <label>Your password<input type="password" name="current_password" autocomplete="current-password" required></label>
+        <div class="admin-edit-actions"><button class="ov-button secondary" type="button" data-close-admin-dialog>Cancel</button><button class="submit-button" type="submit"><i class="fa-solid fa-check" aria-hidden="true"></i> Save changes</button></div>
+    </form>
+</dialog>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const addDialog = document.getElementById('admin-add-dialog');
+    const dialog = document.getElementById('admin-edit-dialog');
+    if (!addDialog || !dialog) return;
+    document.getElementById('open-admin-add').addEventListener('click', () => addDialog.showModal());
+    addDialog.querySelectorAll('[data-close-admin-add]').forEach(button => button.addEventListener('click', () => addDialog.close()));
+    addDialog.addEventListener('click', event => { if (event.target === addDialog) addDialog.close(); });
+    document.querySelectorAll('.edit-admin-button').forEach(button => button.addEventListener('click', () => {
+        document.getElementById('edit-admin-id').value = button.dataset.adminId;
+        document.getElementById('edit-admin-email').value = button.dataset.adminEmail;
+        document.getElementById('edit-admin-role').value = button.dataset.adminRole;
+        dialog.showModal();
+    }));
+    dialog.querySelectorAll('[data-close-admin-dialog]').forEach(button => button.addEventListener('click', () => dialog.close()));
+    dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+});
+</script>
 <?php endif; ?>
