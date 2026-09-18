@@ -202,6 +202,7 @@ function old_raw(string $key, string $default = ''): string
     <script src="../../src/js/toast.js"></script>
     <script src="../../src/js/admin_feedback.js" defer></script>
     <link rel="stylesheet" href="../../src/css/admin_dashb.css">
+    <link rel="stylesheet" href="../../src/css/alerts.css?v=<?= filemtime(__DIR__ . '/../../src/css/alerts.css') ?>">
     <style>
         .data-layout {
             display: grid;

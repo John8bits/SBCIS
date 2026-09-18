@@ -18,8 +18,8 @@ class SbcisInterpolation {
             transform: 'translate3d(2px, 3px, 0)'
         });
         Object.assign(this.pane.style, {
-            zIndex: '350', pointerEvents: 'none', opacity: '0.9',
-            filter: 'drop-shadow(0 2px 2px rgba(16, 58, 39, .22))'
+            zIndex: '350', pointerEvents: 'none', opacity: '0.82',
+            filter: 'drop-shadow(0 1px 1px rgba(19, 61, 47, .12))'
         });
         this.shadowLayer = L.geoJSON(null, {
             pane: 'interpolationShadowPane',
@@ -33,10 +33,10 @@ class SbcisInterpolation {
                 color: this.surfaceColor(feature.properties.value),
                 // Low-contrast joins keep the categorical surface readable
                 // without presenting barangay estimates as contour lines.
-                weight: 0.2,
-                opacity: 0.18,
+                weight: 0.15,
+                opacity: 0.12,
                 fillColor: this.surfaceColor(feature.properties.value),
-                fillOpacity: 0.64
+                fillOpacity: 0.68
             })
         }).addTo(map);
         if (this.admin) {
@@ -119,15 +119,21 @@ class SbcisInterpolation {
                 const visibleCount = typeof document === 'undefined'
                     ? '—'
                     : (document.querySelector('#visibleBoreholeCount')?.textContent || '—');
-                this.element('observations').textContent = visibleCount + ' recorded';
+                const features = result.surface.features;
+                const inputCount = Number(features[0]?.properties?.observation_count);
+                this.element('observations').textContent = Number.isInteger(inputCount)
+                    ? inputCount + ' valid'
+                    : visibleCount + ' recorded';
+                this.element('coverage').textContent = features.length + ' barangay' + (features.length === 1 ? '' : 's');
                 this.element('model').textContent = result.method?.startsWith('IDW')
-                    ? (this.colorScale ? 'IDW + ColorBrewer' : 'IDW estimate')
+                    ? 'IDW estimate'
                     : (result.method || 'Published');
                 this.element('output-range').textContent = this.number(result.legend.min) + '–' + this.number(result.legend.max) + ' ' + result.legend.unit;
                 this.element('legend').textContent = 'Surface range: ' + this.number(result.legend.min) + '–' +
                     this.number(result.legend.max) + ' ' + result.legend.unit + '.';
                 this.element('scale').hidden = false;
                 this.setTicks(result.legend);
+                this.updateFloatingLegend(result.legend);
                 if (typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
                     window.dispatchEvent(new CustomEvent('sbcis:interpolation-updated', { detail: result }));
                 }
@@ -158,6 +164,21 @@ class SbcisInterpolation {
         this.element('ticks').hidden = true;
     }
 
+    updateFloatingLegend(legend) {
+        if (typeof document === 'undefined') return;
+        const card = document.querySelector('#gisSurfaceLegend');
+        const min = document.querySelector('#gisSurfaceLegendMin');
+        const max = document.querySelector('#gisSurfaceLegendMax');
+        const unit = document.querySelector('#gisSurfaceLegendUnit');
+        const gradient = document.querySelector('#gisSurfaceGradient');
+        if (!card || !min || !max || !unit || !gradient) return;
+        min.textContent = this.number(legend.min);
+        max.textContent = this.number(legend.max) + ' ' + legend.unit;
+        unit.textContent = 'Published range · ' + legend.unit;
+        gradient.style.background = 'linear-gradient(90deg, #a94442, #c77745, #d5ad56, #7fa36d, #28745d)';
+        card.hidden = false;
+    }
+
     setVisible(visible) {
         this.pane.style.display = visible ? '' : 'none';
         this.shadowPane.style.display = visible ? '' : 'none';
@@ -167,12 +188,15 @@ class SbcisInterpolation {
         const d3 = typeof window === 'undefined' ? null : window.d3;
         const min = Number(legend?.min);
         const max = Number(legend?.max);
-        // D3's ColorBrewer RdYlGn ramp gives a print-friendly, perceptually
-        // ordered low (red) to high (green) surface. The fixed range legend
-        // remains the authoritative engineering classification.
-        if (d3?.scaleSequential && typeof d3.interpolateRdYlGn === 'function' &&
+        // A muted, ordered engineering ramp keeps the surface legible over
+        // labels and coastlines. Numeric values and classification limits stay
+        // server-defined and unchanged.
+        if (d3?.scaleLinear &&
             Number.isFinite(min) && Number.isFinite(max) && max > min) {
-            return d3.scaleSequential(d3.interpolateRdYlGn).domain([min, max]);
+            return d3.scaleLinear()
+                .domain([min, min + (max - min) * .25, min + (max - min) * .5, min + (max - min) * .75, max])
+                .range(['#a94442', '#c77745', '#d5ad56', '#7fa36d', '#28745d'])
+                .interpolate(d3.interpolateRgb);
         }
         return null;
     }

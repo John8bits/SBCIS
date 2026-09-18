@@ -34,6 +34,7 @@ $mapJson = json_encode(
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="stylesheet" href="../src/css/style.css?v=<?= filemtime(__DIR__ . '/../src/css/style.css') ?>">
+  <link rel="stylesheet" href="../src/css/alerts.css?v=<?= filemtime(__DIR__ . '/../src/css/alerts.css') ?>">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="../src/css/gis.css?v=<?= filemtime(__DIR__ . '/../src/css/gis.css') ?>">
   <link rel="stylesheet" href="../src/css/map-theme.css?v=<?= filemtime(__DIR__ . '/../src/css/map-theme.css') ?>">

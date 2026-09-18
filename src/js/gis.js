@@ -195,11 +195,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             (directory.status === 'live' ? '' : ' - saved copy') + ' | Updated ' + new Date(directory.fetchedAt).toLocaleDateString();
         const municipalityById = new Map(municipalities.features.map(feature => [feature.properties.GID_2, feature]));
         const barangayById = new Map(barangays.features.map(feature => [feature.properties.GID_3, feature]));
-        const municipalityStyle = { color: '#176b4d', weight: 1.8, fillColor: '#75b590', fillOpacity: .035 };
-        const barangayStyle = { color: '#4c8aa5', weight: 1, fillColor: '#8cc7dd', fillOpacity: .035 };
+        const municipalityStyle = { color: '#17624b', weight: 1.55, opacity: .82, fillColor: '#75b590', fillOpacity: .018 };
+        const barangayStyle = { color: '#547b71', weight: .7, opacity: .56, dashArray: '3 4', fillColor: '#8cc7dd', fillOpacity: .008 };
         const provinceLayer = L.geoJSON(province, {
             pane: 'boundaryPane', interactive: false,
-            style: { color: '#0b3d2e', weight: 3.2, opacity: .95, fill: false }
+            style: { color: '#164e3b', weight: 2.5, opacity: .9, fill: false }
         }).addTo(map);
         const municipalityLayer = L.geoJSON(municipalities, {
             pane: 'boundaryPane', interactive: false,
@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }).addTo(map);
         const selection = L.geoJSON(null, {
             pane: 'selectionPane', interactive: false,
-            style: { color: '#d17a12', weight: 3.2, fillColor: '#f4bd63', fillOpacity: .16 }
+            style: { color: '#0f766e', weight: 2.6, opacity: .96, fillColor: '#5fa98d', fillOpacity: .12 }
         }).addTo(map);
         const availabilityLayer = L.layerGroup().addTo(map);
         const boreholeLayer = L.layerGroup().addTo(map);
@@ -232,6 +232,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         dataKey.hidden = boreholes.length === 0;
         const boreholePins = new Map();
         let boreholePinsVisible = true;
+        let availabilityMarkersVisible = true;
         let selectedDataFeature = null;
         let selectedDataType = null;
         let selectedCapacityFeature = null;
@@ -297,15 +298,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             boreholePins.set(String(borehole.borehole_code || '').toLocaleLowerCase(), marker);
         });
 
-        // Wide views stay readable: aggregated availability badges are shown
-        // instead of dozens of overlapping pins. Pins reappear when zoomed in.
+        // Wide views use green availability badges; detailed views use only
+        // red borehole pins. Keeping these mutually exclusive prevents marker
+        // overlap while preserving both overview and inspection workflows.
         function updateBoreholePinVisibility() {
             if (typeof map.getZoom !== 'function' || typeof map.addLayer !== 'function' || typeof map.removeLayer !== 'function') return;
             const shouldShowPins = map.getZoom() >= 12;
-            if (shouldShowPins === boreholePinsVisible) return;
-            boreholePinsVisible = shouldShowPins;
-            if (shouldShowPins) map.addLayer(boreholeLayer);
-            else map.removeLayer(boreholeLayer);
+            if (shouldShowPins !== boreholePinsVisible) {
+                boreholePinsVisible = shouldShowPins;
+                if (shouldShowPins) map.addLayer(boreholeLayer);
+                else map.removeLayer(boreholeLayer);
+            }
+            const shouldShowAvailability = !shouldShowPins;
+            if (shouldShowAvailability !== availabilityMarkersVisible) {
+                availabilityMarkersVisible = shouldShowAvailability;
+                if (shouldShowAvailability) map.addLayer(availabilityLayer);
+                else map.removeLayer(availabilityLayer);
+            }
         }
         map.on('zoomend', updateBoreholePinVisibility);
 
@@ -316,6 +325,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!boreholePinsVisible && typeof map.addLayer === 'function') {
                 map.addLayer(boreholeLayer);
                 boreholePinsVisible = true;
+            }
+            if (availabilityMarkersVisible && typeof map.removeLayer === 'function') {
+                map.removeLayer(availabilityLayer);
+                availabilityMarkersVisible = false;
             }
             if (typeof map.setView === 'function') map.setView([latitude, longitude], 16);
             const marker = boreholePins.get(String(borehole.borehole_code || '').toLocaleLowerCase());
@@ -398,12 +411,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
                 marker.on('click', () => selectBoundary(feature, type));
             });
+            updateBoreholePinVisibility();
         }
 
-        function estimatedValueFor(feature, type) {
+        function surfaceMatchesFor(feature, type) {
             const active = window.SBCIS_ACTIVE_INTERPOLATION;
             const surfaceFeatures = active?.surface?.features;
-            if (!Array.isArray(surfaceFeatures)) return null;
+            if (!Array.isArray(surfaceFeatures)) return [];
             const property = type === 'barangay' ? 'GID_3' : 'GID_2';
             const identifier = feature.properties?.[property];
             let matches = identifier ? surfaceFeatures.filter(surface => surface.properties?.[property] === identifier) : [];
@@ -413,13 +427,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return point && pointInFeature(point[0], point[1], feature);
                 });
             }
-            return average(matches.map(surface => surface.properties?.value));
+            return matches;
+        }
+
+        function estimatedValueFor(feature, type) {
+            return average(surfaceMatchesFor(feature, type).map(surface => surface.properties?.value));
+        }
+
+        function supportDistanceFor(feature, type) {
+            const distances = surfaceMatchesFor(feature, type)
+                .map(surface => Number(surface.properties?.support_distance_km))
+                .filter(Number.isFinite);
+            return distances.length ? Math.min(...distances) : null;
         }
 
         function showCapacity(feature, type) {
             selectedCapacityFeature = feature;
             selectedCapacityType = type;
             const value = estimatedValueFor(feature, type);
+            const supportDistance = supportDistanceFor(feature, type);
             const name = feature.properties?.NAME_3 || feature.properties?.NAME_2 || 'Selected area';
             const classification = value === null ? null : window.SbcisInterpolation?.bearingClass(value);
             document.getElementById('gisCapacityScope').textContent = type === 'barangay' ? 'BARANGAY ESTIMATE' : 'MUNICIPALITY / CITY ESTIMATE';
@@ -427,7 +453,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('gisCapacityValue').textContent = value === null ? '—' : formatMetric(value, 'kPa');
             document.getElementById('gisCapacityClass').textContent = classification?.label || 'No estimate';
             document.getElementById('gisCapacityRange').textContent = classification
-                ? classification.range + ' bearing-capacity range'
+                ? classification.range + ' bearing-capacity range' +
+                    (supportDistance === null ? '' : ' · nearest support ' + supportDistance.toFixed(1) + ' km')
                 : 'No supported interpolation is available for this area.';
             document.getElementById('gisCapacitySwatch').style.backgroundColor = classification?.color || '#d9e2dd';
             capacityRecords.hidden = boreholesIn(feature).length === 0;
@@ -480,6 +507,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const bearingAverage = average(layers.map(layer => layer.bearing_capacity_kpa));
             const sptAverage = average(layers.map(layer => layer.spt_n_value));
             const estimate = estimatedValueFor(feature, type);
+            const supportDistance = supportDistanceFor(feature, type);
             const active = window.SBCIS_ACTIVE_INTERPOLATION;
 
             document.getElementById('gisDataModalScope').textContent = type === 'barangay' ? 'BARANGAY DATA' : 'MUNICIPALITY / CITY DATA';
@@ -493,7 +521,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('modalSptAverage').textContent = sptAverage === null ? '—' : Number(sptAverage).toLocaleString(undefined, { maximumFractionDigits: 1 });
             document.getElementById('modalEstimatedValue').textContent = estimate === null ?
                 'No approved estimated value is available for this area.' :
-                formatMetric(estimate, active?.legend?.unit || '') + ' · ' + (active?.method || 'Interpolated surface');
+                formatMetric(estimate, active?.legend?.unit || '') + ' · ' + (active?.method || 'Interpolated surface') +
+                (supportDistance === null ? '' : ' · nearest supporting borehole ' + supportDistance.toFixed(1) + ' km away');
             const records = document.getElementById('gisDataModalRecords');
             records.replaceChildren();
             matchingBoreholes.forEach(borehole => records.append(recordCard(borehole)));
@@ -690,6 +719,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 surfaceToggle.setAttribute('aria-label', visible ? 'Hide interpolation colors' : 'Show interpolation colors');
                 surfaceToggle.querySelector('span').textContent = visible ? 'Surface' : 'Show surface';
                 document.querySelector('.gis-surface-legend').hidden = !visible;
+                document.querySelector('#gisSurfaceLegend').hidden = !visible;
             });
         } catch (error) {
             const estimateStatus = document.querySelector('#gisInterpolation [data-interpolation="status"]');

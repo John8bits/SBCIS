@@ -186,6 +186,7 @@ $escape = [View::class, 'escape'];
     <script src="../../src/js/toast.js"></script>
     <script src="../../src/js/admin_feedback.js" defer></script>
     <link rel="stylesheet" href="../../src/css/admin_dashb.css">
+    <link rel="stylesheet" href="../../src/css/alerts.css?v=<?= filemtime(__DIR__ . '/../../src/css/alerts.css') ?>">
 <link rel="stylesheet" href="../../src/css/admin_simple.css">
 <script src="../../src/js/admin_tables.js" defer></script>
 </head>

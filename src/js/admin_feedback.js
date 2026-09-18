@@ -27,7 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: options.cancelText || 'Cancel',
             confirmButtonColor: options.danger ? '#8a3f3f' : '#465e51',
             cancelButtonColor: '#6b747c',
-            reverseButtons: true
+            reverseButtons: true,
+            customClass: { popup: options.danger ? 'sbcis-alert-danger' : 'sbcis-alert' }
         });
         return result.isConfirmed;
     };
