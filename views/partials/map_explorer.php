@@ -12,7 +12,8 @@
       <span>Reset</span>
     </button>
     <button id="toggleSurface" class="gis-panel-toggle gis-surface-toggle" type="button" aria-label="Hide interpolation colors" aria-pressed="true">
-      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M3 12s3.2-5.5 9-5.5S21 12 21 12s-3.2 5.5-9 5.5S3 12 3 12Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
+      <svg class="gis-surface-eye-on" aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M3 12s3.2-5.5 9-5.5S21 12 21 12s-3.2 5.5-9 5.5S3 12 3 12Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
+      <svg class="gis-surface-eye-off" aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="m4 4 16 16M9.9 6.4A9.8 9.8 0 0 1 12 6.2c5.8 0 9 5.8 9 5.8a16.6 16.6 0 0 1-3.1 3.8M6.1 8.1A16.4 16.4 0 0 0 3 12s3.2 5.8 9 5.8a9.6 9.6 0 0 0 2.1-.2"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
       <span>Surface</span>
     </button>
     <button id="toggleInsights" class="gis-panel-toggle gis-insights-toggle" type="button" aria-label="Open map data" aria-expanded="false" aria-controls="gisInsights">
@@ -25,6 +26,16 @@
       <span>Fullscreen</span>
     </button>
   </div>
+
+  <section id="gisSurfaceLegend" class="gis-surface-legend-card" aria-label="Soil bearing capacity legend" hidden>
+    <div class="gis-surface-legend-heading">
+      <div><span>INTERPOLATED SURFACE</span><strong>Soil bearing capacity</strong></div>
+      <em>Estimate</em>
+    </div>
+    <div id="gisSurfaceGradient" class="gis-surface-gradient" aria-hidden="true"></div>
+    <div class="gis-surface-legend-scale"><span id="gisSurfaceLegendMin">&mdash;</span><span id="gisSurfaceLegendMax">&mdash;</span></div>
+    <p id="gisSurfaceLegendUnit">Published range</p>
+  </section>
 
   <aside id="gisExplorer" class="gis-sidebar" aria-label="Location search">
     <div class="gis-sidebar-heading">
@@ -84,6 +95,7 @@
           <div><span>Input points</span><strong data-interpolation="observations">&mdash;</strong></div>
           <div><span>Model</span><strong data-interpolation="model">Checking&hellip;</strong></div>
           <div><span>Output range</span><strong data-interpolation="output-range">&mdash;</strong></div>
+          <div><span>Mapped areas</span><strong data-interpolation="coverage">&mdash;</strong></div>
         </div>
         <div class="gis-model-keys"><span><i class="gis-observed-key" aria-hidden="true"></i>Observed borehole</span><span><i class="gis-estimate-key" aria-hidden="true"></i>Interpolated estimate</span></div>
       </section>

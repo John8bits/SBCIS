@@ -45,7 +45,8 @@ entries.addEventListener('click', async event => {
                 text: 'The layer will be removed from this form. Save the record to apply the change.',
                 showCancelButton: true, focusCancel: true, reverseButtons: true,
                 confirmButtonText: 'Remove layer', cancelButtonText: 'Keep layer',
-                confirmButtonColor: '#8a3f3f', cancelButtonColor: '#6b747c'
+                confirmButtonColor: '#8a3f3f', cancelButtonColor: '#6b747c',
+                customClass: { popup: 'sbcis-alert-danger' }
             })).isConfirmed
             : window.confirm('Remove this layer from your draft?');
         if (!confirmed) return;

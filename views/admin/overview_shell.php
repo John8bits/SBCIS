@@ -18,6 +18,7 @@ if (!isset($title, $activePage, $escape) || ($_SESSION['admin_logged_in'] ?? fal
     <link rel="stylesheet" href="../../src/css/admin_dashb.css">
     <link rel="stylesheet" href="../../src/css/overview.css">
     <link rel="stylesheet" href="../../src/css/admin_simple.css">
+    <link rel="stylesheet" href="../../src/css/alerts.css?v=<?= filemtime(__DIR__ . '/../../src/css/alerts.css') ?>">
     <?= $extraHead ?? '' ?>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="../../src/js/toast.js"></script>

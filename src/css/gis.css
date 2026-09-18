@@ -575,7 +575,7 @@
 .gis-model-summary p { color: #52645a; font-size: 9px; line-height: 1.5; }
 .gis-model-live { width: 7px; height: 7px; border-radius: 50%; background: #16805a; box-shadow: 0 0 0 3px rgba(22,128,90,.12); }
 .gis-model-description { padding-right: 5px; }
-.gis-model-metrics { display: grid; grid-template-columns: 1fr 1fr 1.35fr; gap: 1px; overflow: hidden; border: 1px solid #dce8e1; border-radius: 7px; background: #dce8e1; }
+.gis-model-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; overflow: hidden; border: 1px solid #dce8e1; border-radius: 7px; background: #dce8e1; }
 .gis-model-metrics > div { min-width: 0; padding: 7px 6px; background: rgba(255,255,255,.78); }
 .gis-model-metrics span { display: block; overflow: hidden; color: #718177; font-size: 7px; font-weight: 800; letter-spacing: .07em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .gis-model-metrics strong { display: block; margin-top: 3px; overflow: hidden; color: #204333; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
@@ -1853,3 +1853,39 @@
     min-height: 440px;
   }
 }
+
+/* Cartographic presentation: keep the map and published surface visually primary. */
+.gis-map-shell { background: #dfe8e4; }
+.gis-sidebar, .gis-insights, .gis-capacity-card, .gis-data-modal-card { border: 1px solid rgba(15, 52, 39, .14); background: rgba(255, 255, 255, .98); box-shadow: 0 10px 28px rgba(14, 43, 33, .14); backdrop-filter: none; }
+.gis-panel-toggle { border: 1px solid rgba(21, 59, 45, .18); border-radius: 9px; background: #fff; box-shadow: 0 3px 12px rgba(14, 43, 33, .14); color: #153d2e; }
+.gis-panel-toggle:hover { background: #f2f7f4; box-shadow: 0 5px 16px rgba(14, 43, 33, .18); }
+
+/* Surface visibility is a frequently used map action; keep it compact. */
+.gis-surface-toggle { width: 42px; justify-content: center; padding-inline: 0; }
+.gis-surface-toggle span { display: none; }
+.gis-surface-eye-off { display: none; }
+.gis-surface-toggle[aria-pressed="false"] .gis-surface-eye-on { display: none; }
+.gis-surface-toggle[aria-pressed="false"] .gis-surface-eye-off { display: block; }
+
+/* The right edge is deliberately reserved for Leaflet's bottom-right zoom control. */
+.gis-surface-legend-card { position: absolute; right: 70px; bottom: 31px; z-index: 460; width: 214px; padding: 12px; border: 1px solid rgba(15, 52, 39, .16); border-radius: 11px; background: rgba(255, 255, 255, .96); box-shadow: 0 8px 24px rgba(14, 43, 33, .16); color: #0f2f24; }
+.gis-surface-legend-card[hidden] { display: none; }
+.gis-surface-legend-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.gis-surface-legend-heading div { display: grid; gap: 2px; }
+.gis-surface-legend-heading span { color: #63776d; font-size: 8px; font-weight: 800; letter-spacing: .09em; }
+.gis-surface-legend-heading strong { font-size: 12px; line-height: 1.2; }
+.gis-surface-legend-heading em { padding: 3px 5px; border-radius: 4px; background: #edf5f0; color: #286247; font-size: 7px; font-style: normal; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.gis-surface-gradient { height: 10px; margin-top: 11px; border: 1px solid rgba(15, 52, 39, .13); border-radius: 3px; }
+.gis-surface-legend-scale { display: flex; margin-top: 5px; justify-content: space-between; color: #375448; font-size: 9px; font-weight: 700; }
+.gis-surface-legend-card > p { margin-top: 4px; color: #6b7f75; font-size: 8px; }
+.gis-insights .gis-surface-legend { display: none; }
+
+.gis-data-availability-marker { min-width: 27px; height: 22px; border-color: rgba(15, 118, 110, .48); box-shadow: 0 2px 7px rgba(10, 48, 35, .16); }
+.gis-data-availability-marker i { width: 11px; height: 11px; background: #167a61; font-size: 7px; }
+.gis-data-availability-marker strong { font-size: 9px; }
+.gis-borehole-marker { background: radial-gradient(circle at 32% 23%, #fff 0 7%, #df8a76 8% 21%, #b84d45 43%, #87352f 100%); box-shadow: 0 2px 0 rgba(91, 33, 28, .5), 0 5px 10px rgba(76, 18, 15, .28); }
+.gis-map-shell .leaflet-bar { border-radius: 9px; box-shadow: 0 3px 12px rgba(14, 43, 33, .14); }
+.gis-map-shell .leaflet-bar a { color: #153d2e; }
+
+@media (max-width: 800px) { .gis-surface-legend-card { right: 64px; bottom: 29px; width: 190px; padding: 10px; } }
+@media (max-width: 480px) { .gis-surface-legend-card { bottom: 27px; left: 12px; right: auto; width: 174px; } .gis-map-shell:has(.gis-capacity-card:not([hidden])) .gis-surface-legend-card { display: none; } }

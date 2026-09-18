@@ -71,6 +71,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="stylesheet" href="src/css/style.css?v=<?= filemtime(__DIR__ . '/src/css/style.css') ?>">
+  <link rel="stylesheet" href="src/css/alerts.css?v=<?= filemtime(__DIR__ . '/src/css/alerts.css') ?>">
   <link rel="stylesheet" href="src/css/map-theme.css?v=<?= filemtime(__DIR__ . '/src/css/map-theme.css') ?>">
   <script>window.SBCIS_HERO_BOREHOLES = <?= json_encode($heroBoreholes, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
   <script defer src="src/js/interpolation.js?v=<?= filemtime(__DIR__ . '/src/js/interpolation.js') ?>"></script>
@@ -181,10 +182,16 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
               <i class="fa-regular fa-file-lines"></i>
 
-              View Soil Records
+              Explore Soil Data
 
             </a>
 
+          </div>
+
+          <div class="hero-evidence" aria-label="System capabilities">
+            <span><i class="fa-solid fa-vector-square" aria-hidden="true"></i> PSGC boundaries</span>
+            <span><i class="fa-solid fa-location-dot" aria-hidden="true"></i> Borehole records</span>
+            <span><i class="fa-solid fa-chart-area" aria-hidden="true"></i> IDW estimates</span>
           </div>
 
         </div>
@@ -206,6 +213,8 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
                 </strong>
 
               </div>
+
+              <span class="mini-map-state"><i aria-hidden="true"></i> GIS preview</span>
 
             </div>
 
@@ -238,64 +247,34 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 <section class="section records-section" id="soil-data" aria-labelledby="soil-data-title">
       <div class="container">
         <div class="section-heading centered reveal">
-          <p class="section-kicker">MAP COVERAGE &amp; SOIL RECORDS</p>
-          <h2 id="soil-data-title">Soil Data</h2>
-          <p>Southern Leyte location directory and available soil records. A listed location does not indicate a soil test site.</p>
+          <p class="section-kicker">SOIL INFORMATION ACCESS</p>
+          <h2 id="soil-data-title">Explore soil data by location</h2>
+          <p>Use the GIS map to find a municipality or barangay, then view the available borehole records and published bearing-capacity estimate for that area.</p>
         </div>
-        <div class="stats-grid soil-coverage">
-          <?php foreach ([
-              ['municipalities', 'Municipalities / Cities', 'Locations in the PSGC directory', 'fa-map-location-dot'],
-              ['barangays', 'Barangays', 'Locations in the PSGC directory', 'fa-location-crosshairs'],
-              ['boreholes', 'Borehole Locations', 'Locations saved in soil records', 'fa-location-dot'],
-              ['soilLayers', 'Soil Layer Records', 'Recorded layers, not individual tests', 'fa-layer-group'],
-          ] as [$key, $label, $description, $icon]): ?>
-            <article class="stat-card reveal">
-              <div class="stat-icon green"><i class="fa-solid <?= $escape($icon) ?>" aria-hidden="true"></i></div>
-              <div>
-                <strong<?= $home[$key] === null ? ' class="stat-unavailable"' : '' ?>><?= $home[$key] === null ? 'Unavailable' : number_format($home[$key]) ?></strong>
-                <h3><?= $escape($label) ?></h3>
-                <p><?= $escape($description) ?></p>
-              </div>
-            </article>
-          <?php endforeach; ?>
+        <div class="soil-access-grid">
+          <article class="soil-access-card reveal">
+            <span class="soil-access-step">01</span>
+            <span class="soil-access-icon"><i class="fa-solid fa-magnifying-glass-location" aria-hidden="true"></i></span>
+            <h3>Find a location</h3>
+            <p>Search a municipality, barangay, or borehole ID from the location tool.</p>
+          </article>
+          <article class="soil-access-card reveal">
+            <span class="soil-access-step">02</span>
+            <span class="soil-access-icon"><i class="fa-solid fa-circle-check" aria-hidden="true"></i></span>
+            <h3>Check available records</h3>
+            <p>Select an area to see its saved boreholes, soil layers, and measured values.</p>
+          </article>
+          <article class="soil-access-card reveal">
+            <span class="soil-access-step">03</span>
+            <span class="soil-access-icon"><i class="fa-solid fa-chart-area" aria-hidden="true"></i></span>
+            <h3>Read the map estimate</h3>
+            <p>Use the interpolation surface for preliminary context, alongside site-specific investigation.</p>
+          </article>
         </div>
-        <?php if (!$home['databaseAvailable']): ?>
-          <div class="soil-empty-state reveal">
-            <span class="soil-empty-icon" aria-hidden="true"><i class="fa-regular fa-folder-open"></i></span>
-            <h3>Soil data is temporarily unavailable</h3>
-            <p>Please try again later. You can still explore the location boundaries.</p>
-            <a href="views/gis.php" class="text-link">Explore the map <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
-          </div>
-        <?php elseif (!$home['records']): ?>
-          <div class="soil-empty-state reveal">
-            <span class="soil-empty-icon" aria-hidden="true"><i class="fa-regular fa-folder-open"></i></span>
-            <h3>No soil data yet</h3>
-            <p>Soil investigation records will appear here once they are available.</p>
-            <a href="views/gis.php" class="text-link">Explore location boundaries <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
-          </div>
-        <?php else: ?>
-          <div class="records-table-card reveal">
-            <div class="table-header"><strong>Latest soil layer records</strong><span>Showing <?= count($home['records']) ?> of <?= number_format($home['soilLayers']) ?></span></div>
-            <div class="table-wrapper">
-              <table>
-                <caption class="soil-table-caption">Latest recorded layers by borehole and location</caption>
-                <thead><tr><th scope="col">Borehole</th><th scope="col">Municipality / City</th><th scope="col">Barangay</th><th scope="col">Layer</th><th scope="col">Soil Type</th><th scope="col">Bearing Capacity</th></tr></thead>
-                <tbody>
-                  <?php foreach ($home['records'] as $record): ?>
-                    <tr>
-                      <td><?= $escape($record['borehole_code']) ?></td>
-                      <td><?= $escape($record['municipality_name'] ?? 'Not recorded') ?></td>
-                      <td><?= $escape($record['barangay_name'] ?? 'Not recorded') ?></td>
-                      <td><?= $escape($record['layer_number']) ?></td>
-                      <td><?= $escape($record['soil_type']) ?></td>
-                      <td><?= $record['bearing_capacity_kpa'] === null ? 'Not recorded' : $escape($record['bearing_capacity_kpa']) . ' kPa' ?></td>
-                    </tr>
-                  <?php endforeach; ?>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        <?php endif; ?>
+        <div class="soil-access-cta reveal">
+          <div><strong><?= $home['databaseAvailable'] ? 'Area-level records and estimates are available on the map.' : 'Map boundaries remain available while soil records are unavailable.' ?></strong><p>Values shown in the map are reference information and do not replace a site investigation.</p></div>
+          <a href="views/gis.php" class="btn btn-primary"><i class="fa-regular fa-map" aria-hidden="true"></i> Open GIS Map</a>
+        </div>
       </div>
     </section>
 
@@ -309,7 +288,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
           <div class="workflow-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></div>
           <article class="workflow-card workflow-green reveal"><div class="workflow-number">03</div><div class="workflow-icon"><i class="fa-solid fa-magnifying-glass-location" aria-hidden="true"></i></div><span class="workflow-label">LOOK CLOSER</span><h3>Explore a Barangay</h3><p>Click a barangay to zoom in, or search for a place on the full map.</p></article>
           <div class="workflow-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></div>
-          <article class="workflow-card workflow-green reveal"><div class="workflow-number">04</div><div class="workflow-icon"><i class="fa-solid fa-file-lines" aria-hidden="true"></i></div><span class="workflow-label">CHECK AVAILABILITY</span><h3>View Soil Records</h3><p>Check the Soil Data section for saved records. Areas on the boundary map may not have soil records.</p></article>
+          <article class="workflow-card workflow-green reveal"><div class="workflow-number">04</div><div class="workflow-icon"><i class="fa-solid fa-file-lines" aria-hidden="true"></i></div><span class="workflow-label">CHECK AVAILABILITY</span><h3>Open Area Details</h3><p>Use the map’s area details to review saved records. Some mapped areas may have no borehole record.</p></article>
         </div>
       </div>
     </section>

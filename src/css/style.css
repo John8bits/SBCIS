@@ -5312,6 +5312,31 @@ tbody tr:hover {
   }
 }
 
+/* Landing-page GIS hero: a compact engineering preview rather than a decorative card. */
+.hero { min-height: 700px; background-position: 62% center; }
+.hero-overlay { background: linear-gradient(100deg, rgba(5, 36, 27, .97) 0%, rgba(8, 55, 41, .89) 49%, rgba(11, 57, 53, .57) 100%); }
+.hero-content { min-height: 620px; gap: clamp(34px, 5vw, 72px); }
+.hero-copy { max-width: 630px; }
+.eyebrow { color: #c4decf; font-size: 10px; letter-spacing: .14em; }
+.hero h1 { max-width: 650px; font-size: clamp(42px, 5vw, 64px); letter-spacing: -.045em; }
+.hero h1 span { color: #b8dcc6; }
+.hero-text { max-width: 560px; font-size: 15px; line-height: 1.7; }
+.hero-map-card { max-width: 500px; padding: 12px; border: 1px solid rgba(204, 230, 214, .23); border-radius: 14px; background: rgba(9, 40, 31, .76); box-shadow: 0 20px 50px rgba(2, 20, 14, .32); backdrop-filter: none; }
+.mini-map-header { padding: 7px 4px 11px; }
+.mini-label { color: #aac9b7; font-size: 8px; letter-spacing: .12em; }
+.mini-map-header strong { color: #fff; font-size: 13px; }
+.mini-map-state { display: inline-flex; align-items: center; gap: 5px; padding: 5px 7px; border: 1px solid rgba(197, 226, 207, .18); border-radius: 999px; color: #c9e4d2; font-size: 8px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.mini-map-state i { width: 6px; height: 6px; border-radius: 50%; background: #74c69d; box-shadow: 0 0 0 3px rgba(116, 198, 157, .14); }
+.hero-map-stage { border: 1px solid rgba(207, 231, 216, .18); border-radius: 9px; }
+#heroMap { height: 320px; border-radius: 8px; }
+.hero-interpolation-legend { right: 9px; bottom: 9px; width: 132px; border-radius: 7px; background: rgba(255,255,255,.97); box-shadow: 0 5px 14px rgba(4, 30, 21, .17); backdrop-filter: none; }
+.hero-map-actions { padding: 11px 2px 2px; }
+.hero-map-actions button { border-color: rgba(197, 226, 207, .3); border-radius: 7px; color: #eff9f2; }
+.hero-map-actions a { display: inline-flex; align-items: center; gap: 7px; color: #c9e4d2; }
+.hero-map-note { padding: 7px 2px 0; color: rgba(227, 244, 233, .72); }
+@media (max-width: 900px) { .hero { min-height: 820px; } .hero-content { min-height: 750px; } }
+@media (max-width: 650px) { .hero { min-height: 765px; } .hero-content { min-height: 700px; } #heroMap { height: 270px; } .hero-map-card { padding: 10px; } }
+
 @media (max-width: 768px) {
 
   .records-toolbar {
@@ -6126,6 +6151,19 @@ main > .section .section-heading > p:last-child {
 .soil-coverage .stat-card p { font-size: 12px; line-height: 1.5; }
 .soil-empty-state { border-color: #e0e5dd; border-radius: 8px; padding-block: 40px; }
 
+/* Public soil-data entry point: explain the workflow without exposing a raw record table. */
+.soil-access-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 940px; margin: 0 auto; }
+.soil-access-card { min-height: 188px; padding: 24px; border: 1px solid #e0e5dd; border-radius: 10px; background: #fff; }
+.soil-access-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 8px; background: #eaf2ec; color: #196047; font-size: 16px; }
+.soil-access-card h3 { margin-top: 18px; color: #203a2d; font-size: 15px; }
+.soil-access-card p { margin-top: 7px; color: #616b63; font-size: 13px; line-height: 1.65; }
+.soil-access-cta { display: flex; max-width: 940px; margin: 18px auto 0; padding: 18px 20px; align-items: center; justify-content: space-between; gap: 20px; border: 1px solid #d9e6dc; border-radius: 10px; background: #edf5ef; }
+.soil-access-cta strong { color: #214432; font-size: 14px; }
+.soil-access-cta p { margin-top: 4px; color: #627468; font-size: 12px; line-height: 1.55; }
+.soil-access-cta .btn { flex: 0 0 auto; white-space: nowrap; }
+
+@media (max-width: 760px) { .soil-access-grid { grid-template-columns: 1fr; } .soil-access-card { min-height: 0; } .soil-access-cta { align-items: flex-start; flex-direction: column; } }
+
 main .workflow-card {
   background: #fff;
   border: 1px solid #e0e5dd;
@@ -6152,3 +6190,44 @@ main .user-card p { font-size: 13px; line-height: 1.7; }
   main > .section .section-heading > p:last-child { font-size: 14px; }
   main > .about-section::before, main > .contact-section::before { opacity: .5; }
 }
+
+/* Landing-page visual detail: surveying cues and restrained GIS information layers. */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-image: linear-gradient(rgba(196, 226, 207, .055) 1px, transparent 1px), linear-gradient(90deg, rgba(196, 226, 207, .055) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(90deg, rgba(0,0,0,.68), transparent 72%);
+  pointer-events: none;
+}
+.hero-pattern { right: -90px; width: 600px; height: 600px; border-color: rgba(182, 218, 195, .14); opacity: .75; }
+.hero-content { z-index: 3; padding-block: 54px; }
+.hero-copy { position: relative; }
+.hero-copy::before { content: ""; position: absolute; top: 3px; left: -18px; width: 3px; height: 54px; border-radius: 3px; background: #8fc5a1; box-shadow: 0 0 0 5px rgba(143, 197, 161, .1); }
+.hero-evidence { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 24px; color: rgba(229, 244, 233, .82); font-size: 10px; font-weight: 650; }
+.hero-evidence span { display: inline-flex; align-items: center; gap: 6px; }
+.hero-evidence i { color: #92cba5; font-size: 10px; }
+.hero-map-card { position: relative; }
+.hero-map-card::after { content: ""; position: absolute; right: -7px; bottom: 26px; width: 46px; height: 46px; border-right: 1px solid rgba(197, 226, 207, .5); border-bottom: 1px solid rgba(197, 226, 207, .5); border-radius: 0 0 11px 0; pointer-events: none; }
+
+.records-section { position: relative; overflow: hidden; }
+.records-section::before { content: ""; position: absolute; top: 36px; left: max(24px, calc((100% - 1180px) / 2)); width: 76px; height: 1px; background: #8aac96; box-shadow: 84px 0 0 #d8e4da; }
+.soil-access-card { position: relative; overflow: hidden; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.soil-access-card::after { content: ""; position: absolute; right: -24px; bottom: -28px; width: 88px; height: 88px; border: 1px solid #dce9df; border-radius: 50%; }
+.soil-access-card:hover { border-color: #b9d0c0; box-shadow: 0 10px 24px rgba(24, 75, 56, .08); transform: translateY(-3px); }
+.soil-access-step { position: absolute; top: 18px; right: 18px; color: #8ca394; font-size: 10px; font-weight: 800; letter-spacing: .08em; }
+.soil-access-icon { position: relative; z-index: 1; }
+.soil-access-card h3, .soil-access-card p { position: relative; z-index: 1; }
+.soil-access-cta { position: relative; overflow: hidden; }
+.soil-access-cta::after { content: ""; position: absolute; right: 130px; top: -48px; width: 128px; height: 128px; border: 1px solid rgba(74, 126, 91, .15); border-radius: 50%; pointer-events: none; }
+.soil-access-cta .btn { position: relative; z-index: 1; }
+
+@media (max-width: 760px) {
+  .hero-copy::before { left: -10px; }
+  .hero-evidence { gap: 7px 12px; }
+  .records-section::before { left: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) { .soil-access-card { transition: none; } }
