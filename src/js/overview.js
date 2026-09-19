@@ -35,3 +35,17 @@ if (liveDate && liveTime) {
     updateClock();
     window.setInterval(updateClock, 1000);
 }
+
+document.querySelectorAll('[data-export-download]').forEach(link => {
+    link.addEventListener('click', () => {
+        const label = link.querySelector('span');
+        if (!label) return;
+        const original = link.dataset.downloadLabel || label.textContent;
+        link.classList.add('is-preparing');
+        label.textContent = 'Preparing…';
+        window.setTimeout(() => {
+            label.textContent = original;
+            link.classList.remove('is-preparing');
+        }, 2500);
+    });
+});

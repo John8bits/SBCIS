@@ -72,6 +72,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (await confirmAction({
             title: 'Sign out?', text: 'You will be returned to the public site.',
             confirmText: 'Sign out', cancelText: 'Stay'
-        })) window.location.href = logout.href;
+        })) {
+            window.SBCISLoading?.show({
+                title: 'Signing you out…',
+                message: 'Closing your administrator session securely.'
+            });
+            window.setTimeout(() => window.location.assign(logout.href), 90);
+        }
     }, true);
 });

@@ -200,6 +200,7 @@ function old_raw(string $key, string $default = ''): string
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="../../src/js/toast.js"></script>
+    <script src="../../src/js/loading-state.js?v=<?= filemtime(__DIR__ . '/../../src/js/loading-state.js') ?>"></script>
     <script src="../../src/js/admin_feedback.js" defer></script>
     <link rel="stylesheet" href="../../src/css/admin_dashb.css">
     <link rel="stylesheet" href="../../src/css/alerts.css?v=<?= filemtime(__DIR__ . '/../../src/css/alerts.css') ?>">
@@ -361,7 +362,7 @@ function old_raw(string $key, string $default = ''): string
             }
         }
     </style>
-<link rel="stylesheet" href="../../src/css/admin_simple.css">
+<link rel="stylesheet" href="../../src/css/admin_simple.css?v=<?= filemtime(__DIR__ . '/../../src/css/admin_simple.css') ?>">
 <script src="../../src/js/admin_tables.js" defer></script>
 </head>
 

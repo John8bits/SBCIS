@@ -354,62 +354,6 @@
 .dashboard-page .ov-table tbody tr { transition: background-color .16s ease; }
 .dashboard-page .ov-table tbody tr:hover { background: #f6faf7; }
 
-.dashboard-page .sidebar.admin-sidebar {
-    border-right: 0;
-    box-shadow: 3px 0 16px rgba(20, 50, 37, .045);
-}
-.dashboard-page .sidebar.admin-sidebar .sidebar-nav {
-    padding: 22px 14px;
-    scrollbar-width: thin;
-    scrollbar-color: #d5ded9 transparent;
-}
-.dashboard-page .sidebar.admin-sidebar .sidebar-nav::-webkit-scrollbar { width: 5px; }
-.dashboard-page .sidebar.admin-sidebar .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
-.dashboard-page .sidebar.admin-sidebar .sidebar-nav::-webkit-scrollbar-thumb { border-radius: 10px; background: #d5ded9; }
-.dashboard-page .sidebar.admin-sidebar .nav-item {
-    height: 46px;
-    margin-bottom: 6px;
-    padding: 12px 15px;
-    gap: 13px;
-    border-radius: 9px;
-    transition: background-color .18s ease, color .18s ease, transform .18s ease;
-}
-.dashboard-page .sidebar.admin-sidebar .nav-section-title {
-    margin: 12px 0 10px;
-    padding-inline: 14px;
-}
-.dashboard-page .sidebar.admin-sidebar .nav-item i {
-    width: 20px;
-    font-size: 14px;
-}
-.dashboard-page .sidebar.admin-sidebar .nav-item:hover { background: #f1f5f2; color: #244c3a; transform: translateX(2px); }
-.dashboard-page .sidebar.admin-sidebar .nav-item.active {
-    background: #eaf3ed;
-    color: #175f44;
-    font-weight: 600;
-}
-.dashboard-page .sidebar.admin-sidebar .nav-item.active::before {
-    display: none;
-}
-.dashboard-page .sidebar.admin-sidebar .sidebar-footer {
-    padding: 14px 16px 18px;
-}
-.dashboard-page .sidebar.admin-sidebar .logout-link {
-    min-height: 44px;
-    padding: 12px 14px;
-    border-radius: 9px;
-    transition: background-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
-}
-.dashboard-page .sidebar.admin-sidebar .logout-link:hover {
-    background: #fff1f0;
-    box-shadow: 0 3px 10px rgba(126, 52, 48, .06);
-    color: #9a403c;
-    transform: translateY(-1px);
-}
-.dashboard-page .sidebar.admin-sidebar .logout-link:hover i {
-    color: #a94442;
-}
-
 @media (max-width: 1100px) {
     .dashboard-page .topbar { padding-inline: 22px; }
     .dashboard-clock-item:first-child { display: none; }
