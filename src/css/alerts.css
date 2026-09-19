@@ -55,3 +55,21 @@
   .swal2-actions { flex-direction: column-reverse; }
   .swal2-styled { width: 100%; }
 }
+
+@keyframes sbcis-modal-origin-in {
+  from { opacity: 0; transform: scale(.88); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.sbcis-modal-origin {
+  transform-origin: var(--modal-origin-x, 50%) var(--modal-origin-y, 50%) !important;
+  animation: sbcis-modal-origin-in .26s cubic-bezier(.2, .8, .2, 1) both !important;
+}
+
+.sbcis-modal-origin-complete {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sbcis-modal-origin { animation: none !important; }
+}

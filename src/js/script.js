@@ -628,7 +628,7 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     //global s modal
-    const openSearch = () => {
+    const openSearch = source => {
 
         if (!searchModal)
             return;
@@ -643,6 +643,8 @@ document.addEventListener("DOMContentLoaded", () => {
         document.body.classList.add(
             "modal-open"
         );
+
+        window.SBCISModalOrigin?.apply(searchModal.querySelector(".search-dialog"), source);
 
         setTimeout(() => {
 
@@ -680,7 +682,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     searchTrigger?.addEventListener(
         "click",
-        openSearch
+        event => openSearch(event.currentTarget)
     );
 
     searchClose?.addEventListener(

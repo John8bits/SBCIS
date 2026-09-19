@@ -187,6 +187,7 @@ $escape = [View::class, 'escape'];
     <script src="../../src/js/admin_feedback.js" defer></script>
     <link rel="stylesheet" href="../../src/css/admin_dashb.css">
     <link rel="stylesheet" href="../../src/css/alerts.css?v=<?= filemtime(__DIR__ . '/../../src/css/alerts.css') ?>">
+    <script src="../../src/js/modal-origin.js?v=<?= filemtime(__DIR__ . '/../../src/js/modal-origin.js') ?>"></script>
 <link rel="stylesheet" href="../../src/css/admin_simple.css">
 <script src="../../src/js/admin_tables.js" defer></script>
 </head>

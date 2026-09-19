@@ -72,6 +72,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="stylesheet" href="src/css/style.css?v=<?= filemtime(__DIR__ . '/src/css/style.css') ?>">
   <link rel="stylesheet" href="src/css/alerts.css?v=<?= filemtime(__DIR__ . '/src/css/alerts.css') ?>">
+  <script src="src/js/modal-origin.js?v=<?= filemtime(__DIR__ . '/src/js/modal-origin.js') ?>"></script>
   <link rel="stylesheet" href="src/css/map-theme.css?v=<?= filemtime(__DIR__ . '/src/css/map-theme.css') ?>">
   <script>window.SBCIS_HERO_BOREHOLES = <?= json_encode($heroBoreholes, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
   <script defer src="src/js/interpolation.js?v=<?= filemtime(__DIR__ . '/src/js/interpolation.js') ?>"></script>
@@ -912,7 +913,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
     const passwordToggle = document.getElementById("passwordToggle");
 
 
-    function openLoginModal() {
+    function openLoginModal(source) {
 
       if (!loginModal) return;
 
@@ -925,6 +926,11 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
       document.body.classList.add(
         "login-modal-open"
+      );
+
+      window.SBCISModalOrigin?.apply(
+        loginModal.querySelector(".login-modal-card"),
+        source
       );
 
       setTimeout(function () {
@@ -969,7 +975,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
           event.preventDefault();
 
-          openLoginModal();
+          openLoginModal(event.currentTarget);
 
         }
       );
@@ -1087,7 +1093,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
           event.preventDefault();
 
-          openLoginModal();
+          openLoginModal(event.currentTarget);
 
         }
       );
