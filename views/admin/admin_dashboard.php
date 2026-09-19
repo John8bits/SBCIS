@@ -118,9 +118,11 @@ $hasChartValues = static fn(array $values) => $available && array_sum(array_map(
 $title = 'Dashboard';
 $subtitle = 'Soil investigation overview and recent activity';
 $activePage = 'admin_dashboard.php';
+$bodyClass = 'dashboard-page';
 $topbarActions = [['href' => 'soil_records.php?new=1', 'label' => 'Add record', 'icon' => 'fa-plus', 'primary' => true]];
 $chartScriptVersion = filemtime(__DIR__ . '/../../src/js/dashboard_charts.js');
-$extraHead = '<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script><script defer src="../../src/js/dashboard_charts.js?v=' . $chartScriptVersion . '"></script>';
+$dashboardStyleVersion = filemtime(__DIR__ . '/../../src/css/dashboard.css');
+$extraHead = '<link rel="stylesheet" href="../../src/css/dashboard.css?v=' . $dashboardStyleVersion . '"><script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script><script defer src="../../src/js/dashboard_charts.js?v=' . $chartScriptVersion . '"></script>';
 require __DIR__ . '/overview_shell.php';
 ?>
 <script type="application/json"
@@ -144,13 +146,17 @@ require __DIR__ . '/overview_shell.php';
         </a>
     <?php endforeach; ?>
 </section>
+<div class="dashboard-section-heading">
+    <div><span class="dashboard-section-icon"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></span><div><h2>Data insights</h2><p>Activity, coverage, soil composition, and recorded capacity at a glance</p></div></div>
+    <span class="dashboard-section-meta"><i class="fa-solid fa-circle" aria-hidden="true"></i> Live database view</span>
+</div>
 <div class="ov-grid">
     <section class="ov-card chart-card">
         <div class="ov-card-head">
-            <div>
+            <div class="chart-heading"><span class="chart-title-icon"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></span><div>
                 <h3>Monthly record activity</h3>
                 <p>New boreholes and soil layers saved over time</p>
-            </div>
+            </div></div>
             <div class="chart-range" aria-label="Activity chart period"><button type="button" data-chart-months="6"
                     aria-pressed="false">6M</button><button type="button" data-chart-months="12" class="active"
                     aria-pressed="true">12M</button></div>
@@ -164,12 +170,12 @@ require __DIR__ . '/overview_shell.php';
     </section>
     <section class="ov-card chart-card">
         <div class="ov-card-head">
-            <div>
+            <div class="chart-heading"><span class="chart-title-icon"><i class="fa-solid fa-chart-bar" aria-hidden="true"></i></span><div>
                 <h3>Boreholes by municipality</h3>
                 <p>Municipalities with the most investigation locations</p>
-            </div>
+            </div></div>
             <div class="chart-summary">
-                <strong><?= number_format(array_sum($chartData['coverage']['values'])) ?></strong><span>shown</span>
+                <strong><?= number_format(array_sum($chartData['coverage']['values'])) ?></strong><span>boreholes shown</span>
             </div>
         </div><?php if ($hasChartValues($chartData['coverage']['values'])): ?>
             <div class="chart-canvas-wrap chart-tall"><canvas id="coverageChart" role="img"
@@ -183,10 +189,10 @@ require __DIR__ . '/overview_shell.php';
     </section>
     <section class="ov-card chart-card">
         <div class="ov-card-head">
-            <div>
+            <div class="chart-heading"><span class="chart-title-icon"><i class="fa-solid fa-chart-pie" aria-hidden="true"></i></span><div>
                 <h3>Soil composition</h3>
                 <p>Share of layers by recorded soil type</p>
-            </div>
+            </div></div>
             <div class="chart-summary">
                 <strong><?= number_format(array_sum($chartData['soils']['values'])) ?></strong><span>layers</span></div>
         </div><?php if ($hasChartValues($chartData['soils']['values'])): ?>
@@ -200,10 +206,10 @@ require __DIR__ . '/overview_shell.php';
     </section>
     <section class="ov-card chart-card">
         <div class="ov-card-head">
-            <div>
+            <div class="chart-heading"><span class="chart-title-icon"><i class="fa-solid fa-chart-column" aria-hidden="true"></i></span><div>
                 <h3>Bearing capacity distribution</h3>
                 <p>Layers grouped by recorded bearing capacity</p>
-            </div>
+            </div></div>
             <div class="chart-summary">
                 <strong><?= number_format(array_sum($chartData['capacities']['values'])) ?></strong><span>layers</span>
             </div>

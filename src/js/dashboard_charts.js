@@ -22,12 +22,12 @@
     const bodyStyle = getComputedStyle(document.body);
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const colors = {
-        green: '#466557',
-        greenFill: 'rgba(70, 101, 87, .14)',
-        slate: '#687f89',
-        text: '#35434a',
-        muted: '#69777e',
-        grid: 'rgba(78, 94, 86, .12)'
+        green: '#176b4d',
+        greenFill: 'rgba(23, 107, 77, .10)',
+        slate: '#6f8479',
+        text: '#263b32',
+        muted: '#718078',
+        grid: 'rgba(47, 78, 64, .09)'
     };
 
     Chart.defaults.font.family = bodyStyle.fontFamily || 'Inter, Arial, sans-serif';
@@ -67,8 +67,8 @@
     };
     const linearScale = () => ({
         beginAtZero: true,
-        ticks: { precision: 0, color: colors.muted, padding: 8 },
-        grid: { color: colors.grid, drawTicks: false },
+        ticks: { precision: 0, color: colors.muted, padding: 10, font: { size: 11 } },
+        grid: { color: colors.grid, drawTicks: false, lineWidth: 1 },
         border: { display: false }
     });
     const common = {
@@ -85,7 +85,7 @@
             }
         },
         onHover: pointerOnItem,
-        layout: { padding: 2 },
+        layout: { padding: { top: 4, right: 8, bottom: 2, left: 4 } },
         plugins: {
             legend: {
                 labels: {
@@ -98,14 +98,20 @@
                 }
             },
             tooltip: {
-                backgroundColor: '#26352f',
-                titleColor: '#ffffff',
-                bodyColor: '#ffffff',
+                backgroundColor: '#ffffff',
+                titleColor: '#173d2f',
+                bodyColor: '#52635a',
+                borderColor: 'rgba(31, 67, 51, .08)',
+                borderWidth: 1,
                 displayColors: true,
-                padding: 12,
-                cornerRadius: 7,
-                caretPadding: 8,
-                usePointStyle: true
+                padding: 13,
+                cornerRadius: 10,
+                caretPadding: 9,
+                caretSize: 6,
+                usePointStyle: true,
+                boxPadding: 5,
+                titleFont: { size: 12, weight: 700 },
+                bodyFont: { size: 12, weight: 500 }
             }
         }
     };
@@ -124,8 +130,8 @@
                         borderColor: colors.green,
                         backgroundColor: colors.greenFill,
                         borderWidth: 2.5,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
+                        pointRadius: 3.5,
+                        pointHoverRadius: 6.5,
                         pointHitRadius: 14,
                         pointBackgroundColor: '#ffffff',
                         pointBorderWidth: 2,
@@ -138,8 +144,8 @@
                         borderColor: colors.slate,
                         backgroundColor: '#ffffff',
                         borderWidth: 2.5,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
+                        pointRadius: 3.5,
+                        pointHoverRadius: 6.5,
                         pointHitRadius: 14,
                         pointBackgroundColor: '#ffffff',
                         pointBorderWidth: 2,
@@ -162,7 +168,7 @@
                     }
                 },
                 scales: {
-                    x: { grid: { display: false }, border: { display: false }, ticks: { color: colors.muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 6, padding: 8 } },
+                    x: { grid: { display: false }, border: { display: false }, ticks: { color: colors.muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 6, padding: 10, font: { size: 11 } } },
                     y: linearScale()
                 }
             }
@@ -192,7 +198,7 @@
             type: 'bar',
             data: {
                 labels: data.coverage.labels,
-                datasets: [{ label: 'Boreholes', data: data.coverage.values, backgroundColor: colors.green, hoverBackgroundColor: '#355246', borderRadius: 5, borderSkipped: false, maxBarThickness: 22 }]
+                datasets: [{ label: 'Boreholes', data: data.coverage.values, backgroundColor: colors.green, hoverBackgroundColor: '#0f573e', borderRadius: 7, borderSkipped: false, barPercentage: .72, categoryPercentage: .78, maxBarThickness: 24 }]
             },
             options: {
                 ...common,
@@ -207,7 +213,7 @@
                 },
                 scales: {
                     x: linearScale(),
-                    y: { grid: { display: false }, border: { display: false }, ticks: { color: colors.text, padding: 8, font: { weight: 600 } } }
+                    y: { grid: { display: false }, border: { display: false }, ticks: { color: colors.text, padding: 12, autoSkip: false, font: { size: 11, weight: 600 } } }
                 }
             }
         });
