@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const searchForm = document.querySelector(".search-form");
     const searchInput = document.querySelector("#site-search");
     const searchResult = document.querySelector(".search-result");
+    const loginForm = document.querySelector(".login-form");
 
     const mapView = document.querySelector(".map-view");
     const locationToast = document.querySelector("#mapLocationToast");
@@ -54,28 +55,17 @@ document.addEventListener("DOMContentLoaded", () => {
         { passive: true }
     );
 
-    //mob nav
+    const setNavigationOpen = open => {
+        if (!navToggle || !navPanel) return;
+        navPanel.classList.toggle("open", open);
+        navToggle.setAttribute("aria-expanded", String(open));
+        navToggle.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
+        const icon = navToggle.querySelector("i");
+        if (icon) icon.className = open ? "fa-solid fa-xmark" : "fa-solid fa-bars";
+    };
+
     navToggle?.addEventListener("click", () => {
-
-        const open =
-            navPanel.classList.toggle("open");
-
-        navToggle.setAttribute(
-            "aria-expanded",
-            String(open)
-        );
-
-        const icon =
-            navToggle.querySelector("i");
-
-        if (icon) {
-
-            icon.className = open
-                ? "fa-solid fa-xmark"
-                : "fa-solid fa-bars";
-
-        }
-
+        setNavigationOpen(!navPanel?.classList.contains("open"));
     });
 
 
@@ -86,23 +76,55 @@ document.addEventListener("DOMContentLoaded", () => {
 
         link.addEventListener("click", () => {
 
-            navPanel?.classList.remove("open");
-
-            navToggle?.setAttribute(
-                "aria-expanded",
-                "false"
-            );
-
-            const icon =
-                navToggle?.querySelector("i");
-
-            if (icon) {
-                icon.className =
-                    "fa-solid fa-bars";
-            }
+            setNavigationOpen(false);
 
         });
 
+    });
+
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && navPanel?.classList.contains("open")) {
+            setNavigationOpen(false);
+            navToggle?.focus();
+        }
+    });
+
+    document.addEventListener("click", event => {
+        if (!navPanel?.classList.contains("open") || navPanel.contains(event.target) || navToggle?.contains(event.target)) return;
+        setNavigationOpen(false);
+    });
+
+    loginForm?.addEventListener("submit", event => {
+        if (loginForm.dataset.submitting === "true") {
+            event.preventDefault();
+            return;
+        }
+
+        const email = loginForm.querySelector('[name="email"]');
+        const password = loginForm.querySelector('[name="password"]');
+        if (!loginForm.checkValidity() || !email?.value.trim() || !password?.value.trim()) {
+            event.preventDefault();
+            if (password && !password.value.trim()) password.setCustomValidity("Enter your password.");
+            loginForm.reportValidity();
+            return;
+        }
+
+        event.preventDefault();
+        loginForm.dataset.submitting = "true";
+        const submit = loginForm.querySelector('[type="submit"]');
+        if (submit) {
+            submit.disabled = true;
+            submit.setAttribute("aria-busy", "true");
+        }
+        window.SBCISLoading?.show({
+            title: "Signing you in…",
+            message: "Verifying your administrator credentials securely."
+        });
+        window.setTimeout(() => HTMLFormElement.prototype.submit.call(loginForm), 90);
+    });
+
+    loginForm?.querySelector('[name="password"]')?.addEventListener("input", event => {
+        event.currentTarget.setCustomValidity("");
     });
 
     // Track the actual navigation targets, including Contact outside main.
@@ -628,7 +650,7 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     //global s modal
-    const openSearch = () => {
+    const openSearch = source => {
 
         if (!searchModal)
             return;
@@ -643,6 +665,8 @@ document.addEventListener("DOMContentLoaded", () => {
         document.body.classList.add(
             "modal-open"
         );
+
+        window.SBCISModalOrigin?.apply(searchModal.querySelector(".search-dialog"), source);
 
         setTimeout(() => {
 
@@ -680,7 +704,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     searchTrigger?.addEventListener(
         "click",
-        openSearch
+        event => openSearch(event.currentTarget)
     );
 
     searchClose?.addEventListener(

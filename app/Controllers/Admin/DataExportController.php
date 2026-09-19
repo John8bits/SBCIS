@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers\Admin;
 
 use App\Database\Connection;
+use App\Models\LocationDirectory;
 use App\Services\DataExportService;
 use InvalidArgumentException;
 use RuntimeException;
@@ -14,7 +15,7 @@ final class DataExportController
 {
     public function index(array $query): array
     {
-        $result = ['counts' => [], 'available' => false, 'error' => null];
+        $result = ['counts' => [], 'directory_counts' => [], 'available' => false, 'error' => null];
 
         try {
             $database = Connection::get();
@@ -22,13 +23,18 @@ final class DataExportController
                 throw new RuntimeException('Database unavailable.');
             }
 
-            $exports = new DataExportService($database);
+            $directory = (new LocationDirectory())->all();
+            $exports = new DataExportService($database, $directory);
             if (isset($query['download'])) {
                 $dataset = is_string($query['download']) ? $query['download'] : '';
                 $this->download($exports, $dataset);
             }
 
             $result['counts'] = $exports->counts();
+            $result['directory_counts'] = [
+                'municipalities' => count($directory['municipalities']),
+                'barangays' => count($directory['barangays']),
+            ];
             $result['available'] = true;
         } catch (InvalidArgumentException $error) {
             http_response_code(400);
@@ -50,9 +56,11 @@ final class DataExportController
 
         $stream = $exports->prepare($dataset);
         session_write_close();
-        $extension = $dataset === 'backup' ? '.sql' : '.csv';
+        $filename = $dataset === 'backup'
+            ? 'sbcis_database_backup_' . gmdate('Y-m-d_Hi') . '.sql'
+            : 'sbcis_' . $dataset . '_' . gmdate('Y-m-d') . '.csv';
         header('Content-Type: ' . ($dataset === 'backup' ? 'application/sql' : 'text/csv') . '; charset=UTF-8');
-        header('Content-Disposition: attachment; filename="sbcis_' . $dataset . '_' . gmdate('Y-m-d_His') . $extension . '"');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('X-Content-Type-Options: nosniff');
         fpassthru($stream);
         fclose($stream);

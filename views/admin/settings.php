@@ -241,14 +241,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const addDialog = document.getElementById('admin-add-dialog');
     const dialog = document.getElementById('admin-edit-dialog');
     if (!addDialog || !dialog) return;
-    document.getElementById('open-admin-add').addEventListener('click', () => addDialog.showModal());
+    document.getElementById('open-admin-add').addEventListener('click', event => { addDialog.showModal(); window.SBCISModalOrigin?.apply(addDialog, event.currentTarget); });
     addDialog.querySelectorAll('[data-close-admin-add]').forEach(button => button.addEventListener('click', () => addDialog.close()));
     addDialog.addEventListener('click', event => { if (event.target === addDialog) addDialog.close(); });
-    document.querySelectorAll('.edit-admin-button').forEach(button => button.addEventListener('click', () => {
+    document.querySelectorAll('.edit-admin-button').forEach(button => button.addEventListener('click', event => {
         document.getElementById('edit-admin-id').value = button.dataset.adminId;
         document.getElementById('edit-admin-email').value = button.dataset.adminEmail;
         document.getElementById('edit-admin-role').value = button.dataset.adminRole;
         dialog.showModal();
+        window.SBCISModalOrigin?.apply(dialog, event.currentTarget);
     }));
     dialog.querySelectorAll('[data-close-admin-dialog]').forEach(button => button.addEventListener('click', () => dialog.close()));
     dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });

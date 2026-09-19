@@ -39,7 +39,6 @@
     .overview-page .topbar{height:auto;min-height:72px;padding:12px 16px}
     .topbar-actions{gap:6px}
     .topbar-actions .ov-button{min-height:36px;padding:8px 10px}
-    .public-site-link{display:none}
     .chart-card .ov-card-head{min-height:0;padding:18px}
     .chart-canvas-wrap,.chart-canvas-wrap.chart-wide,.chart-canvas-wrap.chart-tall{height:clamp(260px,72vw,320px);padding:14px 12px 6px}
     .chart-canvas-wrap.chart-doughnut{height:clamp(320px,92vw,400px)}

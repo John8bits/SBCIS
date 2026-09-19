@@ -10,12 +10,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!loginModal || !openLogin) return;
 
-    const setModalOpen = open => {
+    const setModalOpen = (open, source) => {
         loginModal.classList.toggle('active', open);
         loginModal.setAttribute('aria-hidden', String(!open));
         document.body.classList.toggle('login-modal-open', open);
 
         if (open) {
+            window.SBCISModalOrigin?.apply(loginModal.querySelector('.login-modal-card'), source);
             window.setTimeout(() => emailInput?.focus(), 200);
         } else {
             openLogin.focus();
@@ -24,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     openLogin.addEventListener('click', event => {
         event.preventDefault();
-        setModalOpen(true);
+        setModalOpen(true, event.currentTarget);
     });
 
     closeLogin?.addEventListener('click', () => setModalOpen(false));

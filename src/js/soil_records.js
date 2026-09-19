@@ -6,11 +6,12 @@ const entries = document.getElementById('layerEntries');
 const municipality = document.getElementById('municipality_name');
 const barangay = document.getElementById('barangay_name');
 let hasDraft = recordDialog.dataset.autoOpen === 'true' && !!document.getElementById('record-error');
-function openForm() {
+function openForm(source) {
     recordDialog.showModal(); document.body.classList.add('modal-open');
+    window.SBCISModalOrigin?.apply(recordDialog, source);
     document.getElementById('borehole_code').focus();
 }
-openRecord.addEventListener('click', openForm);
+openRecord.addEventListener('click', event => openForm(event.currentTarget));
 recordDialog.querySelectorAll('[data-close-dialog]').forEach(button => button.addEventListener('click', () => recordDialog.close()));
 recordDialog.addEventListener('close', () => { document.body.classList.remove('modal-open'); openRecord.focus(); });
 if (recordDialog.dataset.autoOpen === 'true') openForm();

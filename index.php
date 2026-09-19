@@ -67,11 +67,12 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="stylesheet" href="src/css/style.css?v=<?= filemtime(__DIR__ . '/src/css/style.css') ?>">
   <link rel="stylesheet" href="src/css/alerts.css?v=<?= filemtime(__DIR__ . '/src/css/alerts.css') ?>">
+  <script src="src/js/modal-origin.js?v=<?= filemtime(__DIR__ . '/src/js/modal-origin.js') ?>"></script>
   <link rel="stylesheet" href="src/css/map-theme.css?v=<?= filemtime(__DIR__ . '/src/css/map-theme.css') ?>">
   <script>window.SBCIS_HERO_BOREHOLES = <?= json_encode($heroBoreholes, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
   <script defer src="src/js/interpolation.js?v=<?= filemtime(__DIR__ . '/src/js/interpolation.js') ?>"></script>
@@ -79,11 +80,14 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="src/js/toast.js"></script>
+  <script src="src/js/loading-state.js?v=<?= filemtime(__DIR__ . '/src/js/loading-state.js') ?>"></script>
 
 
 </head>
 
 <body>
+
+  <a class="skip-link" href="#main-content">Skip to main content</a>
 
   <header class="site-header" id="top">
 
@@ -102,13 +106,13 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
       </a>
 
-      <button class="nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false">
+      <button class="nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="primary-navigation">
 
-        <i class="fa-solid fa-bars"></i>
+        <i class="fa-solid fa-bars" aria-hidden="true"></i>
 
       </button>
 
-      <div class="nav-panel">
+      <div class="nav-panel" id="primary-navigation">
 
         <ul class="nav-links">
           <li><a class="active" href="#home">Home</a></li>
@@ -128,8 +132,8 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
           </button>
 
           <a href="#" id="openLogin" class="login-btn">
-            <i class="fa-solid fa-user-shield"></i>
-            Login
+            <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
+            <span>Login</span>
           </a>
 
         </div>
@@ -140,7 +144,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
   </header>
 
-  <main>
+  <main id="main-content">
 <section class="hero" id="home">
 
       <div class="hero-overlay"></div>
@@ -248,27 +252,27 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
       <div class="container">
         <div class="section-heading centered reveal">
           <p class="section-kicker">SOIL INFORMATION ACCESS</p>
-          <h2 id="soil-data-title">Explore soil data by location</h2>
-          <p>Use the GIS map to find a municipality or barangay, then view the available borehole records and published bearing-capacity estimate for that area.</p>
+          <h2 id="soil-data-title">What you can explore in SBCIS</h2>
+          <p>Use one public map to understand location coverage, find available investigation records, and review bearing-capacity reference information.</p>
         </div>
         <div class="soil-access-grid">
           <article class="soil-access-card reveal">
-            <span class="soil-access-step">01</span>
+            <span class="soil-access-label">GIS MAP</span>
+            <span class="soil-access-icon"><i class="fa-solid fa-map-location-dot" aria-hidden="true"></i></span>
+            <h3>Interactive location map</h3>
+            <p>Explore Southern Leyte through province, municipality, and barangay boundaries.</p>
+          </article>
+          <article class="soil-access-card reveal">
+            <span class="soil-access-label">SEARCH</span>
             <span class="soil-access-icon"><i class="fa-solid fa-magnifying-glass-location" aria-hidden="true"></i></span>
-            <h3>Find a location</h3>
-            <p>Search a municipality, barangay, or borehole ID from the location tool.</p>
+            <h3>Location-based search</h3>
+            <p>Find a municipality, barangay, or borehole identifier using the map tools.</p>
           </article>
           <article class="soil-access-card reveal">
-            <span class="soil-access-step">02</span>
-            <span class="soil-access-icon"><i class="fa-solid fa-circle-check" aria-hidden="true"></i></span>
-            <h3>Check available records</h3>
-            <p>Select an area to see its saved boreholes, soil layers, and measured values.</p>
-          </article>
-          <article class="soil-access-card reveal">
-            <span class="soil-access-step">03</span>
-            <span class="soil-access-icon"><i class="fa-solid fa-chart-area" aria-hidden="true"></i></span>
-            <h3>Read the map estimate</h3>
-            <p>Use the interpolation surface for preliminary context, alongside site-specific investigation.</p>
+            <span class="soil-access-label">RECORDS</span>
+            <span class="soil-access-icon"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
+            <h3>Soil and borehole context</h3>
+            <p>Review available soil layers, measured values, and area-level map estimates.</p>
           </article>
         </div>
         <div class="soil-access-cta reveal">
@@ -280,7 +284,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
 <section class="section workflow-section" id="workflow">
       <div class="container">
-        <div class="section-heading centered reveal"><p class="section-kicker">HOW IT WORKS</p><h2>Explore a Location</h2><p>Find a municipality or barangay on the map, then check for available soil records.</p></div>
+        <div class="section-heading centered reveal"><p class="section-kicker">HOW IT WORKS</p><h2>From map to reference information</h2><p>Move from a province-wide view to the available details for a selected area in four clear steps.</p></div>
         <div class="workflow-grid">
           <article class="workflow-card workflow-green reveal"><div class="workflow-number">01</div><div class="workflow-icon"><i class="fa-solid fa-map" aria-hidden="true"></i></div><span class="workflow-label">OPEN THE MAP</span><h3>Explore Southern Leyte</h3><p>Open the GIS map to view the province and municipality boundaries.</p></article>
           <div class="workflow-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></div>
@@ -301,7 +305,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
           <div class="about-image reveal">
 
-            <img src="src/images/soil_data.jpg" alt="Southern Leyte landscape">
+            <img src="src/images/soil_data.jpg" alt="Southern Leyte landscape" loading="lazy" decoding="async">
 
             <div class="about-image-caption">
 
@@ -371,6 +375,11 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
               </div>
 
+            </div>
+
+            <div class="about-note">
+              <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+              <p><strong>Reference information only.</strong> SBCIS supports preliminary understanding and research; it does not replace a site-specific geotechnical investigation or professional engineering assessment.</p>
             </div>
 
           </div>
@@ -504,18 +513,17 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
       <div class="section-heading centered reveal">
 
         <p class="section-kicker">
-          <i class="fa-solid fa-envelope"></i>
-          CONTACT
+          <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+          SYSTEM INFORMATION
         </p>
 
         <h2>
-          Need More Information?
+          Need more information?
         </h2>
 
         <p>
-          For questions regarding soil investigation
-          records, GIS data, or system administration,
-          contact the responsible system administrator.
+          For questions about available records, GIS coverage, or authorized access,
+          coordinate with the responsible SBCIS administrator.
         </p>
 
       </div>
@@ -525,12 +533,12 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
         <div class="contact-card reveal">
 
           <div class="contact-icon">
-            <i class="fa-solid fa-envelope"></i>
+            <i class="fa-solid fa-file-circle-question" aria-hidden="true"></i>
           </div>
 
           <div>
-            <span>Email</span>
-            <strong></strong>
+            <span>Data inquiries</span>
+            <strong>Authorized SBCIS administrator</strong>
           </div>
 
         </div>
@@ -538,7 +546,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
         <div class="contact-card reveal">
 
           <div class="contact-icon">
-            <i class="fa-solid fa-location-dot"></i>
+            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
           </div>
 
           <div>
@@ -553,13 +561,13 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
         <div class="contact-card reveal">
 
           <div class="contact-icon">
-            <i class="fa-solid fa-user-shield"></i>
+            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
           </div>
 
           <div>
-            <span>Administration</span>
+            <span>Engineering notice</span>
             <strong>
-              Authorized System Administrator
+              Site investigation is still required
             </strong>
           </div>
 
@@ -588,9 +596,9 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
           <div>
 
-            <strong style="font-size: 17px;">SOUTHERN LEYTE</strong>
+            <strong>SOUTHERN LEYTE</strong>
 
-            <span style="font-size: 10px;">
+            <span>
               Soil Bearing Capacity Information System
             </span>
 
@@ -602,7 +610,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
         </div>
 
-        <p class="footer-description" style="font-size: 12px;">
+        <p class="footer-description">
           A GIS-based platform for organizing and accessing
           soil investigation information across Southern Leyte.
         </p>
@@ -633,19 +641,11 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
       <div class="footer-column">
 
-        <h3>System</h3>
+        <h3>Information</h3>
 
-        <a href="#home">
-          Home
-        </a>
+        <a href="#about">About SBCIS</a>
 
-        <a href="views/gis.php">
-          Explore Map
-        </a>
-
-        <a href="#soil-data">
-          Soil Data
-        </a>
+        <a href="#workflow">How It Works</a>
 
         <a href="#contact">
           Contact
@@ -657,47 +657,6 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
       </div>
 
-      <div class="footer-column footer-contact">
-
-        <h3>
-          Contact
-        </h3>
-
-        <p>
-
-          <i class="fa-regular fa-envelope"></i>
-        </p>
-
-        <p>
-
-          <i class="fa-solid fa-phone"></i>
-
-        </p>
-
-        <p>
-
-          <i class="fa-solid fa-location-dot"></i>
-
-        </p>
-
-        <div class="footer-social">
-
-          <a href="#" aria-label="Facebook">
-            <i class="fa-brands fa-facebook-f"></i>
-          </a>
-
-          <a href="#" aria-label="YouTube">
-            <i class="fa-brands fa-youtube"></i>
-          </a>
-
-          <a href="mailto:info@slsoil.gov.ph" aria-label="Email">
-            <i class="fa-solid fa-envelope"></i>
-          </a>
-
-        </div>
-
-      </div>
-
     </div>
 
     <div class="footer-bottom">
@@ -705,7 +664,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
       <div class="container">
 
         <span>
-          © 2026 Southern Leyte Soil Bearing Capacity Information System
+          &copy; <?= gmdate('Y') ?> Southern Leyte Soil Bearing Capacity Information System
         </span>
 
         <span>
@@ -892,7 +851,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
           </button>
 
-          <span style="color: #71807a; font-family: DM Sans, sans-serif; font-size: 14px; margin-top: 17px; text-align: center;">Authorized Personel Only!</span>
+          <span class="authorized-note">Authorized personnel only</span>
         </form>
 
       </div>
@@ -912,7 +871,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
     const passwordToggle = document.getElementById("passwordToggle");
 
 
-    function openLoginModal() {
+    function openLoginModal(source) {
 
       if (!loginModal) return;
 
@@ -925,6 +884,11 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
       document.body.classList.add(
         "login-modal-open"
+      );
+
+      window.SBCISModalOrigin?.apply(
+        loginModal.querySelector(".login-modal-card"),
+        source
       );
 
       setTimeout(function () {
@@ -969,7 +933,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
           event.preventDefault();
 
-          openLoginModal();
+          openLoginModal(event.currentTarget);
 
         }
       );
@@ -1087,7 +1051,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
           event.preventDefault();
 
-          openLoginModal();
+          openLoginModal(event.currentTarget);
 
         }
       );

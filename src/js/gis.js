@@ -461,9 +461,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             capacityCard.hidden = false;
         }
 
-        capacityRecords.addEventListener('click', () => {
-            if (!selectedCapacityFeature) return;
-            openAreaData(selectedCapacityFeature, selectedCapacityType);
+    capacityRecords.addEventListener('click', event => {
+        if (!selectedCapacityFeature) return;
+        openAreaData(selectedCapacityFeature, selectedCapacityType, event.currentTarget);
         });
 
         function recordCard(borehole) {

@@ -22,8 +22,10 @@ $db = sbcis_get_database();
 $backup = sbcis_prepare_export($db, 'backup');
 $sql = stream_get_contents($backup);
 fclose($backup);
-verify(strpos($sql, 'CREATE TABLE `admins`') === false, 'No administrator table');
+verify(strpos($sql, 'CREATE TABLE `admins`') !== false, 'Administrator schema included');
 verify(strpos($sql, 'INSERT INTO `admins`') === false, 'No administrator credentials');
+verify(strpos($sql, 'v_geotechnical_map_data') !== false, 'Application view included');
+verify(stripos($sql, 'DEFINER=') === false, 'Database account definer removed');
 verify(strpos($sql, 'DROP TABLE') === false, 'No destructive restore commands');
 verify(strpos($sql, 'SET FOREIGN_KEY_CHECKS = 0;') !== false, 'Foreign-key-safe restore settings');
 verify(strpos($sql, 'START TRANSACTION;') !== false && strpos($sql, 'COMMIT;') !== false, 'Transactional data restore');
@@ -32,11 +34,16 @@ foreach (array_keys(sbcis_export_queries()) as $table) {
     verify(strpos($sql, '--   ' . $table . ': ' . (int) $db->query('SELECT COUNT(*) FROM `' . $table . '`')->fetchColumn() . ' row(s)') !== false, 'Manifest count for ' . $table);
     $stream = sbcis_prepare_export($db, $table);
     verify(fread($stream, 3) === "\xEF\xBB\xBF", 'Spreadsheet UTF-8 BOM');
-    verify(count(fgetcsv($stream, 0, ',', '"', '')) > 0, 'CSV headers');
+    $headers = fgetcsv($stream, 0, ',', '"', '');
+    verify(count($headers) > 0, 'CSV headers');
+    if (in_array($table, ['boreholes', 'soil_layers'], true))
+        verify(in_array('record_source', $headers, true), 'Research provenance header: ' . $table);
+    if ($table === 'soil_layers')
+        verify(in_array('municipality_name', $headers, true) && in_array('barangay_name', $headers, true), 'Readable layer locations');
     $rows = 0;
     while (fgetcsv($stream, 0, ',', '"', '') !== false)
         $rows++;
-    verify($rows === (int) $db->query('SELECT COUNT(*) FROM ' . $table)->fetchColumn(), 'Complete dataset exported');
+    verify($rows === (int) $db->query('SELECT COUNT(*) FROM (' . sbcis_export_queries()[$table] . ') AS export_rows')->fetchColumn(), 'Complete dataset exported');
     fclose($stream);
 }
 // Restore INSERT statements into connection-local temporary tables only.
@@ -74,5 +81,19 @@ try {
     throw new RuntimeException('Unexpected export');
 } catch (InvalidArgumentException $e) {
     verify(true, 'Reject unsupported export');
+}
+$directory = (new App\Models\LocationDirectory())->all();
+$service = new App\Services\DataExportService($db, $directory);
+$serviceCounts = $service->counts();
+foreach (['municipalities' => 19, 'barangays' => 500] as $dataset => $expectedCount) {
+    verify($serviceCounts[$dataset]['total'] === $expectedCount, 'Complete directory count: ' . $dataset);
+    $stream = $service->prepare($dataset);
+    verify(fread($stream, 3) === "\xEF\xBB\xBF", 'Directory CSV UTF-8 BOM: ' . $dataset);
+    $headers = fgetcsv($stream, 0, ',', '"', '');
+    verify(in_array('psgc_code', $headers, true), 'Directory PSGC code header: ' . $dataset);
+    $rows = 0;
+    while (fgetcsv($stream, 0, ',', '"', '') !== false) $rows++;
+    fclose($stream);
+    verify($rows === $expectedCount, 'Complete directory CSV rows: ' . $dataset);
 }
 echo "$checks export checks passed.\n";
