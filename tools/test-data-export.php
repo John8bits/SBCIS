@@ -57,6 +57,8 @@ foreach (array_keys(sbcis_export_queries()) as $table) {
     }
     $db->exec('CREATE TEMPORARY TABLE `' . $table . '` (' . implode(',', $columns) . ') ENGINE=InnoDB');
 }
+$original['system_revisions'] = $db->query('SELECT * FROM system_revisions ORDER BY 1')->fetchAll();
+$db->exec('CREATE TEMPORARY TABLE system_revisions (revision_name VARCHAR(50) PRIMARY KEY, revision_value BIGINT UNSIGNED NOT NULL, updated_at TIMESTAMP NULL)');
 foreach (explode("\n", $sql) as $line)
     if (strpos($line, 'INSERT INTO `') === 0)
         $db->exec($line);

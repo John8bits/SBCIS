@@ -33,8 +33,4 @@ foreach ($page in @('/views/gis.php', '/views/map_embed.php')) {
     if ($html.Contains('data-interpolation="regenerate"') -or $html.Contains('data-interpolation="toggle"') -or $html.Contains('data-interpolation="variable"')) { throw "Public management control found: $page" }
     if ($html.Contains('SYNTH-DEMO-')) { throw "Synthetic preview record leaked into production page: $page" }
 }
-$preview = Check-Response '/tools/interpolation-ui-preview.php' 'GET' 200 ''
-if (!$preview.Contains('UI PREVIEW') -or !$preview.Contains('SYNTH-DEMO-') -or !$preview.Contains('SBCIS_INTERPOLATION_PREVIEW')) {
-    throw 'Local synthetic UI preview is incomplete.'
-}
-Write-Output 'HTTP checks passed: production stays verified-data-only; localhost synthetic UI preview is isolated and labeled.'
+Write-Output 'HTTP checks passed: public and admin GIS routes remain verified-data-only.'

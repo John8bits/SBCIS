@@ -64,11 +64,20 @@ $updated['depth_from_m'] = ['0'];
 $updated['depth_to_m'] = ['12'];
 $updated['spt_n_value'] = ['8'];
 $updated['bearing_capacity_kpa'] = ['125'];
+$updated['record_lock_version'] = $loaded['lock_version'];
 sbcis_update_geotechnical_record($db, $id, $updated);
 $loaded = sbcis_fetch_geotechnical_record($db, $id);
 if ($loaded['borehole_code'] !== 'TEST-UPDATED' || count($loaded['layers']) !== 1 || $loaded['layers'][0]['soil_type'] !== 'Updated clay')
     throw new RuntimeException('Record update failed.');
 $checks++;
+try {
+    sbcis_update_geotechnical_record($db, $id, $updated);
+    throw new RuntimeException('Stale concurrent update was accepted.');
+} catch (InvalidArgumentException $error) {
+    if (!str_contains($error->getMessage(), 'another tab')) throw $error;
+    $checks++;
+}
+$updated['record_lock_version'] = $loaded['lock_version'];
 $invalidUpdate = $updated;
 $invalidUpdate['depth_to_m'] = ['13'];
 try {

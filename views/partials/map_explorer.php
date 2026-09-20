@@ -109,13 +109,7 @@
           <div><span class="gis-section-eyebrow">SURFACE</span><h3 id="surfaceLegendTitle">Bearing capacity</h3></div>
           <span class="gis-data-badge gis-estimated-badge">ESTIMATE</span>
         </div>
-        <div data-interpolation="scale" class="gis-range-list" hidden>
-          <div><i class="range-very-low"></i><span><strong>&lt; 100 kPa</strong>Very low</span></div>
-          <div><i class="range-low"></i><span><strong>100–150 kPa</strong>Low</span></div>
-          <div><i class="range-moderate"></i><span><strong>151–200 kPa</strong>Moderate</span></div>
-          <div><i class="range-high"></i><span><strong>201–250 kPa</strong>High</span></div>
-          <div><i class="range-very-high"></i><span><strong>&gt; 250 kPa</strong>Very high</span></div>
-        </div>
+        <div data-interpolation="scale" class="gis-estimate-scale" hidden></div>
         <div data-interpolation="ticks" class="gis-scale-ticks" hidden></div>
         <p data-interpolation="legend">No interpolation is displayed.</p>
         <div class="gis-symbol-row"><span class="gis-area-key" aria-hidden="true"></span><span>Area bands are estimates; select an area to inspect source records.</span></div>
@@ -126,6 +120,7 @@
         <p data-interpolation="counts"></p>
         <p data-interpolation="reasons"></p>
         <p data-interpolation="admin"></p>
+        <p data-interpolation="validation"></p>
         <details><summary>Technical details</summary><p data-interpolation="metadata"></p></details>
         <div class="gis-admin-actions">
           <button data-interpolation="regenerate" class="gis-reset gis-primary-action" type="button">Update surface</button>

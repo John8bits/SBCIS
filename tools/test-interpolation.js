@@ -45,11 +45,7 @@ const adminStatus = status => ({status, eligible_count:0,excluded_count:2,exclus
     assert.equal(root.dataset.state,'current');
     assert.equal(viewer.layer.data.type,'FeatureCollection');
     assert.ok(viewer.element('legend').textContent.includes('Surface range: 0–10 test units'));
-    assert.equal(Interpolation.bearingClass(99).key, 'very-low');
-    assert.equal(Interpolation.bearingClass(100).key, 'low');
-    assert.equal(Interpolation.bearingClass(151).key, 'moderate');
-    assert.equal(Interpolation.bearingClass(201).key, 'high');
-    assert.equal(Interpolation.bearingClass(251).key, 'very-high');
+    assert.equal(viewer.surfaceColor(5), '#28745d', 'Single-range fallback remains neutral and numeric');
     viewer.refresh(); response(requests.shift(),{status:'outdated',result:null}); await tick();
     assert.equal(viewer.layer.data,null,'Outdated surface removed');
     const errors = []; const logger = console.error;

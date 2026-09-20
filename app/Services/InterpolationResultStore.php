@@ -62,4 +62,13 @@ final class InterpolationResultStore
             return $state;
         });
     }
+
+    public function clear(): void
+    {
+        $this->update(static fn(): array => [
+            'published' => null,
+            'attempt' => null,
+            'outdated' => true,
+        ]);
+    }
 }

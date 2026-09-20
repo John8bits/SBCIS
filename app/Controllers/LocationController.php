@@ -16,10 +16,17 @@ final class LocationController
         $this->locations = $locations;
     }
 
-    public function json(): void
+    public function json(string $method = 'GET'): void
     {
         header('Content-Type: application/json; charset=UTF-8');
         header('X-Content-Type-Options: nosniff');
+
+        if ($method !== 'GET') {
+            header('Allow: GET');
+            http_response_code(405);
+            echo json_encode(['error'=>'Unsupported request method.']);
+            return;
+        }
 
         try {
             header('Cache-Control: public, max-age=300');

@@ -7,4 +7,4 @@ use App\Models\LocationDirectory;
 
 require_once __DIR__ . '/../../config/bootstrap.php';
 
-(new LocationController(new LocationDirectory()))->json();
+(new LocationController(new LocationDirectory()))->json($_SERVER['REQUEST_METHOD'] ?? 'GET');

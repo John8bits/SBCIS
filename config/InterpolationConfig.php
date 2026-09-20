@@ -8,8 +8,8 @@ use InvalidArgumentException;
 
 final class InterpolationConfig
 {
-    // Codes reserved by database/sample_interpolation_50.sql. These rows are
-    // useful for isolated demos, but they are never field observations.
+    // Non-field records remain detectable so they can never enter a published
+    // engineering-reference surface, even if legacy data is imported.
     public const NON_FIELD_CODE_PREFIXES = ['SYNTH-DEMO-'];
 
     public const VARIABLES = [
@@ -21,12 +21,14 @@ final class InterpolationConfig
     // visible in record details but is not mixed into this surface.
     public const PUBLIC_VARIABLES = ['bearing_capacity_kpa'];
     public const TECHNICAL_MINIMUM_POINTS = 5;
-    public const MAX_OBSERVATIONS = 10000;
+    // Joined layer rows, not selected boreholes. This is a runaway-query guard.
+    public const MAX_OBSERVATIONS = 250000;
     public const APPROVED_VARIABLE = 'bearing_capacity_kpa';
     public const INTERPOLATION_METHOD = 'idw';
     public const IDW_POWER = 2.0;
     public const MAX_SUPPORT_DISTANCE_KM = 35.0;
-
+    public const MAX_VALIDATION_POINTS = 500;
+    public const SYNCHRONOUS_REGENERATION_MAX_POINTS = 1000;
     public static function cacheDirectory(): string
     {
         // Keep generated data outside the web root; deployments may choose persistent storage.

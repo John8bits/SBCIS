@@ -23,7 +23,13 @@ final class InterpolationController
         $query = $query ?: $config->systemQuery();
         $config->selection($query);
         $service = new InterpolationDataService(new BoundaryService(), $config);
-        return $service->build((new InterpolationRepository(Connection::get()))->snapshot(), $query);
+        $repository = new InterpolationRepository(Connection::get());
+        $before = $repository->revision();
+        $result = $service->build($repository->snapshot(), $query);
+        $after = $repository->revision();
+        if ($before !== $after) throw new \RuntimeException('Interpolation source changed during snapshot; retry.');
+        $result['source_revision'] = $after;
+        return $result;
     }
 
     public function publication(): InterpolationPublicationService
@@ -33,7 +39,8 @@ final class InterpolationController
         return new InterpolationPublicationService(
             fn() => $this->data(),
             new InterpolationResultStore(),
-            static fn(array $input): array => (new InterpolationGeneratorService())->generate($input)
+            static fn(array $input): array => (new InterpolationGeneratorService())->generate($input),
+            static fn(): int => (new InterpolationRepository(Connection::get()))->revision()
         );
     }
 

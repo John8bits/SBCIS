@@ -20,9 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         place.textContent = [borehole.barangay_name, borehole.municipality_name].filter(Boolean).join(', ') || 'Southern Leyte';
         const value = document.createElement('b');
         value.textContent = metric(layer?.bearing_capacity_kpa, 'kPa');
-        const classification = window.SbcisInterpolation?.bearingClass(layer?.bearing_capacity_kpa);
         const range = document.createElement('small');
-        range.textContent = classification ? classification.label + ' bearing capacity' : 'No bearing capacity value';
+        range.textContent = Number.isFinite(Number(layer?.bearing_capacity_kpa)) ? 'Observed borehole value' : 'No bearing capacity value';
         popup.append(title, place, value, range);
         return popup;
     }
@@ -62,14 +61,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const result = interpolationResponse.status === 'current' ? interpolationResponse.result : null;
         const d3 = window.d3;
-        const surfaceScale = d3?.scaleSequential && typeof d3.interpolateRdYlGn === 'function' &&
+        const surfaceScale = d3?.scaleLinear && typeof d3.interpolateRgb === 'function' &&
             Number.isFinite(Number(result?.legend?.min)) && Number.isFinite(Number(result?.legend?.max)) &&
             Number(result.legend.max) > Number(result.legend.min)
-            ? d3.scaleSequential(d3.interpolateRdYlGn).domain([Number(result.legend.min), Number(result.legend.max)])
+            ? d3.scaleLinear()
+                .domain([
+                    Number(result.legend.min),
+                    Number(result.legend.min) + (Number(result.legend.max) - Number(result.legend.min)) * .25,
+                    Number(result.legend.min) + (Number(result.legend.max) - Number(result.legend.min)) * .5,
+                    Number(result.legend.min) + (Number(result.legend.max) - Number(result.legend.min)) * .75,
+                    Number(result.legend.max)
+                ])
+                .range(['#a94442', '#c77745', '#d5ad56', '#7fa36d', '#28745d'])
+                .interpolate(d3.interpolateRgb)
             : null;
         const surfaceColor = value => surfaceScale
             ? surfaceScale(Number(value))
-            : window.SbcisInterpolation.bearingClass(value).color;
+            : (Number.isFinite(Number(value)) ? '#28745d' : '#d9e2dd');
         if (result?.surface?.type === 'FeatureCollection' && window.SbcisInterpolation) {
             L.geoJSON(result.surface, {
                 pane: 'heroInterpolationShadowPane', interactive: false,
@@ -128,15 +136,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const latitude = Number(borehole.latitude);
             const longitude = Number(borehole.longitude);
             if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
-            L.marker([latitude, longitude], {
-                icon: L.divIcon({
-                    className: 'hero-borehole-marker',
-                    html: '<span aria-hidden="true"></span>',
-                    iconSize: [14, 14],
-                    iconAnchor: [7, 7]
-                }),
+            L.circleMarker([latitude, longitude], {
+                renderer: L.canvas({ padding: 0.35 }), radius: 5, weight: 2,
+                color: '#ffffff', fillColor: '#0b6b4f', fillOpacity: 0.95,
                 keyboard: true,
-                riseOnHover: true,
                 title: `${borehole.borehole_code || 'Borehole'}: view soil record`
             }).addTo(map).bindPopup(popupFor(borehole));
         });
