@@ -9,8 +9,11 @@ use PDO;
 
 final class Connection
 {
+    private static ?PDO $connection = null;
+
     public static function get(): ?PDO
     {
-        return DatabaseConfig::connect();
+        if (self::$connection === null) self::$connection = DatabaseConfig::connect();
+        return self::$connection;
     }
 }

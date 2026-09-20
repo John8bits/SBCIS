@@ -738,7 +738,7 @@
   margin-top: 10px;
   border: 1px solid rgba(23, 64, 50, .13);
   border-radius: 999px;
-  background: linear-gradient(90deg, #2c7bb6, #00a6ca, #00ccbc, #90eb9d, #ffff8c, #f9d057, #f29e2e, #e76818, #d7191c);
+  background: linear-gradient(90deg, #a94442, #c77745, #d5ad56, #7fa36d, #28745d);
 }
 
 .gis-range-list {
@@ -1266,15 +1266,6 @@
   font-weight: 800;
 }
 
-.gis-data-availability-marker.is-sample {
-  border-color: rgba(166, 106, 8, .44);
-  color: #865909;
-}
-
-.gis-data-availability-marker.is-sample i {
-  background: #b47711;
-}
-
 .gis-data-marker-wrap:hover .gis-data-availability-marker,
 .gis-data-marker-wrap:focus .gis-data-availability-marker {
   transform: translateY(-2px);
@@ -1314,10 +1305,6 @@
   color: #fff;
   font-size: 8px;
   font-weight: 800;
-}
-
-.gis-data-key.is-sample span {
-  background: #b47711;
 }
 
 .gis-data-key strong {

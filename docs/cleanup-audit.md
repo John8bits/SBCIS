@@ -23,7 +23,7 @@ Audit date: 2026-09-19
 | `src/qgis/*.geojson` | Required | Loaded dynamically by public/admin maps and server-side boundary/location services. | Kept | High |
 | `src/qgis/*.qmd` | Generated / manual-verification | QGIS sidecars are not used at runtime, but can be useful when editing GIS data in QGIS. | Kept | Medium |
 | `database/locations_snapshot.json` | Required fallback | Used when PSGC is unavailable. | Kept | High |
-| `database/sample_interpolation_50.sql` | Development/support data | Documented optional synthetic-data seed script; it does not execute automatically. | Kept | Medium |
+| `database/sample_interpolation_50.sql` | Development/support data | Removed when the installation was cleared for verified field-data entry. | Removed | Low |
 | `tools/test-*` | Development-only but active | Current test suites validate interpolation, GIS, locations, CRUD invalidation, and exports. | Kept | Low |
 | `tools/interpolation-ui-preview.php`, `tools/audit-recent-map-data.php`, `tools/regenerate-interpolation.php`, `tools/hash.php` | Operational/support tools | Local-only preview, data audit, documented regeneration, and password utility. | Kept | Medium |
 

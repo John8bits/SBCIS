@@ -33,4 +33,15 @@ final class InterpolationRepository
         }
         return $rows;
     }
+
+    public function revision(): int
+    {
+        $statement = $this->database->prepare(
+            'SELECT revision_value FROM system_revisions WHERE revision_name=:name LIMIT 1'
+        );
+        $statement->execute([':name'=>'interpolation_source']);
+        $revision = $statement->fetchColumn();
+        if ($revision === false) throw new RuntimeException('Interpolation source revision is unavailable.');
+        return (int) $revision;
+    }
 }

@@ -1,6 +1,6 @@
 <?php
 use App\Database\Connection;
-use App\Models\GeotechnicalRepository;
+use App\Services\AdminDataService;
 use App\Support\AdminSession;
 use App\Support\View;
 
@@ -27,42 +27,49 @@ $pages = [
         'subtitle' => 'Location and drilling depth records',
         'icon' => 'fa-location-dot',
         'eyebrow' => 'LOCATION DATA',
+        'search_placeholder' => 'Search borehole code or location',
     ],
     'soil_layers' => [
         'title' => 'Soil Layers',
         'subtitle' => 'Geotechnical layer descriptions and SPT values',
         'icon' => 'fa-layer-group',
         'eyebrow' => 'SOIL DATA',
+        'search_placeholder' => 'Search borehole, soil type, or class',
     ],
     'municipalities' => [
         'title' => 'Municipalities',
         'subtitle' => 'Municipalities and cities with saved borehole records',
         'icon' => 'fa-map-location-dot',
         'eyebrow' => 'LOCATION DATA',
+        'search_placeholder' => 'Search municipality or city',
     ],
     'barangays' => [
         'title' => 'Barangays',
         'subtitle' => 'Barangays with saved borehole records',
         'icon' => 'fa-location-crosshairs',
         'eyebrow' => 'LOCATION DATA',
+        'search_placeholder' => 'Search barangay or municipality',
     ],
     'soil_reports' => [
         'title' => 'Soil Reports',
         'subtitle' => 'Summary of boreholes, soil layers, and capacities',
         'icon' => 'fa-file-lines',
         'eyebrow' => 'REPORTS',
+        'search_placeholder' => 'Search borehole or location',
     ],
     'bearing_capacity' => [
         'title' => 'Bearing Capacity',
         'subtitle' => 'Recorded soil bearing capacity by borehole layer',
         'icon' => 'fa-chart-column',
         'eyebrow' => 'REPORTS',
+        'search_placeholder' => 'Search borehole or soil type',
     ],
 ];
 
 $activePage = $activePage ?? 'boreholes';
 $page = $pages[$activePage] ?? $pages['boreholes'];
 $rows = [];
+$pagination = ['total' => 0, 'page' => 1, 'pages' => 1, 'page_size' => 50, 'search' => '', 'sort' => '', 'dir' => 'desc'];
 $databaseError = null;
 
 try {
@@ -72,98 +79,13 @@ try {
         throw new RuntimeException('Database connection is unavailable.');
     }
 
-    switch ($activePage) {
-        case 'soil_layers':
-            $rows = $db->query("
-                SELECT
-                    sl.layer_number,
-                    b.borehole_code,
-                    sl.soil_type,
-                    sl.soil_classification,
-                    sl.soil_description,
-                    sl.depth_from_m,
-                    sl.depth_to_m,
-                    sl.spt_n_value,
-                    sl.bearing_capacity_kpa
-                FROM soil_layers sl
-                INNER JOIN boreholes b ON sl.borehole_id = b.borehole_id
-                ORDER BY b.borehole_code ASC, sl.layer_number ASC
-            ")->fetchAll(PDO::FETCH_ASSOC);
-            break;
-
-        case 'municipalities':
-            $rows = $db->query("
-                SELECT
-                    m.municipality_name,
-                    COUNT(DISTINCT b.borehole_id) AS borehole_count,
-                    COUNT(sl.soil_layer_id) AS layer_count
-                FROM municipalities m
-                LEFT JOIN boreholes b ON m.municipality_id = b.municipality_id
-                LEFT JOIN soil_layers sl ON b.borehole_id = sl.borehole_id
-                GROUP BY m.municipality_id
-                ORDER BY m.municipality_name ASC
-            ")->fetchAll(PDO::FETCH_ASSOC);
-            break;
-
-        case 'barangays':
-            $rows = $db->query("
-                SELECT
-                    br.barangay_name,
-                    m.municipality_name,
-                    COUNT(DISTINCT b.borehole_id) AS borehole_count,
-                    COUNT(sl.soil_layer_id) AS layer_count
-                FROM barangays br
-                INNER JOIN municipalities m ON br.municipality_id = m.municipality_id
-                LEFT JOIN boreholes b ON br.barangay_id = b.barangay_id
-                LEFT JOIN soil_layers sl ON b.borehole_id = sl.borehole_id
-                GROUP BY br.barangay_id
-                ORDER BY m.municipality_name ASC, br.barangay_name ASC
-            ")->fetchAll(PDO::FETCH_ASSOC);
-            break;
-
-        case 'soil_reports':
-            $rows = $db->query("
-                SELECT
-                    b.borehole_code,
-                    m.municipality_name,
-                    br.barangay_name,
-                    b.borehole_depth_m,
-                    COUNT(sl.soil_layer_id) AS layer_count,
-                    MIN(sl.depth_from_m) AS shallowest_layer_m,
-                    MAX(sl.depth_to_m) AS deepest_layer_m,
-                    MAX(sl.bearing_capacity_kpa) AS highest_capacity_kpa
-                FROM boreholes b
-                LEFT JOIN municipalities m ON b.municipality_id = m.municipality_id
-                LEFT JOIN barangays br ON b.barangay_id = br.barangay_id
-                LEFT JOIN soil_layers sl ON b.borehole_id = sl.borehole_id
-                GROUP BY b.borehole_id
-                ORDER BY b.created_at DESC, b.borehole_id DESC
-            ")->fetchAll(PDO::FETCH_ASSOC);
-            break;
-
-        case 'bearing_capacity':
-            $rows = $db->query("
-                SELECT
-                    b.borehole_code,
-                    sl.layer_number,
-                    sl.soil_type,
-                    sl.depth_from_m,
-                    sl.depth_to_m,
-                    sl.spt_n_value,
-                    sl.bearing_capacity_kpa
-                FROM soil_layers sl
-                INNER JOIN boreholes b ON sl.borehole_id = b.borehole_id
-                ORDER BY sl.bearing_capacity_kpa DESC, b.borehole_code ASC
-            ")->fetchAll(PDO::FETCH_ASSOC);
-            break;
-
-        case 'boreholes':
-        default:
-            $rows = (new GeotechnicalRepository($db))->recentBoreholes(null);
-            break;
-    }
+    $pagination = (new AdminDataService($db))->page($activePage, $_GET);
+    $rows = $pagination['rows'];
 } catch (Throwable $e) {
-    $databaseError = $e->getMessage();
+    error_log('Admin data page (' . $activePage . '): ' . $e->getMessage());
+    $databaseError = $e instanceof InvalidArgumentException
+        ? $e->getMessage()
+        : 'The database query could not be completed. Please retry.';
 }
 
 $escape = [View::class, 'escape'];
@@ -226,11 +148,29 @@ $escape = [View::class, 'escape'];
             <section class="panel">
                 <div class="panel-header">
                     <h3>Saved records</h3>
-                    <span><?= number_format(count($rows)) ?> records</span>
+                    <span><?= number_format($pagination['total']) ?> records</span>
                 </div>
 
+                <form class="table-toolbar" method="GET" data-server-search role="search">
+                    <div class="table-search-control">
+                        <label for="record-search">Search records</label>
+                        <div class="table-search-input">
+                            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                            <input id="record-search" type="search" name="search" maxlength="100" value="<?= $escape($pagination['search']) ?>" placeholder="<?= $escape($page['search_placeholder']) ?>">
+                        </div>
+                    </div>
+                    <div class="table-toolbar-actions">
+                        <label class="table-page-size" for="record-page-size">
+                            <span>Rows per page</span>
+                            <select id="record-page-size" name="page_size" aria-label="Rows per page"><?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= $pagination['page_size'] === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?></select>
+                        </label>
+                        <?php if ($pagination['search'] !== ''): ?><a class="table-clear-button" href="?<?= $escape(http_build_query(['page_size' => $pagination['page_size']])) ?>">Clear</a><?php endif; ?>
+                        <button class="table-search-button" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>Search</span></button>
+                    </div>
+                </form>
+
                 <?php if ($rows): ?>
-                    <div class="table-wrap">
+                    <div class="table-wrap" data-server-paginated>
                         <table>
                             <thead>
                                 <?php if ($activePage === 'soil_layers'): ?>
@@ -306,8 +246,18 @@ $escape = [View::class, 'escape'];
                             </tbody>
                         </table>
                     </div>
+                    <?php if ($pagination['pages'] > 1): ?>
+                    <nav class="table-footer" aria-label="Record pages">
+                        <span>Page <?= number_format($pagination['page']) ?> of <?= number_format($pagination['pages']) ?></span>
+                        <div class="table-pages">
+                            <?php $baseQuery = ['search'=>$pagination['search'], 'page_size'=>$pagination['page_size'], 'sort'=>$pagination['sort'], 'dir'=>$pagination['dir']]; ?>
+                            <?php if ($pagination['page'] > 1): ?><a href="?<?= $escape(http_build_query($baseQuery + ['page'=>$pagination['page'] - 1])) ?>">Previous</a><?php endif; ?>
+                            <?php if ($pagination['page'] < $pagination['pages']): ?><a href="?<?= $escape(http_build_query($baseQuery + ['page'=>$pagination['page'] + 1])) ?>">Next</a><?php endif; ?>
+                        </div>
+                    </nav>
+                    <?php endif; ?>
                 <?php else: ?>
-                    <div class="system-message">No records found for this page yet.</div>
+                    <div class="system-message"><?= $pagination['search'] !== '' ? 'No records match this search.' : 'No records have been added yet.' ?></div>
                 <?php endif; ?>
             </section>
         </main>

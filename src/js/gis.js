@@ -281,18 +281,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const latitude = Number(borehole.latitude);
             const longitude = Number(borehole.longitude);
             if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
-            // Use a marker-pane pin instead of a vector circle in a custom
-            // pane. It remains visible above the interpolated surface across
-            // Leaflet renderers and is easier to select on touch devices.
-            const marker = L.marker([latitude, longitude], {
-                icon: L.divIcon({
-                    className: 'gis-borehole-marker',
-                    html: '<span aria-hidden="true"></span>',
-                    iconSize: [18, 18],
-                    iconAnchor: [9, 9]
-                }),
+            // Canvas-backed points avoid one DOM node per borehole.
+            const marker = L.circleMarker([latitude, longitude], {
+                renderer: L.canvas({ padding: 0.35 }), radius: 6, weight: 2,
+                color: '#ffffff', fillColor: '#0b6b4f', fillOpacity: 0.95,
                 keyboard: true,
-                riseOnHover: true,
                 title: `${borehole.borehole_code || 'Borehole'}: view soil record`
             }).addTo(boreholeLayer).bindPopup(boreholePopup(borehole));
             boreholePins.set(String(borehole.borehole_code || '').toLocaleLowerCase(), marker);
@@ -447,14 +440,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             const value = estimatedValueFor(feature, type);
             const supportDistance = supportDistanceFor(feature, type);
             const name = feature.properties?.NAME_3 || feature.properties?.NAME_2 || 'Selected area';
-            const classification = value === null ? null : window.SbcisInterpolation?.bearingClass(value);
+            const classification = value === null ? null : {
+                label: 'Interpolated estimate',
+                range: 'Estimated at the area prediction point',
+                color: window.SBCIS_INTERPOLATION_VIEWER?.surfaceColor(value) || '#28745d'
+            };
             document.getElementById('gisCapacityScope').textContent = type === 'barangay' ? 'BARANGAY ESTIMATE' : 'MUNICIPALITY / CITY ESTIMATE';
             document.getElementById('gisCapacityName').textContent = name;
             document.getElementById('gisCapacityValue').textContent = value === null ? '—' : formatMetric(value, 'kPa');
             document.getElementById('gisCapacityClass').textContent = classification?.label || 'No estimate';
             document.getElementById('gisCapacityRange').textContent = classification
-                ? classification.range + ' bearing-capacity range' +
-                    (supportDistance === null ? '' : ' · nearest support ' + supportDistance.toFixed(1) + ' km')
+                ? classification.range +
+                    (supportDistance === null ? '' : ' · nearest support ' + supportDistance.toFixed(1) + ' km') +
+                    (window.SBCIS_ACTIVE_INTERPOLATION?.surface?.features?.[0]?.properties?.observation_count ?
+                        ' · based on ' + window.SBCIS_ACTIVE_INTERPOLATION.surface.features[0].properties.observation_count + ' boreholes' : '')
                 : 'No supported interpolation is available for this area.';
             document.getElementById('gisCapacitySwatch').style.backgroundColor = classification?.color || '#d9e2dd';
             capacityRecords.hidden = boreholesIn(feature).length === 0;
@@ -504,6 +503,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const municipality = feature.properties?.NAME_2 || 'Southern Leyte';
             const matchingBoreholes = boreholesIn(feature);
             const layers = matchingBoreholes.flatMap(borehole => borehole.layers || []);
+            const layerCount = matchingBoreholes.reduce((total, borehole) => total + Number(borehole.layer_count || borehole.layers?.length || 0), 0);
             const bearingAverage = average(layers.map(layer => layer.bearing_capacity_kpa));
             const sptAverage = average(layers.map(layer => layer.spt_n_value));
             const estimate = estimatedValueFor(feature, type);
@@ -516,7 +516,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('gisDataModalBadge').textContent = 'RECORDS';
             document.getElementById('gisDataModalSource').textContent = 'Borehole records whose coordinates fall inside this boundary.';
             document.getElementById('modalBoreholeCount').textContent = String(matchingBoreholes.length);
-            document.getElementById('modalLayerCount').textContent = String(layers.length);
+            document.getElementById('modalLayerCount').textContent = String(layerCount);
             document.getElementById('modalBearingAverage').textContent = bearingAverage === null ? '—' : formatMetric(bearingAverage, 'kPa');
             document.getElementById('modalSptAverage').textContent = sptAverage === null ? '—' : Number(sptAverage).toLocaleString(undefined, { maximumFractionDigits: 1 });
             document.getElementById('modalEstimatedValue').textContent = estimate === null ?
@@ -712,6 +712,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const interpolationViewer = new window.SbcisInterpolation(map, {
                 base: window.SBCIS_MAP_BASE || '../'
             });
+            window.SBCIS_INTERPOLATION_VIEWER = interpolationViewer;
             surfaceToggle?.addEventListener('click', () => {
                 const visible = surfaceToggle.getAttribute('aria-pressed') !== 'true';
                 interpolationViewer.setVisible(visible);

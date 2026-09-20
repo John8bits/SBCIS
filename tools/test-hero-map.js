@@ -46,7 +46,9 @@ const L = {
         return layer;
     },
     divIcon: options => options,
-    marker: (position, options) => { const point = makeLayer(); point.position = position; point.options = options; points.push(point); return point; }
+    canvas: () => ({}),
+    marker: (position, options) => { const point = makeLayer(); point.position = position; point.options = options; points.push(point); return point; },
+    circleMarker: (position, options) => { const point = makeLayer(); point.position = position; point.options = options; points.push(point); return point; }
 };
 window.L = L;
 
@@ -59,14 +61,14 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../src/js/hero-map.js'), '
 
 (async () => {
     await document.events.DOMContentLoaded();
-    assert.equal(elements.get('heroInterpolationLegend').hidden, false, 'Five-band interpolation legend is visible');
+    assert.equal(elements.get('heroInterpolationLegend').hidden, false, 'Numeric interpolation legend is visible');
     assert.equal(points.length, 1, 'Hero map renders borehole locations');
     assert.ok(points[0].popup, 'Hero borehole location has a details popup');
     const surfaceLayer = geoLayers.find(layer => layer.data === surface && layer.options.pane === 'heroInterpolationPane');
     assert.ok(surfaceLayer, 'Published interpolation surface is rendered');
-    assert.equal(surfaceLayer.options.style(surface.features[0]).fillColor, '#f46d43', '145 kPa uses the 100–150 kPa band');
+    assert.equal(surfaceLayer.options.style(surface.features[0]).fillColor, '#28745d', 'Fallback surface color is deterministic');
     assert.equal(elements.get('heroMapReset').disabled, false, 'Hero reset is enabled');
     elements.get('heroMapReset').fire('click');
     assert.match(elements.get('heroMapStatus').textContent, /IDW surface.*1 boreholes/);
-    console.log('Hero map checks passed: published IDW surface, fixed ranges, borehole popup, and reset control.');
+    console.log('Hero map checks passed: published IDW surface, numeric fallback, borehole popup, and reset control.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -3,7 +3,7 @@ use App\Database\Connection;
 use App\Controllers\InterpolationController;
 use App\Models\GeotechnicalRepository;
 use App\Models\LocationDirectory;
-use App\Services\BoundaryService;
+use App\Services\AdminDataService;
 use App\Support\AdminSession;
 use App\Support\View;
 
@@ -33,6 +33,7 @@ unset($_SESSION['record_success']);
 $_SESSION['record_csrf'] = $_SESSION['record_csrf'] ?? bin2hex(random_bytes(32));
 $errorMessage = null;
 $recentBoreholes = [];
+$recordPagination = ['total'=>0, 'page'=>1, 'pages'=>1, 'page_size'=>50, 'search'=>'', 'sort'=>'created', 'dir'=>'desc'];
 $municipalityOptions = [];
 $barangayOptions = [];
 $formData = [];
@@ -45,6 +46,11 @@ $editingId = 0;
 function refreshMapInterpolation(): string
 {
     try {
+        $database = Connection::get();
+        $boreholeCount = (int) $database->query('SELECT COUNT(*) FROM boreholes')->fetchColumn();
+        if ($boreholeCount > Config\InterpolationConfig::SYNCHRONOUS_REGENERATION_MAX_POINTS) {
+            return ' The interpolation source was invalidated; regenerate it from GIS Map or the scheduled CLI job.';
+        }
         $state = (new InterpolationController())->publication()->regenerate();
         if (($state['status'] ?? '') === 'current') return ' The GIS interpolation has been refreshed.';
         return ' The borehole marker is saved; the GIS surface will update when enough valid bearing-capacity records are available.';
@@ -52,20 +58,6 @@ function refreshMapInterpolation(): string
         error_log('Interpolation refresh after record save: ' . $error->getMessage());
         return ' The borehole marker is saved. The GIS surface can be refreshed from GIS Map.';
     }
-}
-
-/** Ensure a coordinate agrees with the municipality/barangay selected in the form. */
-function coordinateIsInsideSelectedBoundary(string $file, string $property, ?string $boundaryId, $latitude, $longitude): bool
-{
-    if (!$boundaryId) return true;
-    $json = @file_get_contents(__DIR__ . '/../../src/qgis/' . $file);
-    if ($json === false) throw new RuntimeException('Location boundary validation is unavailable. Please retry.');
-    $collection = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-    foreach ($collection['features'] ?? [] as $feature) {
-        if (($feature['properties'][$property] ?? null) !== $boundaryId) continue;
-        return (new BoundaryService(['type' => 'FeatureCollection', 'features' => [$feature]]))->contains($latitude, $longitude);
-    }
-    throw new RuntimeException('The selected location boundary is unavailable. Please choose the location again.');
 }
 
 try {
@@ -105,23 +97,6 @@ try {
                 if ($chosenBarangay !== '' && !array_filter($barangayOptions, static fn($row) => $row['name'] === $chosenBarangay && $row['municipalityName'] === $chosenMunicipality)) {
                     throw new InvalidArgumentException('Choose a barangay belonging to the selected municipality.');
                 }
-                if (!(new BoundaryService())->contains($_POST['latitude'] ?? null, $_POST['longitude'] ?? null)) {
-                    throw new InvalidArgumentException('Use coordinates inside Southern Leyte so this borehole can appear on the GIS map.');
-                }
-                $selectedMunicipality = $chosenMunicipality === '' ? null : array_values(array_filter(
-                    $locationDirectory['municipalities'],
-                    static fn($row) => $row['name'] === $chosenMunicipality
-                ))[0] ?? null;
-                $selectedBarangay = $chosenBarangay === '' ? null : array_values(array_filter(
-                    $barangayOptions,
-                    static fn($row) => $row['name'] === $chosenBarangay && $row['municipalityName'] === $chosenMunicipality
-                ))[0] ?? null;
-                if (!coordinateIsInsideSelectedBoundary('southern_leyte_municipalities.geojson', 'GID_2', $selectedMunicipality['boundaryId'] ?? null, $_POST['latitude'], $_POST['longitude'])) {
-                    throw new InvalidArgumentException('The coordinates are outside the selected municipality. Correct the coordinates or choose the matching municipality.');
-                }
-                if (!coordinateIsInsideSelectedBoundary('southern_leyte_barangays.geojson', 'GID_3', $selectedBarangay['boundaryId'] ?? null, $_POST['latitude'], $_POST['longitude'])) {
-                    throw new InvalidArgumentException('The coordinates are outside the selected barangay. Correct the coordinates or choose the matching barangay.');
-                }
                 if ($recordId) {
                     $records->update($recordId, $_POST);
                     $_SESSION['record_success'] = 'The record and its soil layers were updated.' . refreshMapInterpolation();
@@ -129,10 +104,9 @@ try {
                     $records->create($_POST);
                     $_SESSION['record_success'] = 'Your record has been saved and is now listed below.' . refreshMapInterpolation();
                 }
-                // Take the administrator straight to the saved marker. The
-                // map's borehole query focuses that exact record at street level.
-                $savedCode = trim((string) ($_POST['borehole_code'] ?? ''));
-                header('Location: admin_gis.php?borehole=' . rawurlencode($savedCode)); exit;
+                // Keep the administrator in the records workspace so multiple
+                // boreholes can be encoded without navigating back from the map.
+                header('Location: soil_records.php'); exit;
             } catch (InvalidArgumentException $e) {
                 $errorMessage = $e->getMessage();
                 $formData = $_POST;
@@ -157,6 +131,7 @@ try {
                 $formData = [
                     'borehole_code' => $record['borehole_code'], 'borehole_depth_m' => $record['borehole_depth_m'],
                     'latitude' => $record['latitude'], 'longitude' => $record['longitude'], 'elevation_m' => $record['elevation_m'],
+                    'record_lock_version' => $record['lock_version'] ?? 1,
                     'municipality_name' => $record['municipality_name'], 'barangay_name' => $record['barangay_name'],
                 ];
                 foreach (['soil_type','soil_classification','soil_description','depth_from_m','depth_to_m','spt_n_value','bearing_capacity_kpa'] as $field) {
@@ -165,7 +140,8 @@ try {
             }
         }
 
-        $recentBoreholes = $records->recentBoreholes(null);
+        $recordPagination = (new AdminDataService($db))->page('boreholes', $_GET);
+        $recentBoreholes = $recordPagination['rows'];
     }
 } catch (Throwable $e) {
     error_log('Soil records: ' . $e->getMessage());
@@ -405,6 +381,7 @@ function old_raw(string $key, string $default = ''): string
                     <input type="hidden" name="csrf" value="<?= $escape($_SESSION['record_csrf']) ?>">
                     <input type="hidden" name="action" value="save">
                     <input type="hidden" name="record_id" value="<?= $editingId ?: '' ?>">
+                    <input type="hidden" name="record_lock_version" value="<?= $editingId ? $escape($formData['record_lock_version'] ?? 1) : '' ?>">
                     <div class="dialog-heading"><div><h2 id="record-title"><?= $editingId ? 'Edit soil record' : 'Add soil record' ?></h2><p><?= $editingId ? 'Update the borehole details and soil layers below.' : 'Enter the borehole location, then add its soil layers.' ?></p></div><button type="button" class="dialog-close" data-close-dialog aria-label="Close form">&times;</button></div>
                     <?php if ($errorMessage): ?><div hidden data-toast data-icon="error" data-title="Unable to save" id="record-error"><?= $escape($errorMessage) ?></div><?php endif; ?>
                     <p class="entry-help">Fields marked * are required. Closing this window keeps your draft until you leave the page.</p>
@@ -437,11 +414,29 @@ function old_raw(string $key, string $default = ''): string
                 <section class="panel">
                     <div class="panel-header">
                         <h3>Saved boreholes</h3>
-                        <span><?= number_format(count($recentBoreholes)) ?> records</span>
+                        <span><?= number_format($recordPagination['total']) ?> records</span>
                     </div>
 
+                    <form class="table-toolbar" method="GET" data-server-search role="search">
+                        <div class="table-search-control">
+                            <label for="soil-record-search">Search records</label>
+                            <div class="table-search-input">
+                                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                                <input id="soil-record-search" type="search" name="search" maxlength="100" value="<?= $escape($recordPagination['search']) ?>" placeholder="Borehole or location">
+                            </div>
+                        </div>
+                        <div class="table-toolbar-actions">
+                            <label class="table-page-size" for="soil-record-page-size">
+                                <span>Rows per page</span>
+                                <select id="soil-record-page-size" name="page_size" aria-label="Rows per page"><?php foreach ([10,25,50,100] as $size): ?><option value="<?= $size ?>" <?= $recordPagination['page_size'] === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?></select>
+                            </label>
+                            <?php if ($recordPagination['search'] !== ''): ?><a class="table-clear-button" href="?<?= $escape(http_build_query(['page_size' => $recordPagination['page_size']])) ?>">Clear</a><?php endif; ?>
+                            <button class="table-search-button" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>Search</span></button>
+                        </div>
+                    </form>
+
                     <?php if ($recentBoreholes): ?>
-                        <div class="table-wrap">
+                        <div class="table-wrap" data-server-paginated>
                             <table>
                                 <thead>
                                     <tr>
@@ -473,8 +468,14 @@ function old_raw(string $key, string $default = ''): string
                                 </tbody>
                             </table>
                         </div>
+                        <?php if ($recordPagination['pages'] > 1): $baseQuery=['search'=>$recordPagination['search'],'page_size'=>$recordPagination['page_size']]; ?>
+                        <nav class="table-footer" aria-label="Record pages"><span>Page <?= number_format($recordPagination['page']) ?> of <?= number_format($recordPagination['pages']) ?></span><div class="table-pages">
+                            <?php if ($recordPagination['page'] > 1): ?><a href="?<?= $escape(http_build_query($baseQuery + ['page'=>$recordPagination['page']-1])) ?>">Previous</a><?php endif; ?>
+                            <?php if ($recordPagination['page'] < $recordPagination['pages']): ?><a href="?<?= $escape(http_build_query($baseQuery + ['page'=>$recordPagination['page']+1])) ?>">Next</a><?php endif; ?>
+                        </div></nav>
+                        <?php endif; ?>
                     <?php else: ?>
-                        <div class="system-message">No borehole records yet.</div>
+                        <div class="system-message"><?= $recordPagination['search'] !== '' ? 'No boreholes match this search.' : 'No borehole records have been added yet.' ?></div>
                     <?php endif; ?>
                 </section>
             </div>

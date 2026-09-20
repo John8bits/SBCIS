@@ -161,7 +161,10 @@ class SbcisInterpolation {
     }
 
     setTicks(legend) {
-        this.element('ticks').hidden = true;
+        const ticks = this.element('ticks');
+        ticks.textContent = this.number(legend.min) + ' ' + legend.unit + ' — ' +
+            this.number(legend.max) + ' ' + legend.unit;
+        ticks.hidden = false;
     }
 
     updateFloatingLegend(legend) {
@@ -204,22 +207,7 @@ class SbcisInterpolation {
     surfaceColor(value) {
         const numeric = Number(value);
         if (this.colorScale && Number.isFinite(numeric)) return this.colorScale(numeric);
-        return SbcisInterpolation.bearingClass(numeric).color;
-    }
-
-    static bearingClass(value) {
-        const numeric = Number(value);
-        // Ordered, print-friendly engineering palette: low values are warmer;
-        // higher bearing capacity is greener. These bands match the legend.
-        if (numeric < 100) return { key: 'very-low', label: 'Very low', range: '< 100 kPa', color: '#d73027' };
-        if (numeric <= 150) return { key: 'low', label: 'Low', range: '100–150 kPa', color: '#f46d43' };
-        if (numeric <= 200) return { key: 'moderate', label: 'Moderate', range: '151–200 kPa', color: '#fee08b' };
-        if (numeric <= 250) return { key: 'high', label: 'High', range: '201–250 kPa', color: '#91cf60' };
-        return { key: 'very-high', label: 'Very high', range: '> 250 kPa', color: '#1a9850' };
-    }
-
-    color(value) {
-        return SbcisInterpolation.bearingClass(value).color;
+        return Number.isFinite(numeric) ? '#28745d' : '#d9e2dd';
     }
 
     number(value) {
@@ -240,6 +228,7 @@ class SbcisInterpolation {
             null_measurement: 'Missing measurement',
             invalid_measurement: 'Invalid measurement',
             invalid_depth_interval: 'Invalid depth interval',
+            non_field_record: 'Unverified record provenance',
             duplicate_coordinates: 'Duplicate coordinates'
         };
         return labels[reason] || reason.replaceAll('_', ' ');
@@ -249,7 +238,7 @@ class SbcisInterpolation {
         this.root.dataset.state = status;
         this.root.setAttribute('aria-busy', String(status === 'loading'));
         const labels = {
-            loading: 'Checking data', current: 'Current approved surface', unavailable: 'Interpolation unavailable',
+            loading: 'Checking data', current: 'Current interpolation surface', unavailable: 'Interpolation unavailable',
             outdated: 'Update required', needs_regeneration: 'Update required', no_data: 'No verified source data',
             insufficient_data: 'Insufficient measurements', pending_configuration: 'Configuration required',
             generation_failed: 'Generation unsuccessful', unauthorized: 'Sign-in required', forbidden: 'Page refresh required',
@@ -263,7 +252,8 @@ class SbcisInterpolation {
         if (!this.admin) {
             const countText = typeof document === 'undefined' ? '' : (document.querySelector('#visibleBoreholeCount')?.textContent || '');
             const noVisiblePoints = countText === '0';
-            this.element('status').textContent = status === 'current' ? 'The latest interpolation is displayed.' :
+            this.element('status').textContent = status === 'current' ?
+                'The latest interpolation is displayed.' :
                 status === 'loading' ? 'Loading the latest approved interpolation...' :
                 noVisiblePoints ? 'No borehole measurements are available for interpolation.' :
                 'No current interpolation is available. Borehole records remain accessible on the map.';
@@ -296,6 +286,13 @@ class SbcisInterpolation {
             '. Last checked: ' + (data.last_attempt_at || 'never') + '. Source version: ' + data.source_hash : '';
         this.element('admin').textContent = data?.outside_borehole_count ?
             data.outside_borehole_count + ' borehole(s) are outside the province boundary.' : '';
+        const validation = data?.validation;
+        this.element('validation').textContent = validation ?
+            'Leave-one-out validation (' + validation.sample_count +
+            (validation.sampled ? ' of ' + validation.population_count : '') + ' points): MAE ' + this.number(validation.mae) +
+            ' kPa; RMSE ' + this.number(validation.rmse) + ' kPa; bias ' + this.number(validation.bias) +
+            ' kPa. Exact-location maximum error: ' + this.number(validation.exact_location_max_error) + ' kPa.' :
+            'Validation metrics will be available after a valid surface is generated.';
     }
 
     destroy() {

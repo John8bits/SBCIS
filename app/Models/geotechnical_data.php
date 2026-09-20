@@ -12,27 +12,22 @@ function sbcis_fetch_map_boreholes(PDO $db): array
 {
     $stmt = $db->query("
         SELECT
-            borehole_id,
-            borehole_code,
-            municipality_name,
-            barangay_name,
-            latitude,
-            longitude,
-            elevation_m,
-            borehole_depth_m,
-            soil_layer_id,
-            layer_number,
-            soil_type,
-            soil_classification,
-            soil_description,
-            depth_from_m,
-            depth_to_m,
-            spt_n_value,
-            bearing_capacity_kpa
-        FROM v_geotechnical_map_data
-        WHERE latitude IS NOT NULL
-          AND longitude IS NOT NULL
-        ORDER BY borehole_code ASC, layer_number ASC
+            b.borehole_id, b.borehole_code, m.municipality_name, br.barangay_name,
+            b.latitude, b.longitude, b.elevation_m, b.borehole_depth_m,
+            COALESCE(sl.layer_count, 0) AS layer_count,
+            sl.soil_layer_id, sl.layer_number, sl.soil_type, sl.soil_classification,
+            NULL AS soil_description, sl.depth_from_m, sl.depth_to_m, sl.spt_n_value, sl.bearing_capacity_kpa
+        FROM boreholes b
+        LEFT JOIN municipalities m ON m.municipality_id=b.municipality_id
+        LEFT JOIN barangays br ON br.barangay_id=b.barangay_id
+        LEFT JOIN (
+            SELECT ranked.*, COUNT(*) OVER (PARTITION BY ranked.borehole_id) AS layer_count,
+                ROW_NUMBER() OVER (PARTITION BY ranked.borehole_id
+                    ORDER BY ranked.depth_from_m, ranked.depth_to_m, ranked.soil_layer_id) AS depth_order
+            FROM soil_layers ranked
+        ) sl ON sl.borehole_id=b.borehole_id AND sl.depth_order=1
+        WHERE b.latitude IS NOT NULL AND b.longitude IS NOT NULL
+        ORDER BY b.borehole_code ASC
     ");
 
     $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -51,6 +46,7 @@ function sbcis_fetch_map_boreholes(PDO $db): array
                 'longitude' => (float) $record['longitude'],
                 'elevation_m' => $record['elevation_m'],
                 'borehole_depth_m' => $record['borehole_depth_m'],
+                'layer_count' => (int) $record['layer_count'],
                 'layers' => [],
             ];
         }
@@ -375,14 +371,19 @@ function sbcis_update_geotechnical_record(PDO $db, int $boreholeId, array $input
     $data = sbcis_normalize_geotechnical_input($input);
     $db->beginTransaction();
     try {
-        $lock = $db->prepare('SELECT borehole_id FROM boreholes WHERE borehole_id = ? FOR UPDATE');
+        $lock = $db->prepare('SELECT borehole_id, lock_version FROM boreholes WHERE borehole_id = ? FOR UPDATE');
         $lock->execute([$boreholeId]);
-        if (!$lock->fetchColumn()) throw new InvalidArgumentException('This record no longer exists.');
+        $locked = $lock->fetch();
+        if (!$locked) throw new InvalidArgumentException('This record no longer exists.');
+        $expectedVersion = filter_var($input['record_lock_version'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
+        if ($expectedVersion !== false && $expectedVersion !== null && (int)$locked['lock_version'] !== $expectedVersion) {
+            throw new InvalidArgumentException('This record was changed in another tab. Reload it before saving your changes.');
+        }
         $municipalityId = sbcis_find_or_create_municipality($db, $data['municipality_name']);
         $barangayId = sbcis_find_or_create_barangay($db, $municipalityId, $data['barangay_name']);
         $stmt = $db->prepare("UPDATE boreholes SET borehole_code=:code, municipality_id=:municipality,
             barangay_id=:barangay, borehole_depth_m=:depth, latitude=:latitude, longitude=:longitude,
-            elevation_m=:elevation WHERE borehole_id=:id");
+            elevation_m=:elevation, lock_version=lock_version+1 WHERE borehole_id=:id");
         $stmt->execute([':code'=>$data['code'], ':municipality'=>$municipalityId, ':barangay'=>$barangayId,
             ':depth'=>$data['depth'], ':latitude'=>$data['latitude'], ':longitude'=>$data['longitude'],
             ':elevation'=>$data['elevation'], ':id'=>$boreholeId]);

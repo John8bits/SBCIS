@@ -63,6 +63,9 @@ $generatorInput = [
 $generated = (new InterpolationGeneratorService())->generate($generatorInput);
 check(!empty($generated['surface']['features']), 'Approved generator returns supported barangay cells');
 check(count($generated['surface']['features']) < 498, 'Distant barangays omitted by support-distance policy');
+check($generated['validation']['sample_count'] === 5, 'Leave-one-out validates every eligible point');
+check($generated['validation']['exact_location_max_error'] === 0.0, 'IDW returns observed values at exact locations');
+check($generated['validation']['mae'] >= 0 && $generated['validation']['rmse'] >= 0, 'Cross-validation errors are numeric');
 check($generated === (new InterpolationGeneratorService())->generate($generatorInput), 'Generator output deterministic');
 $config = new InterpolationConfig(['bearing_capacity_kpa', 'spt_n_value'], 3);
 $service = new InterpolationDataService($boundary, $config);
@@ -87,13 +90,17 @@ check($depthSelection['exclusion_reasons']->deeper_layer_not_selected === 1, 'De
 $duplicates = $build([fixture(1), fixture(2)]);
 check($duplicates['eligible_count'] === 0 && $duplicates['excluded_count'] === 2, 'All duplicate observations excluded');
 check($duplicates['exclusion_reasons']->duplicate_coordinates === 2, 'Duplicate diagnostics');
-$outside = $build([fixture(1, 3, 15), fixture(1, 5, 15)]);
-check($outside['outside_borehole_count'] === 1 && $outside['excluded_count'] === 2, 'Distinct boreholes versus observation counts');
+$outside = $build([fixture(1, 3, 15), fixture(2, 5, 15.5)]);
+check($outside['outside_borehole_count'] === 0 && $outside['eligible_count'] === 2,
+    'Valid worldwide coordinates are accepted without province-boundary filtering');
 $demo = fixture(4); $demo['borehole_code'] = 'SYNTH-DEMO-004';
 $demoResult = $build([$demo]);
-check($demoResult['eligible_count'] === 1, 'Valid seeded record included in final interpolation');
+check($demoResult['eligible_count'] === 0 && $demoResult['non_field_borehole_count'] === 1 &&
+    $demoResult['exclusion_reasons']->non_field_record === 1,
+    'Non-field code excluded from interpolation');
 $renamedDemo = fixture(5); $renamedDemo['borehole_code'] = 'BH-005'; $renamedDemo['soil_type'] = 'SYNTHETIC SAMPLE';
-check($build([$renamedDemo])['eligible_count'] === 1, 'Valid seeded layer remains included after renaming');
+check($build([$renamedDemo])['eligible_count'] === 0 && Config\InterpolationConfig::isNonFieldRecord($renamedDemo),
+    'Renamed non-field provenance remains identified and excluded');
 check($build([fixture(1, -1)])['exclusion_reasons']->invalid_measurement === 1, 'Negative invalid measurement');
 $noLayer = fixture(1); $noLayer['soil_layer_id'] = null;
 check($build([$noLayer])['exclusion_reasons']->no_observation === 1, 'Borehole without layer');

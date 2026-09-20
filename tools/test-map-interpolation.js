@@ -58,9 +58,10 @@ async function testMap(mobile, base) {
         addFeatures(data);
         return group;
     };
-    const L = { map: () => map, tileLayer: makeLayer, geoJSON, layerGroup: makeLayer, DomEvent: { stopPropagation() {} },
+    const L = { map: () => map, tileLayer: makeLayer, geoJSON, layerGroup: makeLayer, canvas: () => ({}), DomEvent: { stopPropagation() {} },
         divIcon: options => options,
         marker: (position, options) => { const marker = makeLayer(); marker.position = position; marker.options = options; markers.push(marker); return marker; },
+        circleMarker: (position, options) => { const marker = makeLayer(); marker.position = position; marker.options = options; markers.push(marker); return marker; },
         control: { zoom: makeLayer, scale: makeLayer } };
     window.L = L;
     const feature = { type: 'Feature', properties: { GID_2: 'm1', GID_3: 'b1', NAME_2: 'Maasin', NAME_3: 'Test Barangay' },
@@ -125,9 +126,9 @@ async function testMap(mobile, base) {
     assert.ok(map.fitCount > fitBeforeLayer, 'Municipality map-area click zooms to the selected area');
     assert.equal(get('gisDataModal').hidden, true, 'Boundary click does not open the records modal');
     assert.equal(get('gisCapacityCard').hidden, false, 'Boundary click opens the bearing-capacity readout');
-    assert.equal(get('gisCapacityClass').textContent, 'Low');
+    assert.equal(get('gisCapacityClass').textContent, 'Interpolated estimate');
     assert.equal(get('gisCapacityValue').textContent, '145 kPa');
-    assert.equal(get('gisCapacitySwatch').style.backgroundColor, '#f46d43');
+    assert.equal(get('gisCapacitySwatch').style.backgroundColor, '#28745d');
     const fitBeforeBarangay = map.fitCount;
     map.events.click({ latlng: { lat: 10.15, lng: 124.85 } });
     assert.ok(map.fitCount > fitBeforeBarangay, 'Barangay map-area click zooms closer to the selected barangay');

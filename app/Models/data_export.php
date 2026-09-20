@@ -43,12 +43,12 @@ function sbcis_sample_layer_sql(string $layerAlias, string $boreholeAlias): stri
 
 function sbcis_backup_schema_tables(): array
 {
-    return ['municipalities', 'barangays', 'boreholes', 'soil_layers', 'admins'];
+    return ['municipalities', 'barangays', 'boreholes', 'soil_layers', 'admins', 'system_revisions'];
 }
 
 function sbcis_backup_data_tables(): array
 {
-    return ['municipalities', 'barangays', 'boreholes', 'soil_layers'];
+    return ['municipalities', 'barangays', 'boreholes', 'soil_layers', 'system_revisions'];
 }
 
 function sbcis_csv_cell($value): string
@@ -132,6 +132,16 @@ function sbcis_write_backup(PDO $db, $stream): void
     $viewDefinition = preg_replace('/DEFINER=`[^`]+`@`[^`]+`\s+/i', '', $viewDefinition);
     $viewDefinition = str_ireplace('SQL SECURITY DEFINER', 'SQL SECURITY INVOKER', $viewDefinition);
     if ($viewDefinition !== '') fwrite($stream, $viewDefinition . ";\n\n");
+    foreach ([
+        'trg_boreholes_interpolation_insert', 'trg_boreholes_interpolation_update', 'trg_boreholes_interpolation_delete',
+        'trg_layers_interpolation_insert', 'trg_layers_interpolation_update', 'trg_layers_interpolation_delete',
+    ] as $triggerName) {
+        $trigger = $db->query('SHOW CREATE TRIGGER `' . $triggerName . '`')->fetch(PDO::FETCH_ASSOC);
+        $definition = (string) ($trigger['SQL Original Statement'] ?? '');
+        $definition = preg_replace('/CREATE\s+DEFINER=`[^`]+`@`[^`]+`\s+/i', 'CREATE ', $definition);
+        if ($definition !== '') fwrite($stream, $definition . ";\n");
+    }
+    fwrite($stream, "\n");
     fwrite($stream, "SET UNIQUE_CHECKS = @SBCIS_OLD_UNIQUE_CHECKS;\n" .
         "SET FOREIGN_KEY_CHECKS = @SBCIS_OLD_FOREIGN_KEY_CHECKS;\n" .
         "SET SQL_MODE = @SBCIS_OLD_SQL_MODE;\n-- End of SBCIS backup.\n");

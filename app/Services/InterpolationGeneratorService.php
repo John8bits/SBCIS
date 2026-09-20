@@ -47,6 +47,7 @@ final class InterpolationGeneratorService
             $feature['properties']['value'] = round($value, 2);
             $feature['properties']['support_distance_km'] = round($nearestKm, 2);
             $feature['properties']['observation_count'] = count($observations);
+            $feature['properties']['prediction_coordinates'] = [round($longitude, 7), round($latitude, 7)];
             $features[] = $feature;
             $values[] = $value;
         }
@@ -64,6 +65,7 @@ final class InterpolationGeneratorService
                 'unit' => (string) $input['unit'],
             ],
             'surface' => ['type' => 'FeatureCollection', 'features' => $features],
+            'validation' => $this->validation($observations),
             // Lets the publication guard verify this as an exact subset of the
             // repository's reviewed barangay geometries without an expensive
             // all-edge intersection scan on every request.
@@ -87,6 +89,47 @@ final class InterpolationGeneratorService
         }
         if ($weightTotal <= 0) throw new RuntimeException('Unable to calculate interpolation weights.');
         return [$weighted / $weightTotal, $nearestKm];
+    }
+
+    /**
+     * Confirm exact-point behavior and calculate leave-one-out errors using
+     * the same IDW implementation and all remaining eligible observations.
+     */
+    private function validation(array $observations): array
+    {
+        $exactMaximumError = 0.0;
+        $errors = [];
+        $population = count($observations);
+        $selected = [];
+        $sampleSize = min($population, InterpolationConfig::MAX_VALIDATION_POINTS);
+        for ($sample = 0; $sample < $sampleSize; $sample++) {
+            $index = $sampleSize === 1 ? 0 : (int) round($sample * ($population - 1) / ($sampleSize - 1));
+            $selected[$index] = true;
+        }
+        foreach ($observations as $index => $observation) {
+            if (!isset($selected[$index])) continue;
+            [$longitude, $latitude] = $observation['coordinates'];
+            [$atObservation] = $this->estimate((float) $longitude, (float) $latitude, $observations);
+            $exactMaximumError = max($exactMaximumError, abs($atObservation - (float) $observation['value']));
+
+            $neighbors = $observations;
+            array_splice($neighbors, $index, 1);
+            if (!$neighbors) continue;
+            [$predicted] = $this->estimate((float) $longitude, (float) $latitude, $neighbors);
+            $errors[] = $predicted - (float) $observation['value'];
+        }
+        $count = count($errors);
+        $absolute = array_map('abs', $errors);
+        $squared = array_map(static fn(float $error): float => $error ** 2, $errors);
+        return [
+            'sample_count' => $count,
+            'population_count' => $population,
+            'sampled' => $count < $population,
+            'mae' => $count ? round(array_sum($absolute) / $count, 2) : null,
+            'rmse' => $count ? round(sqrt(array_sum($squared) / $count), 2) : null,
+            'bias' => $count ? round(array_sum($errors) / $count, 2) : null,
+            'exact_location_max_error' => round($exactMaximumError, 10),
+        ];
     }
 
     private function distanceKm(float $lat1, float $lon1, float $lat2, float $lon2): float

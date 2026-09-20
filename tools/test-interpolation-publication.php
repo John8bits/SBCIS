@@ -15,10 +15,11 @@ function expect(bool $value, string $message): void {
     $checks++;
 }
 $input = ['status'=>'ready', 'version'=>'a', 'generation_enabled'=>true, 'variable'=>'fixture', 'unit'=>'test units',
-    'points'=>[], 'eligible_count'=>3, 'excluded_count'=>0, 'outside_borehole_count'=>0];
+    'points'=>[['value'=>1], ['value'=>2], ['value'=>3]], 'eligible_count'=>3, 'excluded_count'=>0, 'outside_borehole_count'=>0];
 $prepare = static function () use (&$input): array { return $input; };
 // Isolated synthetic output tests publication mechanics, not an interpolation algorithm.
 $output = ['method'=>'isolated fixture', 'legend'=>['min'=>0,'max'=>10,'unit'=>'test units'],
+    'validation'=>['sample_count'=>3,'population_count'=>3,'sampled'=>false,'mae'=>1.0,'rmse'=>1.2,'bias'=>0.1,'exact_location_max_error'=>0.0],
     'surface'=>['type'=>'FeatureCollection','features'=>[['type'=>'Feature','properties'=>['value'=>4],
         'geometry'=>['type'=>'Polygon','coordinates'=>[[
             [125.2161,10.0330],[125.2168,10.0330],[125.2164,10.0337],[125.2161,10.0330]
@@ -38,6 +39,7 @@ try {
     $original = $store->read()['published'];
     expect($service->result()['result']['source_hash'] === 'a', 'Public serves current source');
     expect(!isset($service->result()['result']['points']), 'Public does not receive input points');
+    expect(!isset($service->result()['result']['validation']), 'Public does not receive admin validation diagnostics');
     $input['version'] = 'edited'; $store->markOutdated();
     expect($service->result()['status'] === 'outdated' && $service->result()['result'] === null, 'Old surface hidden after mutation');
     expect($service->status()['published_outdated'], 'Admin sees stale publication');
