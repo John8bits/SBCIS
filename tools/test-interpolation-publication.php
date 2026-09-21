@@ -18,9 +18,9 @@ $input = ['status'=>'ready', 'version'=>'a', 'generation_enabled'=>true, 'variab
     'points'=>[['value'=>1], ['value'=>2], ['value'=>3]], 'eligible_count'=>3, 'excluded_count'=>0, 'outside_borehole_count'=>0];
 $prepare = static function () use (&$input): array { return $input; };
 // Isolated synthetic output tests publication mechanics, not an interpolation algorithm.
-$output = ['method'=>'isolated fixture', 'legend'=>['min'=>0,'max'=>10,'unit'=>'test units'],
-    'validation'=>['sample_count'=>3,'population_count'=>3,'sampled'=>false,'mae'=>1.0,'rmse'=>1.2,'bias'=>0.1,'exact_location_max_error'=>0.0],
-    'surface'=>['type'=>'FeatureCollection','features'=>[['type'=>'Feature','properties'=>['value'=>4],
+$output = ['method'=>'isolated fixture', 'legend'=>['min'=>0,'max'=>10,'unit'=>'test units','classes'=>Config\InterpolationConfig::bearingCapacityClasses()],
+    'validation'=>['sample_count'=>3,'population_count'=>3,'sampled'=>false,'mae'=>1.0,'rmse'=>1.2,'bias'=>0.1,'exact_location_max_error'=>0.0,'spatial_span_km'=>10.0],
+    'surface'=>['type'=>'FeatureCollection','features'=>[['type'=>'Feature','properties'=>['value'=>4,'GID_3'=>'fixture-1'],
         'geometry'=>['type'=>'Polygon','coordinates'=>[[
             [125.2161,10.0330],[125.2168,10.0330],[125.2164,10.0337],[125.2161,10.0330]
         ]]]]]]];
@@ -30,7 +30,8 @@ $generate = static function (array $data) use (&$fail, &$editDuringGeneration, &
     if ($editDuringGeneration) $input['version'] = 'concurrent-edit';
     return $output;
 };
-$service = new InterpolationPublicationService($prepare, $store, $generate);
+$approve = static fn(): array => ['status'=>'approved','reasons'=>[],'thresholds'=>[],'policy_version'=>Config\InterpolationConfig::PUBLICATION_POLICY_VERSION];
+$service = new InterpolationPublicationService($prepare, $store, $generate, null, $approve);
 try {
     expect($service->result()['result'] === null, 'No publication is not a system error');
     expect(!is_dir($directory), 'Public reads do not create a cache or generate');
@@ -40,6 +41,8 @@ try {
     expect($service->result()['result']['source_hash'] === 'a', 'Public serves current source');
     expect(!isset($service->result()['result']['points']), 'Public does not receive input points');
     expect(!isset($service->result()['result']['validation']), 'Public does not receive admin validation diagnostics');
+    expect(!isset($service->result()['result']['surface']) && count($service->result()['result']['surface_values']) === 1,
+        'Public response reuses boundary IDs instead of duplicating geometry');
     $input['version'] = 'edited'; $store->markOutdated();
     expect($service->result()['status'] === 'outdated' && $service->result()['result'] === null, 'Old surface hidden after mutation');
     expect($service->status()['published_outdated'], 'Admin sees stale publication');
@@ -62,7 +65,7 @@ try {
     expect($service->regenerate()['status'] === 'pending_configuration', 'Approval gate cannot be bypassed by valid inputs');
     $input['generation_enabled'] = true;
     expect((new InterpolationPublicationService($prepare, $store))->regenerate()['status'] === 'pending_configuration', 'No generator means no fabricated success');
-    $badService = new InterpolationPublicationService($prepare, $store, static fn()=>['surface'=>[]]);
+    $badService = new InterpolationPublicationService($prepare, $store, static fn()=>['surface'=>[]], null, $approve);
     expect($badService->regenerate()['status'] === 'generation_failed', 'Malformed output rejected');
     expect($store->read()['published'] === $latest, 'Malformed output preserves publication');
     $before = $store->read();

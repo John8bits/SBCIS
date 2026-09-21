@@ -22,7 +22,7 @@ if ($repository->revision() !== $before) throw new RuntimeException('Revision di
 $directory = sys_get_temp_dir() . '/sbcis-revision-test-' . bin2hex(random_bytes(8));
 $store = new App\Services\InterpolationResultStore($directory);
 $store->update(static fn(array $state): array => [
-    'published'=>['source_hash'=>'fixture','source_revision'=>$before,'validation'=>['private'=>true]],
+    'published'=>['source_hash'=>'fixture','source_revision'=>$before,'policy_version'=>Config\InterpolationConfig::PUBLICATION_POLICY_VERSION,'validation'=>['private'=>true]],
     'attempt'=>null,'outdated'=>false,
 ]);
 $service = new App\Services\InterpolationPublicationService(

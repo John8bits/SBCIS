@@ -9,20 +9,12 @@ use App\Support\View;
 
 require_once __DIR__ . '/../../config/bootstrap.php';
 
-AdminSession::start();
+AdminSession::requireLogin();
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Cache-Control: post-check=0, pre-check=0', false);
 header('Pragma: no-cache');
 header('Expires: 0');
-
-if (
-    !isset($_SESSION['admin_logged_in']) ||
-    $_SESSION['admin_logged_in'] !== true
-) {
-    header('Location: ../../index.php?login=required');
-    exit;
-}
 
 $escape = [View::class, 'escape'];
 
@@ -47,7 +39,7 @@ function refreshMapInterpolation(): string
 {
     try {
         $database = Connection::get();
-        $boreholeCount = (int) $database->query('SELECT COUNT(*) FROM boreholes')->fetchColumn();
+        $boreholeCount = (int) $database->query('SELECT COUNT(*) FROM boreholes WHERE archived_at IS NULL')->fetchColumn();
         if ($boreholeCount > Config\InterpolationConfig::SYNCHRONOUS_REGENERATION_MAX_POINTS) {
             return ' The interpolation source was invalidated; regenerate it from GIS Map or the scheduled CLI job.';
         }
@@ -83,9 +75,14 @@ try {
                 }
                 $action = is_string($_POST['action'] ?? null) ? $_POST['action'] : 'save';
                 $recordId = filter_var($_POST['record_id'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
-                if ($action === 'delete') {
-                    if (!$records->delete($recordId)) throw new InvalidArgumentException('This record no longer exists.');
-                    $_SESSION['record_success'] = 'The borehole and its soil layers were deleted.' . refreshMapInterpolation();
+                if ($action === 'archive') {
+                    if (!$records->archive($recordId, (int)$_SESSION['admin_id'])) throw new InvalidArgumentException('This record no longer exists or is already archived.');
+                    $_SESSION['record_success'] = 'The borehole was archived and removed from public data.' . refreshMapInterpolation();
+                    header('Location: soil_records.php'); exit;
+                }
+                if ($action === 'restore') {
+                    if (!$records->restore($recordId, (int)$_SESSION['admin_id'])) throw new InvalidArgumentException('This record no longer exists or is already active.');
+                    $_SESSION['record_success'] = 'The borehole was restored.' . refreshMapInterpolation();
                     header('Location: soil_records.php'); exit;
                 }
                 if ($action !== 'save') throw new InvalidArgumentException('Unknown record action.');
@@ -98,10 +95,10 @@ try {
                     throw new InvalidArgumentException('Choose a barangay belonging to the selected municipality.');
                 }
                 if ($recordId) {
-                    $records->update($recordId, $_POST);
+                    $records->update($recordId, $_POST, (int)$_SESSION['admin_id']);
                     $_SESSION['record_success'] = 'The record and its soil layers were updated.' . refreshMapInterpolation();
                 } else {
-                    $records->create($_POST);
+                    $records->create($_POST, (int)$_SESSION['admin_id']);
                     $_SESSION['record_success'] = 'Your record has been saved and is now listed below.' . refreshMapInterpolation();
                 }
                 // Keep the administrator in the records workspace so multiple
@@ -174,7 +171,7 @@ function old_raw(string $key, string $default = ''): string
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5"></script>
     <script src="../../src/js/toast.js"></script>
     <script src="../../src/js/loading-state.js?v=<?= filemtime(__DIR__ . '/../../src/js/loading-state.js') ?>"></script>
     <script src="../../src/js/admin_feedback.js" defer></script>
@@ -418,6 +415,7 @@ function old_raw(string $key, string $default = ''): string
                     </div>
 
                     <form class="table-toolbar" method="GET" data-server-search role="search">
+                        <input type="hidden" name="status" value="<?= $escape($recordPagination['status']) ?>">
                         <div class="table-search-control">
                             <label for="soil-record-search">Search records</label>
                             <div class="table-search-input">
@@ -426,6 +424,7 @@ function old_raw(string $key, string $default = ''): string
                             </div>
                         </div>
                         <div class="table-toolbar-actions">
+                            <a class="table-clear-button" href="?status=<?= $recordPagination['status'] === 'archived' ? 'active' : 'archived' ?>"><?= $recordPagination['status'] === 'archived' ? 'View active' : 'View archive' ?></a>
                             <label class="table-page-size" for="soil-record-page-size">
                                 <span>Rows per page</span>
                                 <select id="soil-record-page-size" name="page_size" aria-label="Rows per page"><?php foreach ([10,25,50,100] as $size): ?><option value="<?= $size ?>" <?= $recordPagination['page_size'] === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?></select>
@@ -442,6 +441,7 @@ function old_raw(string $key, string $default = ''): string
                                     <tr>
                                         <th>Borehole</th>
                                         <th>Location</th>
+                                        <th>Boundary</th>
                                         <th>Depth</th>
                                         <th>Layers</th>
                                         <th class="record-actions-heading">Actions</th>
@@ -452,30 +452,40 @@ function old_raw(string $key, string $default = ''): string
                                         <tr>
                                             <td><strong><?= $escape($borehole['borehole_code']) ?></strong></td>
                                             <td><?= $escape(trim(($borehole['barangay_name'] ?: '') . ' ' . ($borehole['municipality_name'] ?: '')) ?: 'Not recorded') ?></td>
+                                            <td><span class="badge<?= $borehole['boundary_status'] === 'outside' || $borehole['domain_warnings'] ? ' danger' : '' ?>"><?= $borehole['boundary_status'] === 'outside' ? 'Review: outside area' : ($borehole['domain_warnings'] ? 'Review: domain threshold' : 'Inside study area') ?></span></td>
                                             <td><?= $escape($borehole['borehole_depth_m']) ?> m</td>
                                             <td><span class="badge"><?= number_format((int) $borehole['layer_count']) ?></span></td>
                                             <td class="record-actions">
+                                                <?php if ($recordPagination['status'] === 'active'): ?>
                                                 <a class="table-action" href="?edit=<?= (int)$borehole['borehole_id'] ?>" aria-label="Edit <?= $escape($borehole['borehole_code']) ?>">Edit</a>
-                                                <form method="POST" action="soil_records.php" class="delete-record-form" data-record-name="<?= $escape($borehole['borehole_code']) ?>">
+                                                <form method="POST" action="soil_records.php" class="archive-record-form" data-record-name="<?= $escape($borehole['borehole_code']) ?>">
                                                     <input type="hidden" name="csrf" value="<?= $escape($_SESSION['record_csrf']) ?>">
-                                                    <input type="hidden" name="action" value="delete">
+                                                    <input type="hidden" name="action" value="archive">
                                                     <input type="hidden" name="record_id" value="<?= (int)$borehole['borehole_id'] ?>">
-                                                    <button class="table-action danger" type="submit">Delete</button>
+                                                    <button class="table-action danger" type="submit">Archive</button>
                                                 </form>
+                                                <?php else: ?>
+                                                <form method="POST" action="soil_records.php">
+                                                    <input type="hidden" name="csrf" value="<?= $escape($_SESSION['record_csrf']) ?>">
+                                                    <input type="hidden" name="action" value="restore">
+                                                    <input type="hidden" name="record_id" value="<?= (int)$borehole['borehole_id'] ?>">
+                                                    <button class="table-action" type="submit">Restore</button>
+                                                </form>
+                                                <?php endif; ?>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
                         </div>
-                        <?php if ($recordPagination['pages'] > 1): $baseQuery=['search'=>$recordPagination['search'],'page_size'=>$recordPagination['page_size']]; ?>
+                        <?php if ($recordPagination['pages'] > 1): $baseQuery=['search'=>$recordPagination['search'],'page_size'=>$recordPagination['page_size'],'status'=>$recordPagination['status']]; ?>
                         <nav class="table-footer" aria-label="Record pages"><span>Page <?= number_format($recordPagination['page']) ?> of <?= number_format($recordPagination['pages']) ?></span><div class="table-pages">
                             <?php if ($recordPagination['page'] > 1): ?><a href="?<?= $escape(http_build_query($baseQuery + ['page'=>$recordPagination['page']-1])) ?>">Previous</a><?php endif; ?>
                             <?php if ($recordPagination['page'] < $recordPagination['pages']): ?><a href="?<?= $escape(http_build_query($baseQuery + ['page'=>$recordPagination['page']+1])) ?>">Next</a><?php endif; ?>
                         </div></nav>
                         <?php endif; ?>
                     <?php else: ?>
-                        <div class="system-message"><?= $recordPagination['search'] !== '' ? 'No boreholes match this search.' : 'No borehole records have been added yet.' ?></div>
+                        <div class="system-message"><?= $recordPagination['search'] !== '' ? 'No boreholes match this search.' : ($recordPagination['status'] === 'archived' ? 'No archived boreholes.' : 'No borehole records have been added yet.') ?></div>
                     <?php endif; ?>
                 </section>
             </div>

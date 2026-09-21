@@ -45,6 +45,8 @@ final class InterpolationGeneratorService
 
             $feature['properties'] = is_array($feature['properties'] ?? null) ? $feature['properties'] : [];
             $feature['properties']['value'] = round($value, 2);
+            $classification = InterpolationConfig::classifyBearingCapacity($value);
+            $feature['properties']['classification'] = $classification['key'];
             $feature['properties']['support_distance_km'] = round($nearestKm, 2);
             $feature['properties']['observation_count'] = count($observations);
             $feature['properties']['prediction_coordinates'] = [round($longitude, 7), round($latitude, 7)];
@@ -63,6 +65,7 @@ final class InterpolationGeneratorService
                 'min' => round(min($values), 2),
                 'max' => round(max($values), 2),
                 'unit' => (string) $input['unit'],
+                'classes' => InterpolationConfig::bearingCapacityClasses(),
             ],
             'surface' => ['type' => 'FeatureCollection', 'features' => $features],
             'validation' => $this->validation($observations),
@@ -121,6 +124,9 @@ final class InterpolationGeneratorService
         $count = count($errors);
         $absolute = array_map('abs', $errors);
         $squared = array_map(static fn(float $error): float => $error ** 2, $errors);
+        $latitudes = array_map(static fn(array $point): float => (float) $point['coordinates'][1], $observations);
+        $longitudes = array_map(static fn(array $point): float => (float) $point['coordinates'][0], $observations);
+        $spatialSpan = $this->distanceKm(min($latitudes), min($longitudes), max($latitudes), max($longitudes));
         return [
             'sample_count' => $count,
             'population_count' => $population,
@@ -129,6 +135,11 @@ final class InterpolationGeneratorService
             'rmse' => $count ? round(sqrt(array_sum($squared) / $count), 2) : null,
             'bias' => $count ? round(array_sum($errors) / $count, 2) : null,
             'exact_location_max_error' => round($exactMaximumError, 10),
+            'spatial_span_km' => round($spatialSpan, 2),
+            'coordinate_extent' => [
+                'min_latitude' => min($latitudes), 'max_latitude' => max($latitudes),
+                'min_longitude' => min($longitudes), 'max_longitude' => max($longitudes),
+            ],
         ];
     }
 

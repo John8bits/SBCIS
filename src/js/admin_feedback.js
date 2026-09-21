@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     document.addEventListener('submit', async event => {
-        const form = event.target.closest('.delete-record-form, .delete-admin-form');
+        const form = event.target.closest('.archive-record-form, .delete-admin-form');
         if (!form || form.dataset.confirmed === 'true') return;
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -55,18 +55,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const name = form.dataset.recordName || 'this borehole';
         if (await confirmAction({
-            icon: 'warning', title: 'Delete this record?',
-            text: `${name} and all of its soil layers will be permanently deleted.`,
-            confirmText: 'Delete record', danger: true
+            icon: 'warning', title: 'Archive this record?',
+            text: `${name} will be removed from public maps and interpolation, but can be restored.`,
+            confirmText: 'Archive record', danger: true
         })) {
             form.dataset.confirmed = 'true';
             form.submit();
         }
     }, true);
 
-    document.addEventListener('click', async event => {
-        const logout = event.target.closest('#logoutButton');
-        if (!logout) return;
+    document.addEventListener('submit', async event => {
+        const form = event.target.closest('#logoutForm');
+        if (!form || form.dataset.confirmed === 'true') return;
         event.preventDefault();
         event.stopImmediatePropagation();
         if (await confirmAction({
@@ -77,7 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: 'Signing you out…',
                 message: 'Closing your administrator session securely.'
             });
-            window.setTimeout(() => window.location.assign(logout.href), 90);
+            form.dataset.confirmed = 'true';
+            window.setTimeout(() => form.submit(), 90);
         }
     }, true);
 });

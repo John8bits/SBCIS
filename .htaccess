@@ -1,0 +1,12 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(?:tools|database|config|docs|tests)(?:/|$) - [F,L,NC]
+    RewriteRule ^(?:db\.db|\.env(?:\..*)?|composer\.(?:json|lock)|package(?:-lock)?\.json)$ - [F,L,NC]
+    RewriteRule ^\.(?:git|agents|codex)(?:/|$) - [F,L,NC]
+</IfModule>
+
+<FilesMatch "(?i)(?:^\.|\.(?:sql|db|sqlite|sqlite3|bak|backup|dump|log|ini|env))$">
+    Require all denied
+</FilesMatch>

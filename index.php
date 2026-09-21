@@ -1,6 +1,9 @@
 <?php
 
-session_start();
+require_once __DIR__ . '/config/bootstrap.php';
+
+App\Support\AdminSession::start();
+$_SESSION['login_csrf'] = $_SESSION['login_csrf'] ?? bin2hex(random_bytes(32));
 
 // prevent cache
 header(
@@ -31,10 +34,7 @@ header(
 |
 */
 
-if (
-    isset($_SESSION['admin_logged_in']) &&
-    $_SESSION['admin_logged_in'] === true
-) {
+if (App\Support\AdminSession::isLoggedIn()) {
 
     header(
         'Location: views/admin/admin_dashboard.php'
@@ -56,7 +56,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 <head>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
   <link rel="icon" type="image/png" href="src/images/logo.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -78,7 +78,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
   <script defer src="src/js/interpolation.js?v=<?= filemtime(__DIR__ . '/src/js/interpolation.js') ?>"></script>
   <script defer src="src/js/hero-map.js?v=<?= filemtime(__DIR__ . '/src/js/hero-map.js') ?>"></script>
 
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5"></script>
   <script src="src/js/toast.js"></script>
   <script src="src/js/loading-state.js?v=<?= filemtime(__DIR__ . '/src/js/loading-state.js') ?>"></script>
 
@@ -226,11 +226,9 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
               <div id="heroMap" class="mini-map" role="region" aria-label="Southern Leyte bearing capacity interpolation map"></div>
               <div id="heroInterpolationLegend" class="hero-interpolation-legend" hidden>
                 <strong>Bearing capacity</strong>
-                <span><i class="range-very-low"></i>&lt; 100 <small>Very low</small></span>
-                <span><i class="range-low"></i>100–150 <small>Low</small></span>
-                <span><i class="range-moderate"></i>151–200 <small>Moderate</small></span>
-                <span><i class="range-high"></i>201–250 <small>High</small></span>
-                <span><i class="range-very-high"></i>&gt; 250 kPa <small>Very high</small></span>
+                <?php foreach (Config\InterpolationConfig::bearingCapacityClasses() as $class): ?>
+                <span><i class="range-<?= $escape(str_replace('_', '-', $class['key'])) ?>"></i><?= $escape($class['range']) ?><?= $class['key'] === 'very_high' ? ' kPa' : '' ?> <small><?= $escape($class['label']) ?></small></span>
+                <?php endforeach; ?>
               </div>
             </div>
             <div class="hero-map-actions">
@@ -776,6 +774,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
         </p>
 
         <form action="app/Controllers/login_process.php" method="POST" class="login-form">
+          <input type="hidden" name="csrf" value="<?= $escape($_SESSION['login_csrf']) ?>">
 
           <div class="form-group">
 
@@ -1076,6 +1075,8 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
       empty: 'Enter your email and password.',
       invalid: 'Enter a valid email address.',
       error: 'Unable to sign in. Please try again.',
+      expired: 'Your sign-in form expired. Reload the page and try again.',
+      throttled: 'Too many sign-in attempts. Please wait and try again.',
       required: 'Please sign in to continue.'
     };
 

@@ -6,4 +6,4 @@ use App\Controllers\AuthController;
 
 require_once __DIR__ . '/../../config/bootstrap.php';
 
-(new AuthController())->logout();
+(new AuthController())->logout($_POST, $_SERVER['REQUEST_METHOD'] ?? 'GET');

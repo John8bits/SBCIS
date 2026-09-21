@@ -11,12 +11,14 @@ function sbcis_export_queries(): array
         'boreholes' => "SELECT b.*, m.municipality_name, br.barangay_name,
             CASE WHEN {$sampleBorehole} THEN 'sample' ELSE 'field' END AS record_source
             FROM boreholes b LEFT JOIN municipalities m ON m.municipality_id = b.municipality_id
-            LEFT JOIN barangays br ON br.barangay_id = b.barangay_id ORDER BY b.borehole_id",
+            LEFT JOIN barangays br ON br.barangay_id = b.barangay_id
+            WHERE b.archived_at IS NULL ORDER BY b.borehole_id",
         'soil_layers' => "SELECT sl.*, b.borehole_code, m.municipality_name, br.barangay_name,
             CASE WHEN {$sampleLayer} THEN 'sample' ELSE 'field' END AS record_source
             FROM soil_layers sl JOIN boreholes b ON b.borehole_id = sl.borehole_id
             LEFT JOIN municipalities m ON m.municipality_id = b.municipality_id
             LEFT JOIN barangays br ON br.barangay_id = b.barangay_id
+            WHERE b.archived_at IS NULL
             ORDER BY sl.borehole_id, sl.layer_number",
     ];
 }
@@ -43,12 +45,12 @@ function sbcis_sample_layer_sql(string $layerAlias, string $boreholeAlias): stri
 
 function sbcis_backup_schema_tables(): array
 {
-    return ['municipalities', 'barangays', 'boreholes', 'soil_layers', 'admins', 'system_revisions'];
+    return ['municipalities', 'barangays', 'boreholes', 'soil_layers', 'admins', 'login_attempts', 'audit_log', 'system_revisions'];
 }
 
 function sbcis_backup_data_tables(): array
 {
-    return ['municipalities', 'barangays', 'boreholes', 'soil_layers', 'system_revisions'];
+    return ['municipalities', 'barangays', 'boreholes', 'soil_layers', 'audit_log', 'system_revisions'];
 }
 
 function sbcis_csv_cell($value): string
@@ -95,8 +97,10 @@ function sbcis_write_backup(PDO $db, $stream): void
     $tables = sbcis_backup_data_tables();
     fwrite($stream, "-- SBCIS data backup | " . gmdate('Y-m-d H:i:s') . " UTC\n" .
         "-- Restore into an EMPTY MySQL database. This file never drops or overwrites tables.\n" .
-        "-- Includes location, borehole, and soil-layer records with their IDs, relationships, and timestamps.\n" .
-        "-- Administrator table structure is included; account rows and password hashes are intentionally excluded.\n" .
+        "-- Includes location, borehole, soil-layer, and audit records with archived research data preserved.\n" .
+        "-- Administrator and login-security table structures are included; account rows and password hashes are intentionally excluded.\n" .
+        "-- Audit administrator IDs are cleared so the backup can restore before administrator bootstrap.\n" .
+        "-- After restore, run the protected CLI bootstrap documented in docs/disaster-recovery.md.\n" .
         "-- Source row manifest:\n");
     foreach ($tables as $table) {
         $count = (int) $db->query('SELECT COUNT(*) FROM `' . $table . '`')->fetchColumn();
@@ -117,6 +121,7 @@ function sbcis_write_backup(PDO $db, $stream): void
     foreach ($tables as $table) {
         $stmt = $db->query('SELECT * FROM `' . $table . '` ORDER BY 1');
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if ($table === 'audit_log') $row['admin_id'] = null;
             $columns = array_map(static function ($key) {
                 return '`' . str_replace('`', '``', $key) . '`'; }, array_keys($row));
             // Hex-encoded UTF-8 strings preserve quotes, newlines, and NULL vs empty text in any SQL mode.
@@ -132,6 +137,7 @@ function sbcis_write_backup(PDO $db, $stream): void
     $viewDefinition = preg_replace('/DEFINER=`[^`]+`@`[^`]+`\s+/i', '', $viewDefinition);
     $viewDefinition = str_ireplace('SQL SECURITY DEFINER', 'SQL SECURITY INVOKER', $viewDefinition);
     if ($viewDefinition !== '') fwrite($stream, $viewDefinition . ";\n\n");
+    fwrite($stream, "DELIMITER $$\n");
     foreach ([
         'trg_boreholes_interpolation_insert', 'trg_boreholes_interpolation_update', 'trg_boreholes_interpolation_delete',
         'trg_layers_interpolation_insert', 'trg_layers_interpolation_update', 'trg_layers_interpolation_delete',
@@ -139,9 +145,9 @@ function sbcis_write_backup(PDO $db, $stream): void
         $trigger = $db->query('SHOW CREATE TRIGGER `' . $triggerName . '`')->fetch(PDO::FETCH_ASSOC);
         $definition = (string) ($trigger['SQL Original Statement'] ?? '');
         $definition = preg_replace('/CREATE\s+DEFINER=`[^`]+`@`[^`]+`\s+/i', 'CREATE ', $definition);
-        if ($definition !== '') fwrite($stream, $definition . ";\n");
+        if ($definition !== '') fwrite($stream, $definition . "$$\n");
     }
-    fwrite($stream, "\n");
+    fwrite($stream, "DELIMITER ;\n\n");
     fwrite($stream, "SET UNIQUE_CHECKS = @SBCIS_OLD_UNIQUE_CHECKS;\n" .
         "SET FOREIGN_KEY_CHECKS = @SBCIS_OLD_FOREIGN_KEY_CHECKS;\n" .
         "SET SQL_MODE = @SBCIS_OLD_SQL_MODE;\n-- End of SBCIS backup.\n");

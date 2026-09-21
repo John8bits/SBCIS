@@ -29,6 +29,7 @@ verify(stripos($sql, 'DEFINER=') === false, 'Database account definer removed');
 verify(strpos($sql, 'DROP TABLE') === false, 'No destructive restore commands');
 verify(strpos($sql, 'SET FOREIGN_KEY_CHECKS = 0;') !== false, 'Foreign-key-safe restore settings');
 verify(strpos($sql, 'START TRANSACTION;') !== false && strpos($sql, 'COMMIT;') !== false, 'Transactional data restore');
+verify(strpos($sql, "DELIMITER $$") !== false && strpos($sql, "DELIMITER ;") !== false, 'Trigger-safe SQL delimiters');
 foreach (array_keys(sbcis_export_queries()) as $table) {
     verify(strpos($sql, 'CREATE TABLE `' . $table . '`') !== false, 'Schema included for ' . $table);
     verify(strpos($sql, '--   ' . $table . ': ' . (int) $db->query('SELECT COUNT(*) FROM `' . $table . '`')->fetchColumn() . ' row(s)') !== false, 'Manifest count for ' . $table);
@@ -55,6 +56,15 @@ foreach (array_keys(sbcis_export_queries()) as $table) {
     foreach ($db->query('SHOW COLUMNS FROM `' . $table . '`')->fetchAll() as $column) {
         $columns[] = '`' . $column['Field'] . '` ' . $column['Type'] . ' NULL';
     }
+    $db->exec('CREATE TEMPORARY TABLE `' . $table . '` (' . implode(',', $columns) . ') ENGINE=InnoDB');
+}
+foreach (['audit_log'] as $table) {
+    $original[$table] = $db->query('SELECT * FROM `' . $table . '` ORDER BY 1')->fetchAll();
+    foreach ($original[$table] as &$row) $row['admin_id'] = null;
+    unset($row);
+    $columns = [];
+    foreach ($db->query('SHOW COLUMNS FROM `' . $table . '`')->fetchAll() as $column)
+        $columns[] = '`' . $column['Field'] . '` ' . $column['Type'] . ' NULL';
     $db->exec('CREATE TEMPORARY TABLE `' . $table . '` (' . implode(',', $columns) . ') ENGINE=InnoDB');
 }
 $original['system_revisions'] = $db->query('SELECT * FROM system_revisions ORDER BY 1')->fetchAll();

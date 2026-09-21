@@ -3,6 +3,15 @@ declare(strict_types=1);
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require dirname(__DIR__) . '/config/bootstrap.php';
 
+$authDb = App\Database\Connection::get();
+$authDb->exec("CREATE TEMPORARY TABLE admins (
+    admin_id INT UNSIGNED PRIMARY KEY, email VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL, role ENUM('admin','super_admin') NOT NULL
+) ENGINE=InnoDB");
+$fixturePasswordHash = password_hash('isolated-controller-test', PASSWORD_DEFAULT);
+$authDb->prepare('INSERT INTO admins (admin_id,email,password,role) VALUES (1,?,?,?)')
+    ->execute(['fixture@example.test',$fixturePasswordHash,'admin']);
+
 // Authentication fixtures exist only inside this CLI process, never in an HTTP route.
 $directory = sys_get_temp_dir() . '/sbcis-admin-test-' . bin2hex(random_bytes(8));
 mkdir($directory, 0700);
@@ -14,9 +23,14 @@ $sessionFile = $directory . '/sess_' . session_id();
 $controller = new App\Controllers\InterpolationController();
 $checks = 0;
 function requestCase(array $query, string $method, bool $loggedIn, string $token, int $expectedCode): array {
-    global $controller, $checks;
+    global $controller, $checks, $fixturePasswordHash;
     App\Support\AdminSession::start();
     $_SESSION = ['admin_logged_in'=>$loggedIn, 'interpolation_csrf'=>'test-token'];
+    if ($loggedIn) $_SESSION += [
+        'admin_id'=>1, 'admin_email'=>'fixture@example.test', 'admin_role'=>'admin',
+        'admin_auth_fingerprint'=>hash('sha256',$fixturePasswordHash),
+        'admin_started_at'=>time(), 'admin_last_seen_at'=>time(),
+    ];
     session_write_close();
     $_SERVER['HTTP_X_CSRF_TOKEN'] = $token;
     $_POST = [];
@@ -42,7 +56,7 @@ try {
         if ($result['status'] !== 'current' || !$result['generation_enabled']) {
             throw new RuntimeException('Approved generation did not publish');
         }
-        if (($public['status'] ?? null) !== 'current' || empty($public['result']['surface']['features'])) {
+        if (($public['status'] ?? null) !== 'current' || empty($public['result']['surface_values'])) {
             throw new RuntimeException('Current public surface unavailable');
         }
     } elseif (!in_array($result['status'], ['no_data','insufficient_data'], true) || $public['result'] !== null) {
@@ -54,6 +68,7 @@ try {
     echo "$checks admin authorization/CSRF/measurement/status/regeneration checks passed (isolated CLI session/cache).\n";
 } finally {
     if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+    foreach (glob($directory . '/sess_*') ?: [] as $file) if (is_file($file)) unlink($file);
     foreach ([$sessionFile,$directory.'/cache/state.json',$directory.'/cache/generation.lock'] as $file) if (is_file($file)) unlink($file);
     if (is_dir($directory.'/cache')) rmdir($directory.'/cache');
     rmdir($directory);

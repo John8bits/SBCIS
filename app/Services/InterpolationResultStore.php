@@ -55,10 +55,30 @@ final class InterpolationResultStore
         }
     }
 
-    public function markOutdated(): void
+    public function markOutdated(?int $revision = null): void
     {
-        $this->update(static function (array $state): array {
+        $this->update(static function (array $state) use ($revision): array {
             $state['outdated'] = true;
+            $state['job'] = [
+                'status'=>'queued', 'queued_revision'=>$revision,
+                'queued_at'=>gmdate('c'), 'updated_at'=>gmdate('c'),
+            ];
+            return $state;
+        });
+    }
+
+    public function beginGeneration(string $sourceHash, ?int $revision): void
+    {
+        $this->update(static function (array $state) use ($sourceHash, $revision): array {
+            $job = $state['job'] ?? [];
+            $updated = strtotime((string) ($job['updated_at'] ?? '')) ?: 0;
+            if (($job['status'] ?? '') === 'generating' && $updated > time() - 3600) {
+                throw new RuntimeException('Another interpolation update is running.');
+            }
+            $state['job'] = [
+                'status'=>'generating', 'source_hash'=>$sourceHash,
+                'queued_revision'=>$revision, 'started_at'=>gmdate('c'), 'updated_at'=>gmdate('c'),
+            ];
             return $state;
         });
     }
@@ -67,8 +87,10 @@ final class InterpolationResultStore
     {
         $this->update(static fn(): array => [
             'published' => null,
+            'candidate' => null,
             'attempt' => null,
             'outdated' => true,
+            'job' => null,
         ]);
     }
 }

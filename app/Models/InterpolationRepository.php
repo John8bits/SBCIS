@@ -24,6 +24,7 @@ final class InterpolationRepository
             sl.soil_layer_id, sl.soil_type, sl.soil_description,
             sl.depth_from_m, sl.depth_to_m, sl.spt_n_value, sl.bearing_capacity_kpa
             FROM boreholes b LEFT JOIN soil_layers sl ON sl.borehole_id = b.borehole_id
+            WHERE b.archived_at IS NULL
             ORDER BY b.borehole_id, sl.soil_layer_id LIMIT :limit');
         $statement->bindValue(':limit', InterpolationConfig::MAX_OBSERVATIONS + 1, PDO::PARAM_INT);
         $statement->execute();

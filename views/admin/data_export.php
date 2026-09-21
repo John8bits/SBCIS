@@ -33,12 +33,12 @@ require __DIR__ . '/overview_shell.php';
     <div class="export-backup-copy">
         <span class="export-audience">For developers and technical maintenance</span>
         <h2 id="database-backup-title">Database Backup</h2>
-        <p>Create a complete SQL copy of the current SBCIS research database for technical safekeeping.</p>
-        <div class="export-meta" aria-label="Backup details"><span><i class="fa-solid fa-file-code" aria-hidden="true"></i> SQL format</span><span><i class="fa-solid fa-database" aria-hidden="true"></i> Current database records</span><span><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Admin credentials excluded</span></div>
+        <p>Create a restorable SQL copy of SBCIS research data. Administrator accounts are intentionally excluded and must be recreated with the protected recovery bootstrap after restore.</p>
+        <div class="export-meta" aria-label="Backup details"><span><i class="fa-solid fa-file-code" aria-hidden="true"></i> SQL format</span><span><i class="fa-solid fa-database" aria-hidden="true"></i> Current research records</span><span><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Secure account bootstrap required</span></div>
     </div>
     <div class="export-backup-action">
         <?php if ($available): ?><a class="ov-button export-primary-action" href="?download=backup" data-export-download data-download-label="Download SQL Backup"><i class="fa-solid fa-download" aria-hidden="true"></i><span>Download SQL Backup</span></a><?php else: ?><button class="ov-button" type="button" disabled>Database unavailable</button><?php endif; ?>
-        <small>Generated securely when requested; no backup file is stored publicly.</small>
+        <small>Sensitive research data: store encrypted and follow the documented restore/bootstrap procedure.</small>
     </div>
 </section>
 

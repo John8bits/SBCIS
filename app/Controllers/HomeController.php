@@ -44,12 +44,12 @@ final class HomeController
                 return $home;
             }
 
-            $counts = $database->query('SELECT (SELECT COUNT(*) FROM boreholes) AS boreholes,
-                (SELECT COUNT(*) FROM soil_layers) AS soil_layers')->fetch(PDO::FETCH_ASSOC);
+            $counts = $database->query('SELECT (SELECT COUNT(*) FROM boreholes WHERE archived_at IS NULL) AS boreholes,
+                (SELECT COUNT(*) FROM soil_layers sl JOIN boreholes b ON b.borehole_id=sl.borehole_id WHERE b.archived_at IS NULL) AS soil_layers')->fetch(PDO::FETCH_ASSOC);
             $records = $database->query('SELECT b.borehole_code, m.municipality_name,
                 br.barangay_name, sl.layer_number, sl.soil_type, sl.bearing_capacity_kpa
                 FROM soil_layers sl
-                JOIN boreholes b ON b.borehole_id = sl.borehole_id
+                JOIN boreholes b ON b.borehole_id = sl.borehole_id AND b.archived_at IS NULL
                 LEFT JOIN municipalities m ON m.municipality_id = b.municipality_id
                 LEFT JOIN barangays br ON br.barangay_id = b.barangay_id
                 ORDER BY sl.created_at DESC, sl.soil_layer_id DESC LIMIT 10')->fetchAll(PDO::FETCH_ASSOC);

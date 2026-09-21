@@ -27,7 +27,10 @@ CREATE TABLE barangays (
         ON DELETE CASCADE,
 
     CONSTRAINT unique_barangay
-        UNIQUE (municipality_id, barangay_name)
+        UNIQUE (municipality_id, barangay_name),
+
+    CONSTRAINT unique_barangay_parent
+        UNIQUE (barangay_id, municipality_id)
 );
 
 CREATE TABLE boreholes (
@@ -42,6 +45,8 @@ CREATE TABLE boreholes (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     lock_version INT UNSIGNED NOT NULL DEFAULT 1,
+    archived_at DATETIME NULL,
+    archived_by INT UNSIGNED NULL,
 
     CONSTRAINT fk_borehole_municipality
         FOREIGN KEY (municipality_id)
@@ -54,6 +59,14 @@ CREATE TABLE boreholes (
         REFERENCES barangays(barangay_id)
         ON UPDATE CASCADE
         ON DELETE SET NULL,
+
+    INDEX idx_borehole_barangay_municipality (barangay_id, municipality_id),
+    INDEX idx_boreholes_archive (archived_at, borehole_id),
+    CONSTRAINT fk_borehole_barangay_municipality
+        FOREIGN KEY (barangay_id, municipality_id)
+        REFERENCES barangays(barangay_id, municipality_id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
 
     CONSTRAINT chk_borehole_depth
         CHECK (borehole_depth_m > 0),
@@ -141,7 +154,8 @@ LEFT JOIN municipalities m
 LEFT JOIN barangays br
     ON b.barangay_id = br.barangay_id
 LEFT JOIN soil_layers sl
-    ON b.borehole_id = sl.borehole_id;
+    ON b.borehole_id = sl.borehole_id
+WHERE b.archived_at IS NULL;
 
 CREATE TABLE admins (
     admin_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -149,6 +163,34 @@ CREATE TABLE admins (
     password VARCHAR(255) NOT NULL,
     role ENUM('admin', 'super_admin') NOT NULL DEFAULT 'admin',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE login_attempts (
+    attempt_key CHAR(64) PRIMARY KEY,
+    failure_count INT UNSIGNED NOT NULL DEFAULT 0,
+    first_failed_at DATETIME NOT NULL,
+    last_failed_at DATETIME NOT NULL,
+    blocked_until DATETIME NULL,
+    INDEX idx_login_attempts_cleanup (last_failed_at),
+    INDEX idx_login_attempts_blocked (blocked_until)
+);
+
+ALTER TABLE boreholes ADD CONSTRAINT fk_borehole_archived_by
+    FOREIGN KEY (archived_by) REFERENCES admins(admin_id)
+    ON UPDATE CASCADE ON DELETE SET NULL;
+
+CREATE TABLE audit_log (
+    audit_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT UNSIGNED NULL,
+    action VARCHAR(50) NOT NULL,
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id VARCHAR(100) NULL,
+    details_json MEDIUMTEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_audit_admin FOREIGN KEY (admin_id) REFERENCES admins(admin_id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    INDEX idx_audit_created (created_at, audit_id),
+    INDEX idx_audit_entity (entity_type, entity_id)
 );
 
 CREATE TABLE system_revisions (
@@ -212,8 +254,5 @@ END$$
 
 DELIMITER ;
 
--- No default administrator is inserted for security.
--- Generate a password hash with: php tools/hash.php
--- Then create the first account by replacing the placeholders below:
--- INSERT INTO admins (email, password, role)
--- VALUES ('your-email@example.com', 'PASTE_PASSWORD_HASH_HERE', 'super_admin');
+-- No default administrator is inserted for security. Provision the initial
+-- account through a deployment-only process and a protected secret channel.
