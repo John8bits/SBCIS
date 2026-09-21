@@ -74,7 +74,7 @@ async function testMap(mobile, base) {
             endpointCalls++;
             assert.ok(url.startsWith(base));
             if (url.endsWith('action=result')) return {status:'current',result:{variable:'bearing_capacity_kpa',method:'IDW fixture',
-                legend:{min:145,max:145,unit:'kPa'},surface:{type:'FeatureCollection',features:[{
+                legend:{min:145,max:145,unit:'kPa',classes:[{key:'low',label:'Low',range:'100–150',min:100,max:150,color:'#f46d43'}]},surface:{type:'FeatureCollection',features:[{
                     ...feature, properties:{...feature.properties,value:145}
                 }]}}};
             return {status:'no_data',source_hash:'fixture',eligible_count:0,excluded_count:1,
@@ -126,9 +126,9 @@ async function testMap(mobile, base) {
     assert.ok(map.fitCount > fitBeforeLayer, 'Municipality map-area click zooms to the selected area');
     assert.equal(get('gisDataModal').hidden, true, 'Boundary click does not open the records modal');
     assert.equal(get('gisCapacityCard').hidden, false, 'Boundary click opens the bearing-capacity readout');
-    assert.equal(get('gisCapacityClass').textContent, 'Interpolated estimate');
+    assert.equal(get('gisCapacityClass').textContent, 'Low');
     assert.equal(get('gisCapacityValue').textContent, '145 kPa');
-    assert.equal(get('gisCapacitySwatch').style.backgroundColor, '#28745d');
+    assert.equal(get('gisCapacitySwatch').style.backgroundColor, '#f46d43');
     const fitBeforeBarangay = map.fitCount;
     map.events.click({ latlng: { lat: 10.15, lng: 124.85 } });
     assert.ok(map.fitCount > fitBeforeBarangay, 'Barangay map-area click zooms closer to the selected barangay');
@@ -163,6 +163,10 @@ async function testMap(mobile, base) {
     assert.equal(estimateRoot.dataset.state, base === '../../' ? 'no_data' : 'current');
 }
 (async () => {
+    const gisSource = fs.readFileSync(path.join(__dirname, '../src/js/gis.js'), 'utf8');
+    assert.match(gisSource, /SBCIS_BOREHOLE_ENDPOINT/);
+    assert.match(gisSource, /map\.on\('moveend'/);
+    assert.match(gisSource, /limit=2000/);
     await testMap(false, '../');
     await testMap(true, '../');
     await testMap(false, '../../');

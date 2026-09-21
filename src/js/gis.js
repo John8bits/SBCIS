@@ -226,8 +226,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const availabilityLayer = L.layerGroup().addTo(map);
         const boreholeLayer = L.layerGroup().addTo(map);
 
-        const boreholes = Array.isArray(window.SBCIS_BOREHOLES) ? window.SBCIS_BOREHOLES : [];
-        document.getElementById('visibleBoreholeCount').textContent = String(boreholes.length);
+        let boreholes = Array.isArray(window.SBCIS_BOREHOLES) ? window.SBCIS_BOREHOLES : [];
+        document.getElementById('visibleBoreholeCount').textContent = String(boreholes.length) + (window.SBCIS_CATALOGUE_TRUNCATED ? '+' : '');
         const dataKey = document.getElementById('gisDataKey');
         dataKey.hidden = boreholes.length === 0;
         const boreholePins = new Map();
@@ -277,19 +277,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             return popup;
         }
 
-        boreholes.forEach(borehole => {
-            const latitude = Number(borehole.latitude);
-            const longitude = Number(borehole.longitude);
-            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
-            // Canvas-backed points avoid one DOM node per borehole.
-            const marker = L.circleMarker([latitude, longitude], {
-                renderer: L.canvas({ padding: 0.35 }), radius: 6, weight: 2,
-                color: '#ffffff', fillColor: '#0b6b4f', fillOpacity: 0.95,
-                keyboard: true,
-                title: `${borehole.borehole_code || 'Borehole'}: view soil record`
-            }).addTo(boreholeLayer).bindPopup(boreholePopup(borehole));
-            boreholePins.set(String(borehole.borehole_code || '').toLocaleLowerCase(), marker);
-        });
+        function renderBoreholes(records, truncated = false) {
+            boreholes = Array.isArray(records) ? records : [];
+            boreholeLayer.clearLayers();
+            boreholePins.clear();
+            boreholes.forEach(borehole => {
+                const latitude = Number(borehole.latitude);
+                const longitude = Number(borehole.longitude);
+                if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+                // Canvas-backed points avoid one DOM node per borehole.
+                const marker = L.circleMarker([latitude, longitude], {
+                    renderer: L.canvas({ padding: 0.35 }), radius: 6, weight: 2,
+                    color: '#ffffff', fillColor: '#0b6b4f', fillOpacity: 0.95,
+                    keyboard: true,
+                    title: `${borehole.borehole_code || 'Borehole'}: view soil record`
+                }).addTo(boreholeLayer).bindPopup(boreholePopup(borehole));
+                boreholePins.set(String(borehole.borehole_code || '').toLocaleLowerCase(), marker);
+            });
+            document.getElementById('visibleBoreholeCount').textContent = String(boreholes.length) + (truncated ? '+' : '');
+            dataKey.hidden = boreholes.length === 0;
+        }
+        renderBoreholes(boreholes, window.SBCIS_CATALOGUE_TRUNCATED);
 
         // Wide views use green availability badges; detailed views use only
         // red borehole pins. Keeping these mutually exclusive prevents marker
@@ -310,6 +318,40 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         map.on('zoomend', updateBoreholePinVisibility);
+
+        let viewportRequest = null;
+        let viewportTimer = null;
+        async function loadViewportBoreholes() {
+            if (!window.SBCIS_CATALOGUE_TRUNCATED || !window.SBCIS_BOREHOLE_ENDPOINT || typeof map.getBounds !== 'function') return;
+            const bounds = map.getBounds();
+            if (!bounds?.isValid?.()) return;
+            viewportRequest?.abort();
+            viewportRequest = new AbortController();
+            const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()].join(',');
+            try {
+                const response = await fetch(`${window.SBCIS_BOREHOLE_ENDPOINT}?bbox=${encodeURIComponent(bbox)}&limit=2000`, {
+                    signal: viewportRequest.signal,
+                    headers: { Accept: 'application/json' }
+                });
+                if (!response.ok) throw new Error('Viewport records are unavailable.');
+                const payload = await response.json();
+                renderBoreholes(payload.records, Boolean(payload.truncated));
+                if (selectedDataFeature && selectedDataType) renderAvailabilityMarkers(selectedDataType,
+                    selectedDataType === 'barangay' ? selectedDataFeature.properties?.GID_2 : null);
+                else renderAvailabilityMarkers('municipality');
+                updateBoreholePinVisibility();
+                status.textContent = payload.truncated
+                    ? 'Showing the first 2,000 boreholes in this map area. Zoom in for more detail.'
+                    : `${payload.count} borehole${payload.count === 1 ? '' : 's'} loaded in this map area.`;
+            } catch (error) {
+                if (error.name !== 'AbortError') status.textContent = 'Unable to refresh boreholes for this map area. Existing markers remain available.';
+            }
+        }
+        map.on('moveend', () => {
+            if (!window.SBCIS_CATALOGUE_TRUNCATED) return;
+            window.clearTimeout(viewportTimer);
+            viewportTimer = window.setTimeout(loadViewportBoreholes, 250);
+        });
 
         function focusBorehole(borehole) {
             const latitude = Number(borehole.latitude);
@@ -440,17 +482,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const value = estimatedValueFor(feature, type);
             const supportDistance = supportDistanceFor(feature, type);
             const name = feature.properties?.NAME_3 || feature.properties?.NAME_2 || 'Selected area';
-            const classification = value === null ? null : {
-                label: 'Interpolated estimate',
-                range: 'Estimated at the area prediction point',
-                color: window.SBCIS_INTERPOLATION_VIEWER?.surfaceColor(value) || '#28745d'
-            };
+            const classification = value === null ? null :
+                window.SBCIS_INTERPOLATION_VIEWER?.classification(value);
             document.getElementById('gisCapacityScope').textContent = type === 'barangay' ? 'BARANGAY ESTIMATE' : 'MUNICIPALITY / CITY ESTIMATE';
             document.getElementById('gisCapacityName').textContent = name;
             document.getElementById('gisCapacityValue').textContent = value === null ? '—' : formatMetric(value, 'kPa');
             document.getElementById('gisCapacityClass').textContent = classification?.label || 'No estimate';
             document.getElementById('gisCapacityRange').textContent = classification
-                ? classification.range +
+                ? classification.label + ' (' + classification.range + ' kPa) · Estimated at the area prediction point' +
                     (supportDistance === null ? '' : ' · nearest support ' + supportDistance.toFixed(1) + ' km') +
                     (window.SBCIS_ACTIVE_INTERPOLATION?.surface?.features?.[0]?.properties?.observation_count ?
                         ' · based on ' + window.SBCIS_ACTIVE_INTERPOLATION.surface.features[0].properties.observation_count + ' boreholes' : '')
@@ -612,7 +651,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 details('PROVINCE', 'Southern Leyte', directory.municipalities.length + ' municipalities / cities, ' + directory.barangays.length + ' barangays. Click a colored area to check its bearing-capacity range.');
                 if (zoom) fit(provinceLayer);
                 status.textContent = window.SBCIS_RECORDS_AVAILABLE === false ? 'Soil records unavailable. Location search remains available.' :
-                    boreholes.length ? boreholes.length + ' source borehole record' + (boreholes.length === 1 ? '' : 's') + ' available through area details' :
+                    boreholes.length ? boreholes.length + (window.SBCIS_CATALOGUE_TRUNCATED ? '+ loaded' : '') + ' source borehole record' + (boreholes.length === 1 ? '' : 's') + ' available through area details' :
                     'No verified boreholes are currently available within Southern Leyte';
                 return;
             }
@@ -710,7 +749,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             if (!window.SbcisInterpolation) throw new Error('Estimate controls unavailable');
             const interpolationViewer = new window.SbcisInterpolation(map, {
-                base: window.SBCIS_MAP_BASE || '../'
+                base: window.SBCIS_MAP_BASE || '../',
+                geometry: barangays
             });
             window.SBCIS_INTERPOLATION_VIEWER = interpolationViewer;
             surfaceToggle?.addEventListener('click', () => {

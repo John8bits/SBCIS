@@ -1,8 +1,12 @@
 <?php
 
 use App\Controllers\MapController;
+use App\Support\AdminSession;
 
 require_once __DIR__ . '/../config/bootstrap.php';
+
+AdminSession::start();
+$_SESSION['login_csrf'] = $_SESSION['login_csrf'] ?? bin2hex(random_bytes(32));
 
 // The map payload contains live borehole records; prevent an old page from
 // being reused after a record is added or edited in the administration panel.
@@ -13,6 +17,7 @@ header('Expires: 0');
 $mapData = (new MapController())->data('Public map');
 $boreholes = $mapData['boreholes'];
 $recordsAvailable = $mapData['recordsAvailable'];
+$catalogueTruncated = $mapData['catalogueTruncated'];
 
 $mapJson = json_encode(
     $boreholes,
@@ -40,14 +45,16 @@ $mapJson = json_encode(
   <link rel="stylesheet" href="../src/css/map-theme.css?v=<?= filemtime(__DIR__ . '/../src/css/map-theme.css') ?>">
   <script src="../src/js/modal-origin.js?v=<?= filemtime(__DIR__ . '/../src/js/modal-origin.js') ?>"></script>
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
   <script>
     window.SBCIS_BOREHOLES = <?= $mapJson ?: '[]' ?>;
     window.SBCIS_RECORDS_AVAILABLE = <?= $recordsAvailable ? 'true' : 'false' ?>;
+    window.SBCIS_CATALOGUE_TRUNCATED = <?= $catalogueTruncated ? 'true' : 'false' ?>;
+    window.SBCIS_BOREHOLE_ENDPOINT = '../app/Controllers/boreholes.php';
   </script>
   <script defer src="../src/js/interpolation.js?v=<?= filemtime(__DIR__ . '/../src/js/interpolation.js') ?>"></script>
   <script defer src="../src/js/gis.js?v=<?= filemtime(__DIR__ . '/../src/js/gis.js') ?>"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5"></script>
   <script defer src="../src/js/toast.js"></script>
   <script defer src="../src/js/login-modal.js?v=<?= filemtime(__DIR__ . '/../src/js/login-modal.js') ?>"></script>
 </head>
@@ -125,6 +132,7 @@ $mapJson = json_encode(
         <p class="form-description">Enter your account credentials to continue.</p>
 
         <form action="../app/Controllers/login_process.php" method="POST" class="login-form">
+          <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['login_csrf'], ENT_QUOTES, 'UTF-8') ?>">
           <div class="form-group">
             <label for="email">Email Address</label>
             <div class="input-wrapper">

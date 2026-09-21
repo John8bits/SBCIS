@@ -22,7 +22,7 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
 function response(request, payload, code = 200, contentType = 'application/json') {
     request.resolve({ok:code === 200, status:code, headers:{get:()=>contentType}, json:async()=>payload});
 }
-const published = {status:'current',result:{method:'isolated fixture',legend:{min:0,max:10,unit:'test units'},
+const published = {status:'current',result:{method:'isolated fixture',legend:{min:0,max:10,unit:'test units',classes:[{key:'very_low',label:'Very low',range:'< 100',min:null,max:100,color:'#d73027'}]},
     surface:{type:'FeatureCollection',features:[]}}};
 const absent = {status:'unavailable',result:null};
 const adminStatus = status => ({status, eligible_count:0,excluded_count:2,exclusion_reasons:{outside_study_boundary:2},
@@ -45,7 +45,7 @@ const adminStatus = status => ({status, eligible_count:0,excluded_count:2,exclus
     assert.equal(root.dataset.state,'current');
     assert.equal(viewer.layer.data.type,'FeatureCollection');
     assert.ok(viewer.element('legend').textContent.includes('Surface range: 0–10 test units'));
-    assert.equal(viewer.surfaceColor(5), '#28745d', 'Single-range fallback remains neutral and numeric');
+    assert.equal(viewer.surfaceColor(5), '#d73027', 'Server-owned classification color is applied');
     viewer.refresh(); response(requests.shift(),{status:'outdated',result:null}); await tick();
     assert.equal(viewer.layer.data,null,'Outdated surface removed');
     const errors = []; const logger = console.error;

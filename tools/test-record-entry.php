@@ -4,6 +4,7 @@ if (PHP_SAPI !== 'cli') {
     exit;
 }
 require_once __DIR__ . '/../app/Models/geotechnical_data.php';
+require_once __DIR__ . '/../app/Models/InterpolationRepository.php';
 $db = sbcis_get_database();
 // Shadow application tables on this connection so saved fixtures never reach real tables.
 foreach (['municipalities', 'barangays', 'boreholes', 'soil_layers'] as $table) {
@@ -22,6 +23,12 @@ foreach (['municipalities', 'barangays', 'boreholes', 'soil_layers'] as $table) 
     $columns[] = 'UNIQUE (' . $unique[$table] . ')';
     $db->exec('CREATE TEMPORARY TABLE ' . $table . ' (' . implode(',', $columns) . ') ENGINE=InnoDB');
 }
+$db->exec('CREATE TEMPORARY TABLE audit_log (
+    audit_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, admin_id INT UNSIGNED NULL,
+    action VARCHAR(50) NOT NULL, entity_type VARCHAR(50) NOT NULL,
+    entity_id VARCHAR(100) NULL, details_json MEDIUMTEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB');
 $input = [
     'borehole_code' => 'TEST-ENTRY',
     'borehole_depth_m' => '10',
@@ -36,7 +43,7 @@ $input = [
     'bearing_capacity_kpa' => ['0', '100']
 ];
 $checks = 0;
-foreach ([['depth_to_m' => ['11', '12']], ['depth_from_m' => ['0', '4']], ['latitude' => 'text'], ['spt_n_value' => ['1.5', '']], ['bearing_capacity_kpa' => ['-1', '']], ['soil_type' => ['', 'Sand']]] as $changes) {
+foreach ([['depth_to_m' => ['11', '12']], ['depth_from_m' => ['0', '4']], ['latitude' => 'text'], ['spt_n_value' => ['1.5', '']], ['bearing_capacity_kpa' => ['-1', '']], ['soil_type' => ['', 'Sand']], ['borehole_code'=>str_repeat('X', 51)], ['soil_description'=>[str_repeat('x', 60001), '']]] as $changes) {
     try {
         sbcis_create_geotechnical_record($db, array_replace($input, $changes));
         throw new RuntimeException('Invalid entry was accepted.');
@@ -104,6 +111,28 @@ if ((int) $db->query('SELECT COUNT(*) FROM municipalities')->fetchColumn() !== 1
 $checks++;
 if (sbcis_find_or_create_barangay($db, $municipalityId, 'Test barangay (Pob.)') !== (int) $db->query('SELECT barangay_id FROM barangays')->fetchColumn())
     throw new RuntimeException('Directory barangay alias did not reuse the saved record.');
+$checks++;
+if (!sbcis_archive_geotechnical_record($db, $id, 1))
+    throw new RuntimeException('Archive failed.');
+$checks++;
+if (sbcis_fetch_geotechnical_record($db, $id) !== null || sbcis_fetch_geotechnical_record($db, $id, true) === null)
+    throw new RuntimeException('Archived record visibility is incorrect.');
+$checks++;
+if (sbcis_fetch_map_boreholes($db) !== [] || sbcis_fetch_recent_boreholes($db) !== [] ||
+    (new App\Models\InterpolationRepository($db))->snapshot() !== [])
+    throw new RuntimeException('Archived record leaked into an active data path.');
+$checks++;
+if (sbcis_archive_geotechnical_record($db, $id, 1))
+    throw new RuntimeException('Already archived record reported archived again.');
+$checks++;
+if (!sbcis_restore_geotechnical_record($db, $id) || sbcis_fetch_geotechnical_record($db, $id) === null)
+    throw new RuntimeException('Restore failed.');
+$checks++;
+App\Services\AuditLogger::record($db, 'restore', 'borehole', $id, ['safe'=>'detail'], null);
+$audit = $db->query('SELECT action, entity_type, entity_id, details_json FROM audit_log')->fetch();
+if (!$audit || $audit['action'] !== 'restore' || $audit['entity_type'] !== 'borehole' ||
+    (int)$audit['entity_id'] !== $id || json_decode($audit['details_json'], true)['safe'] !== 'detail')
+    throw new RuntimeException('Audit event was not stored correctly.');
 $checks++;
 if (!sbcis_delete_geotechnical_record($db, $id))
     throw new RuntimeException('Delete failed.');

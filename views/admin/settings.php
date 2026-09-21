@@ -2,22 +2,19 @@
 use App\Database\Connection;
 use App\Support\AdminSession;
 use App\Support\View;
+use App\Services\AuditLogger;
 
 require_once __DIR__ . '/../../config/bootstrap.php';
 
-AdminSession::start();
+AdminSession::requireLogin();
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-
-if (($_SESSION['admin_logged_in'] ?? false) !== true || empty($_SESSION['admin_id'])) {
-    header('Location: ../../index.php?login=required');
-    exit;
-}
 
 $_SESSION['settings_csrf'] = $_SESSION['settings_csrf'] ?? bin2hex(random_bytes(32));
 $settingsMessage = $_SESSION['settings_message'] ?? null;
 $settingsError = null;
 $isSuperAdmin = AdminSession::isSuperAdmin();
 $roleAccounts = [];
+$auditEvents = [];
 $admin = [
     'email' => $_SESSION['admin_email'] ?? '',
     'password' => '',
@@ -58,8 +55,8 @@ try {
                 $role = $_POST['role'] ?? 'admin';
                 if (!filter_var($email, FILTER_VALIDATE_EMAIL))
                     throw new InvalidArgumentException('Enter a valid administrator email address.');
-                if (!is_string($password) || strlen($password) < 8)
-                    throw new InvalidArgumentException('New passwords must be at least 8 characters long.');
+                if (!is_string($password) || strlen($password) < 12)
+                    throw new InvalidArgumentException('New passwords must be at least 12 characters long.');
                 if (!in_array($role, ['admin', 'super_admin'], true))
                     throw new InvalidArgumentException('Choose a valid account role.');
                 $duplicate = $db->prepare('SELECT admin_id FROM admins WHERE email = :email LIMIT 1');
@@ -72,6 +69,9 @@ try {
                     ':password' => password_hash($password, PASSWORD_DEFAULT),
                     ':role' => $role,
                 ]);
+                $newAdminId = (int)$db->lastInsertId();
+                AuditLogger::record($db, 'create', 'administrator', $newAdminId,
+                    ['email'=>$email, 'role'=>$role], (int)$_SESSION['admin_id']);
                 $_SESSION['settings_message'] = 'The administrator account was added.';
             } else {
                 $targetId = filter_var($_POST['admin_id'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
@@ -87,6 +87,8 @@ try {
                         throw new InvalidArgumentException('At least one super administrator must remain active.');
                     $delete = $db->prepare('DELETE FROM admins WHERE admin_id = :admin_id');
                     $delete->execute([':admin_id' => $targetId]);
+                    AuditLogger::record($db, 'delete', 'administrator', $targetId,
+                        ['email'=>$target['email'], 'role'=>$target['role']], (int)$_SESSION['admin_id']);
                     $_SESSION['settings_message'] = 'The administrator account was deleted.';
                 } else {
                     if ($targetId === (int) $_SESSION['admin_id'])
@@ -96,8 +98,8 @@ try {
                     $role = $_POST['role'] ?? '';
                     if (!filter_var($email, FILTER_VALIDATE_EMAIL))
                         throw new InvalidArgumentException('Enter a valid administrator email address.');
-                    if ($password !== '' && (!is_string($password) || strlen($password) < 8))
-                        throw new InvalidArgumentException('New passwords must be at least 8 characters long.');
+                    if ($password !== '' && (!is_string($password) || strlen($password) < 12))
+                        throw new InvalidArgumentException('New passwords must be at least 12 characters long.');
                     if (!in_array($role, ['admin', 'super_admin'], true))
                         throw new InvalidArgumentException('Choose a valid account role.');
                     if ($target['role'] === 'super_admin' && $role === 'admin' && (int) $db->query("SELECT COUNT(*) FROM admins WHERE role = 'super_admin'")->fetchColumn() <= 1)
@@ -113,6 +115,11 @@ try {
                         ':role' => $role,
                         ':admin_id' => $targetId,
                     ]);
+                    AuditLogger::record($db, 'update', 'administrator', $targetId, [
+                        'previous_email'=>$target['email'], 'email'=>$email,
+                        'previous_role'=>$target['role'], 'role'=>$role,
+                        'password_changed'=>$password !== '',
+                    ], (int)$_SESSION['admin_id']);
                     $_SESSION['settings_message'] = 'The administrator account was updated.';
                 }
             }
@@ -129,8 +136,8 @@ try {
             throw new InvalidArgumentException('Enter your current password to save account changes.');
         if (!filter_var($email, FILTER_VALIDATE_EMAIL))
             throw new InvalidArgumentException('Enter a valid administrator email address.');
-        if ($newPassword !== '' && strlen($newPassword) < 8)
-            throw new InvalidArgumentException('New passwords must be at least 8 characters long.');
+        if ($newPassword !== '' && strlen($newPassword) < 12)
+            throw new InvalidArgumentException('New passwords must be at least 12 characters long.');
         if ($newPassword !== $confirmPassword)
             throw new InvalidArgumentException('The new password and confirmation do not match.');
 
@@ -146,14 +153,22 @@ try {
             ':password' => $password,
             ':admin_id' => (int) $_SESSION['admin_id'],
         ]);
+        AuditLogger::record($db, 'update', 'administrator', (int)$_SESSION['admin_id'], [
+            'previous_email'=>$admin['email'], 'email'=>$email,
+            'password_changed'=>$newPassword !== '',
+        ], (int)$_SESSION['admin_id']);
 
         $_SESSION['admin_email'] = $email;
+        $_SESSION['admin_auth_fingerprint'] = hash('sha256', $password);
         $_SESSION['settings_message'] = 'Your administrator account was updated.';
         header('Location: settings.php');
         exit;
     }
     if ($isSuperAdmin) {
         $roleAccounts = $db->query('SELECT admin_id, email, role, created_at FROM admins ORDER BY email')->fetchAll(PDO::FETCH_ASSOC);
+        $auditEvents = $db->query('SELECT al.action, al.entity_type, al.entity_id, al.created_at, a.email AS administrator_email
+            FROM audit_log al LEFT JOIN admins a ON a.admin_id=al.admin_id
+            ORDER BY al.created_at DESC, al.audit_id DESC LIMIT 100')->fetchAll(PDO::FETCH_ASSOC);
     }
 } catch (InvalidArgumentException $error) {
     $settingsError = $error->getMessage();
@@ -185,8 +200,8 @@ require __DIR__ . '/overview_shell.php';
                 <h4>Change password</h4>
                 <p class="settings-help">Leave the new password fields blank if you only want to change the email address.</p>
                 <div class="settings-grid">
-                    <label class="settings-field">New password<input type="password" name="new_password" minlength="8" autocomplete="new-password"></label>
-                    <label class="settings-field">Confirm new password<input type="password" name="confirm_password" minlength="8" autocomplete="new-password"></label>
+                    <label class="settings-field">New password<input type="password" name="new_password" minlength="12" autocomplete="new-password"></label>
+                    <label class="settings-field">Confirm new password<input type="password" name="confirm_password" minlength="12" autocomplete="new-password"></label>
                 </div>
             </div>
             <div class="settings-section settings-confirm">
@@ -202,7 +217,6 @@ require __DIR__ . '/overview_shell.php';
         <div class="settings-summary-body">
             <div class="settings-status"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><div><strong><?= $admin['role'] === 'super_admin' ? 'Super administrator access' : 'Administrator access' ?></strong><span>Protected account</span></div></div>
             <dl><div><dt>Signed-in email</dt><dd><?= $escape($admin['email']) ?></dd></div><div><dt>Role</dt><dd><?= $admin['role'] === 'super_admin' ? 'Super admin' : 'Admin' ?></dd></div><div><dt>Account created</dt><dd><?= $admin['created_at'] ? $escape(date('F j, Y', strtotime($admin['created_at']))) : 'Unavailable' ?></dd></div></dl>
-            <?php if ($isSuperAdmin): ?><a class="ov-button secondary settings-super-login" href="../../app/Controllers/logout.php?super_admin=1"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Login as super admin</a><?php endif; ?>
             <p class="settings-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Sign out after changing your password on a shared computer.</p>
         </div>
     </aside>
@@ -214,12 +228,23 @@ require __DIR__ . '/overview_shell.php';
     <?php foreach ($roleAccounts as $account): $isCurrentAccount = (int) $account['admin_id'] === (int) $_SESSION['admin_id']; ?><tr><td><strong><?= $escape($account['email']) ?></strong></td><td><?= $account['role'] === 'super_admin' ? 'Super admin' : 'Admin' ?></td><td><div class="admin-actions"><button class="icon-button edit-admin-button" type="button" title="<?= $isCurrentAccount ? 'Edit your account above' : 'Edit ' . $account['email'] ?>" aria-label="<?= $isCurrentAccount ? 'Edit your account above' : 'Edit ' . $account['email'] ?>" data-admin-id="<?= (int) $account['admin_id'] ?>" data-admin-email="<?= $escape($account['email']) ?>" data-admin-role="<?= $escape($account['role']) ?>"<?= $isCurrentAccount ? ' disabled' : '' ?>><i class="fa-solid fa-pen" aria-hidden="true"></i></button><form class="delete-admin-form" method="post" action="settings.php" data-admin-email="<?= $escape($account['email']) ?>"><input type="hidden" name="action" value="delete_admin"><input type="hidden" name="csrf" value="<?= $escape($_SESSION['settings_csrf']) ?>"><input type="hidden" name="admin_id" value="<?= (int) $account['admin_id'] ?>"><input type="password" name="current_password" class="visually-hidden-input" aria-label="Your password" autocomplete="current-password"><button class="icon-button danger-button" type="submit" title="<?= $isCurrentAccount ? 'You cannot delete your own account' : 'Delete ' . $account['email'] ?>" aria-label="<?= $isCurrentAccount ? 'You cannot delete your own account' : 'Delete ' . $account['email'] ?>"<?= $isCurrentAccount ? ' disabled' : '' ?>><i class="fa-solid fa-trash" aria-hidden="true"></i></button></form></div></td></tr><?php endforeach; ?>
     </tbody></table></div>
 </section>
+<section class="panel role-management">
+    <div class="panel-header"><div><h3>Administrative audit history</h3><span>Latest 100 security and data-governance events.</span></div></div>
+    <?php if ($auditEvents): ?><div class="table-wrap"><table><thead><tr><th>Time</th><th>Administrator</th><th>Action</th><th>Record</th></tr></thead><tbody>
+    <?php foreach ($auditEvents as $event): ?><tr>
+        <td><?= $escape($event['created_at']) ?> UTC</td>
+        <td><?= $escape($event['administrator_email'] ?: 'System / removed account') ?></td>
+        <td><?= $escape(ucfirst($event['action'])) ?></td>
+        <td><?= $escape($event['entity_type'] . ($event['entity_id'] !== null ? ' #' . $event['entity_id'] : '')) ?></td>
+    </tr><?php endforeach; ?>
+    </tbody></table></div><?php else: ?><div class="system-message">No audit events have been recorded yet.</div><?php endif; ?>
+</section>
 <dialog class="admin-edit-dialog" id="admin-add-dialog" aria-labelledby="admin-add-title">
     <form class="admin-edit-form" method="post" action="settings.php">
         <div class="dialog-heading"><div><h2 id="admin-add-title">Add administrator</h2><p>Create a new administrator account and assign its access level.</p></div><button class="dialog-close" type="button" data-close-admin-add aria-label="Close add administrator dialog">&times;</button></div>
         <input type="hidden" name="action" value="add_admin"><input type="hidden" name="csrf" value="<?= $escape($_SESSION['settings_csrf']) ?>">
         <label>Email address<input type="email" name="email" autocomplete="email" required></label>
-        <label>Temporary password<input type="password" name="new_password" minlength="8" autocomplete="new-password" required></label>
+        <label>Temporary password<input type="password" name="new_password" minlength="12" autocomplete="new-password" required></label>
         <label>Role<select name="role"><option value="admin">Admin</option><option value="super_admin">Super admin</option></select></label>
         <label>Your password<input type="password" name="current_password" autocomplete="current-password" required></label>
         <div class="admin-edit-actions"><button class="ov-button secondary" type="button" data-close-admin-add>Cancel</button><button class="submit-button" type="submit"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Add admin</button></div>
@@ -230,7 +255,7 @@ require __DIR__ . '/overview_shell.php';
         <div class="dialog-heading"><div><h2 id="admin-edit-title">Edit administrator</h2><p>Update this administrator's access and sign-in details.</p></div><button class="dialog-close" type="button" data-close-admin-dialog aria-label="Close edit dialog">&times;</button></div>
         <input type="hidden" name="action" value="edit_admin"><input type="hidden" name="csrf" value="<?= $escape($_SESSION['settings_csrf']) ?>"><input type="hidden" name="admin_id" id="edit-admin-id">
         <label>Email address<input type="email" name="email" id="edit-admin-email" required></label>
-        <label>New password <span>(optional)</span><input type="password" name="new_password" minlength="8" autocomplete="new-password"></label>
+        <label>New password <span>(optional)</span><input type="password" name="new_password" minlength="12" autocomplete="new-password"></label>
         <label>Role<select name="role" id="edit-admin-role"><option value="admin">Admin</option><option value="super_admin">Super admin</option></select></label>
         <label>Your password<input type="password" name="current_password" autocomplete="current-password" required></label>
         <div class="admin-edit-actions"><button class="ov-button secondary" type="button" data-close-admin-dialog>Cancel</button><button class="submit-button" type="submit"><i class="fa-solid fa-check" aria-hidden="true"></i> Save changes</button></div>

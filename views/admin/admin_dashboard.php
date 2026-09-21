@@ -17,20 +17,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (!is_string($_POST['csrf'] ?? null) || !hash_equals($_SESSION['record_csrf'], $_POST['csrf']))
             throw new InvalidArgumentException('Your session expired. Reload the dashboard and try again.');
-        if (($_POST['action'] ?? '') !== 'delete')
+        if (($_POST['action'] ?? '') !== 'archive')
             throw new InvalidArgumentException('Unknown record action.');
         $recordId = filter_var($_POST['record_id'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
         $deleteDb = Connection::get();
-        if (!$deleteDb || !(new GeotechnicalRepository($deleteDb))->delete($recordId))
+        if (!$deleteDb || !(new GeotechnicalRepository($deleteDb))->archive($recordId, (int)$_SESSION['admin_id']))
             throw new InvalidArgumentException('This record no longer exists.');
-        $_SESSION['dashboard_message'] = 'The borehole and all of its soil layers were deleted.';
+        $_SESSION['dashboard_message'] = 'The borehole was archived and removed from public data.';
         header('Location: admin_dashboard.php');
         exit;
     } catch (InvalidArgumentException $error) {
         $dashboardError = $error->getMessage();
     } catch (Throwable $error) {
-        error_log('Dashboard delete: ' . $error->getMessage());
-        $dashboardError = 'The record could not be deleted. Please try again.';
+        error_log('Dashboard archive: ' . $error->getMessage());
+        $dashboardError = 'The record could not be archived. Please try again.';
     }
 }
 $directory = null;
@@ -60,19 +60,19 @@ try {
     if (!$db)
         throw new RuntimeException('Database unavailable.');
     $stats = $db->query('SELECT
-        (SELECT COUNT(*) FROM boreholes) AS boreholes,
-        (SELECT COUNT(*) FROM soil_layers) AS layers,
+        (SELECT COUNT(*) FROM boreholes WHERE archived_at IS NULL) AS boreholes,
+        (SELECT COUNT(*) FROM soil_layers sl JOIN boreholes b ON b.borehole_id=sl.borehole_id WHERE b.archived_at IS NULL) AS layers,
         (SELECT COUNT(*) FROM municipalities) AS municipalities,
         (SELECT COUNT(*) FROM barangays) AS barangays,
-        (SELECT COUNT(DISTINCT municipality_id) FROM boreholes) AS covered,
-        (SELECT COUNT(*) FROM soil_layers WHERE bearing_capacity_kpa IS NOT NULL) AS capacity_count,
-        (SELECT AVG(bearing_capacity_kpa) FROM soil_layers) AS average_capacity,
-        (SELECT COUNT(*) FROM soil_layers WHERE spt_n_value IS NOT NULL) AS spt_count,
-        (SELECT COUNT(*) FROM boreholes b WHERE NOT EXISTS (SELECT 1 FROM soil_layers s WHERE s.borehole_id = b.borehole_id)) AS without_layers')->fetch();
+        (SELECT COUNT(DISTINCT municipality_id) FROM boreholes WHERE archived_at IS NULL) AS covered,
+        (SELECT COUNT(*) FROM soil_layers sl JOIN boreholes b ON b.borehole_id=sl.borehole_id WHERE b.archived_at IS NULL AND sl.bearing_capacity_kpa IS NOT NULL) AS capacity_count,
+        (SELECT AVG(sl.bearing_capacity_kpa) FROM soil_layers sl JOIN boreholes b ON b.borehole_id=sl.borehole_id WHERE b.archived_at IS NULL) AS average_capacity,
+        (SELECT COUNT(*) FROM soil_layers sl JOIN boreholes b ON b.borehole_id=sl.borehole_id WHERE b.archived_at IS NULL AND sl.spt_n_value IS NOT NULL) AS spt_count,
+        (SELECT COUNT(*) FROM boreholes b WHERE b.archived_at IS NULL AND NOT EXISTS (SELECT 1 FROM soil_layers s WHERE s.borehole_id = b.borehole_id)) AS without_layers')->fetch();
     $coverage = $db->query('SELECT m.municipality_name AS label, COUNT(b.borehole_id) AS value FROM municipalities m
-        LEFT JOIN boreholes b ON b.municipality_id = m.municipality_id GROUP BY m.municipality_id, m.municipality_name
+        LEFT JOIN boreholes b ON b.municipality_id = m.municipality_id AND b.archived_at IS NULL GROUP BY m.municipality_id, m.municipality_name
         HAVING value > 0 ORDER BY value DESC, label ASC LIMIT 8')->fetchAll();
-    $soils = $db->query("SELECT COALESCE(NULLIF(TRIM(soil_type), ''), 'Not recorded') AS label, COUNT(*) AS value FROM soil_layers GROUP BY label ORDER BY value DESC, label ASC")->fetchAll();
+    $soils = $db->query("SELECT COALESCE(NULLIF(TRIM(sl.soil_type), ''), 'Not recorded') AS label, COUNT(*) AS value FROM soil_layers sl JOIN boreholes b ON b.borehole_id=sl.borehole_id WHERE b.archived_at IS NULL GROUP BY label ORDER BY value DESC, label ASC")->fetchAll();
     if (count($soils) > 6) {
         $other = array_sum(array_column(array_slice($soils, 5), 'value'));
         $soils = array_slice($soils, 0, 5);
@@ -84,12 +84,12 @@ try {
         ELSE 'Above 300 kPa' END AS label, COUNT(*) AS value,
         MIN(CASE WHEN bearing_capacity_kpa IS NULL THEN 6 WHEN bearing_capacity_kpa < 50 THEN 1
         WHEN bearing_capacity_kpa < 100 THEN 2 WHEN bearing_capacity_kpa < 200 THEN 3 WHEN bearing_capacity_kpa <= 300 THEN 4 ELSE 5 END) AS position
-        FROM soil_layers GROUP BY label ORDER BY position")->fetchAll();
+        FROM soil_layers sl JOIN boreholes b ON b.borehole_id=sl.borehole_id WHERE b.archived_at IS NULL GROUP BY label ORDER BY position")->fetchAll();
     $activityStatement = $db->prepare("SELECT source, DATE_FORMAT(created_at, '%Y-%m') AS month_key, COUNT(*) AS value
         FROM (
-            SELECT 'boreholes' AS source, created_at FROM boreholes WHERE created_at >= ?
+            SELECT 'boreholes' AS source, created_at FROM boreholes WHERE archived_at IS NULL AND created_at >= ?
             UNION ALL
-            SELECT 'layers' AS source, created_at FROM soil_layers WHERE created_at >= ?
+            SELECT 'layers' AS source, sl.created_at FROM soil_layers sl JOIN boreholes b ON b.borehole_id=sl.borehole_id WHERE b.archived_at IS NULL AND sl.created_at >= ?
         ) AS monthly_activity
         GROUP BY source, month_key ORDER BY month_key");
     $activityStart = $monthStart->modify('-11 months')->format('Y-m-01 00:00:00');
@@ -128,7 +128,7 @@ require __DIR__ . '/overview_shell.php';
 <script type="application/json"
     id="dashboard-chart-data"><?= json_encode($chartData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <?php if ($dashboardMessage): ?>
-    <div hidden data-toast data-icon="success" data-title="Deleted"><?= $escape($dashboardMessage) ?></div><?php endif; ?>
+    <div hidden data-toast data-icon="success" data-title="Archived"><?= $escape($dashboardMessage) ?></div><?php endif; ?>
 <?php if ($loginSuccess): ?>
     <div hidden data-toast data-icon="success" data-title="Login successful">Welcome back.</div>
 <?php endif; ?>
@@ -280,12 +280,12 @@ require __DIR__ . '/overview_shell.php';
                             <td><?= $escape($row['latitude']) ?>, <?= $escape($row['longitude']) ?></td>
                             <td class="record-actions"><a class="table-action"
                                     href="soil_records.php?edit=<?= (int) $row['borehole_id'] ?>">Edit</a>
-                                <form method="POST" class="delete-record-form"
+                                <form method="POST" class="archive-record-form"
                                     data-record-name="<?= $escape($row['borehole_code']) ?>"><input type="hidden" name="csrf"
                                         value="<?= $escape($_SESSION['record_csrf']) ?>"><input type="hidden" name="action"
-                                        value="delete"><input type="hidden" name="record_id"
+                                        value="archive"><input type="hidden" name="record_id"
                                         value="<?= (int) $row['borehole_id'] ?>"><button class="table-action danger"
-                                        type="submit">Delete</button></form>
+                                        type="submit">Archive</button></form>
                             </td>
                         </tr><?php endforeach; ?>
                 </tbody>

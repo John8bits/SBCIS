@@ -91,8 +91,9 @@ $duplicates = $build([fixture(1), fixture(2)]);
 check($duplicates['eligible_count'] === 0 && $duplicates['excluded_count'] === 2, 'All duplicate observations excluded');
 check($duplicates['exclusion_reasons']->duplicate_coordinates === 2, 'Duplicate diagnostics');
 $outside = $build([fixture(1, 3, 15), fixture(2, 5, 15.5)]);
-check($outside['outside_borehole_count'] === 0 && $outside['eligible_count'] === 2,
-    'Valid worldwide coordinates are accepted without province-boundary filtering');
+check($outside['outside_borehole_count'] === 2 && $outside['eligible_count'] === 0 &&
+    $outside['exclusion_reasons']->outside_study_boundary === 2,
+    'World-valid coordinates outside the study polygon are quarantined');
 $demo = fixture(4); $demo['borehole_code'] = 'SYNTH-DEMO-004';
 $demoResult = $build([$demo]);
 check($demoResult['eligible_count'] === 0 && $demoResult['non_field_borehole_count'] === 1 &&

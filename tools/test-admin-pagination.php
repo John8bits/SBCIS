@@ -9,6 +9,8 @@ foreach (['boreholes','soil_layers','municipalities','barangays','soil_reports',
     $result = $service->page($dataset, ['page'=>1, 'page_size'=>10]);
     if (count($result['rows']) > 10 || $result['page_size'] !== 10 || $result['total'] < count($result['rows']))
         throw new RuntimeException('Invalid pagination for ' . $dataset);
+    if ($dataset === 'soil_reports' && $result['rows'] && !array_key_exists('boundary_status', $result['rows'][0]))
+        throw new RuntimeException('Soil report boundary status is missing.');
     $checks++;
 }
 $search = $service->page('municipalities', ['search'=>'Maasin', 'page_size'=>10]);

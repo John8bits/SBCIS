@@ -30,6 +30,9 @@ $sidebarLinks = [
         <?php endforeach; ?>
     </nav>
     <div class="sidebar-footer">
-        <a href="../../app/Controllers/logout.php" class="logout-link" id="logoutButton"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Sign out</span></a>
+        <form method="post" action="../../app/Controllers/logout.php" class="logout-form" id="logoutForm">
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars((string) ($_SESSION['logout_csrf'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+            <button type="submit" class="logout-link" id="logoutButton"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Sign out</span></button>
+        </form>
     </div>
 </aside>

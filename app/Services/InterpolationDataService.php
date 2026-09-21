@@ -49,6 +49,8 @@ final class InterpolationDataService
                 $reason = 'non_field_record';
             } elseif (!BoundaryService::validCoordinates($record['latitude'], $record['longitude'])) {
                 $reason = 'invalid_coordinates';
+            } elseif (!$this->boundary->contains($record['latitude'], $record['longitude'])) {
+                $reason = 'outside_study_boundary';
             } elseif ($record['soil_layer_id'] === null) {
                 $reason = 'no_observation';
             } elseif ($variable === null) {
@@ -104,7 +106,7 @@ final class InterpolationDataService
         ksort($reasons);
         $values = array_column($points, 'value');
         $configuration = [
-            'schema' => 2, 'boundary' => $this->boundary->version(), 'selection' => $selection,
+            'schema' => InterpolationConfig::PUBLICATION_POLICY_VERSION, 'boundary' => $this->boundary->version(), 'selection' => $selection,
             'public_variables' => $this->config->publicVariables(),
             'technical_minimum_points' => $this->config->minimumPoints(),
             'record_policy' => 'exclude_non_field_then_include_records_with_valid_world_coordinates',
@@ -124,9 +126,7 @@ final class InterpolationDataService
             'scope' => $selection['scope'], 'version' => $version,
             'eligible_count' => count($points), 'excluded_count' => array_sum($reasons),
             'exclusion_reasons' => (object) $reasons,
-            // Retained for response compatibility. Boundary membership is no
-            // longer an eligibility rule for entered observation coordinates.
-            'outside_borehole_count' => 0,
+            'outside_borehole_count' => $reasons['outside_study_boundary'] ?? 0,
             'non_field_borehole_count' => count($nonFieldBoreholes),
             'observed_range' => $values ? ['min' => min($values), 'max' => max($values)] : null,
             'points' => $points, 'available_variables' => $this->config->publicVariables(),

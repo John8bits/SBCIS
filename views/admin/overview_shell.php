@@ -21,7 +21,7 @@ if (!isset($title, $activePage, $escape) || ($_SESSION['admin_logged_in'] ?? fal
     <link rel="stylesheet" href="../../src/css/alerts.css?v=<?= filemtime(__DIR__ . '/../../src/css/alerts.css') ?>">
     <script src="../../src/js/modal-origin.js?v=<?= filemtime(__DIR__ . '/../../src/js/modal-origin.js') ?>"></script>
     <?= $extraHead ?? '' ?>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5"></script>
     <script src="../../src/js/toast.js"></script>
     <script src="../../src/js/loading-state.js?v=<?= filemtime(__DIR__ . '/../../src/js/loading-state.js') ?>"></script>
     <script src="../../src/js/admin_feedback.js" defer></script>

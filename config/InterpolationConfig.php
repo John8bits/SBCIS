@@ -8,6 +8,7 @@ use InvalidArgumentException;
 
 final class InterpolationConfig
 {
+    public const PUBLICATION_POLICY_VERSION = 3;
     // Non-field records remain detectable so they can never enter a published
     // engineering-reference surface, even if legacy data is imported.
     public const NON_FIELD_CODE_PREFIXES = ['SYNTH-DEMO-'];
@@ -17,12 +18,22 @@ final class InterpolationConfig
         'spt_n_value' => ['label' => 'SPT N-value', 'unit' => 'N-value'],
     ];
 
+    public const BEARING_CAPACITY_CLASSES = [
+        ['key'=>'very_low', 'label'=>'Very low', 'range'=>'< 100', 'min'=>null, 'max'=>100.0, 'color'=>'#d73027'],
+        ['key'=>'low', 'label'=>'Low', 'range'=>'100–150', 'min'=>100.0, 'max'=>150.0, 'color'=>'#f46d43'],
+        ['key'=>'moderate', 'label'=>'Moderate', 'range'=>'> 150–200', 'min'=>150.0, 'max'=>200.0, 'color'=>'#fee08b'],
+        ['key'=>'high', 'label'=>'High', 'range'=>'> 200–250', 'min'=>200.0, 'max'=>250.0, 'color'=>'#91cf60'],
+        ['key'=>'very_high', 'label'=>'Very high', 'range'=>'> 250', 'min'=>250.0, 'max'=>null, 'color'=>'#1a9850'],
+    ];
+
     // Bearing capacity is the first reviewed publication variable. SPT remains
     // visible in record details but is not mixed into this surface.
     public const PUBLIC_VARIABLES = ['bearing_capacity_kpa'];
     public const TECHNICAL_MINIMUM_POINTS = 5;
-    // Joined layer rows, not selected boreholes. This is a runaway-query guard.
-    public const MAX_OBSERVATIONS = 250000;
+    // Joined layer rows, not selected boreholes. The 128 MB production-profile
+    // benchmark completed at 10,000 rows and exhausted memory at 50,000, so the
+    // worker rejects larger snapshots instead of risking a process crash.
+    public const MAX_OBSERVATIONS = 10000;
     public const APPROVED_VARIABLE = 'bearing_capacity_kpa';
     public const INTERPOLATION_METHOD = 'idw';
     public const IDW_POWER = 2.0;
@@ -31,9 +42,12 @@ final class InterpolationConfig
     public const SYNCHRONOUS_REGENERATION_MAX_POINTS = 1000;
     public static function cacheDirectory(): string
     {
-        // Keep generated data outside the web root; deployments may choose persistent storage.
-        return getenv('SBCIS_INTERPOLATION_CACHE_DIR') ?: sys_get_temp_dir() . '/sbcis-interpolation-' .
-            substr(hash('sha256', dirname(__DIR__)), 0, 16);
+        $configured = getenv('SBCIS_INTERPOLATION_CACHE_DIR');
+        if (is_string($configured) && trim($configured) !== '') return rtrim($configured, '/\\');
+        if (ProductionConfig::environment() === 'production') {
+            throw new \RuntimeException('Persistent interpolation storage is required in production.');
+        }
+        return sys_get_temp_dir() . '/sbcis-interpolation-' . substr(hash('sha256', dirname(__DIR__)), 0, 16);
     }
 
     public function systemQuery(): array
@@ -95,6 +109,21 @@ final class InterpolationConfig
             }
         }
         return false;
+    }
+
+    public static function bearingCapacityClasses(): array
+    {
+        return self::BEARING_CAPACITY_CLASSES;
+    }
+
+    public static function classifyBearingCapacity(float $value): array
+    {
+        foreach (self::BEARING_CAPACITY_CLASSES as $class) {
+            $lowerMatches = $class['min'] === null || $value >= $class['min'];
+            $upperMatches = $class['max'] === null || ($class['key'] === 'very_low' ? $value < $class['max'] : $value <= $class['max']);
+            if ($lowerMatches && $upperMatches) return $class;
+        }
+        return self::BEARING_CAPACITY_CLASSES[count(self::BEARING_CAPACITY_CLASSES) - 1];
     }
 
     public function selection(array $query): array

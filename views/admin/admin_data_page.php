@@ -6,20 +6,12 @@ use App\Support\View;
 
 require_once __DIR__ . '/../../config/bootstrap.php';
 
-AdminSession::start();
+AdminSession::requireLogin();
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Cache-Control: post-check=0, pre-check=0', false);
 header('Pragma: no-cache');
 header('Expires: 0');
-
-if (
-    !isset($_SESSION['admin_logged_in']) ||
-    $_SESSION['admin_logged_in'] !== true
-) {
-    header('Location: ../../index.php?login=required');
-    exit;
-}
 
 $pages = [
     'boreholes' => [
@@ -104,7 +96,7 @@ $escape = [View::class, 'escape'];
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5"></script>
     <script src="../../src/js/toast.js"></script>
     <script src="../../src/js/loading-state.js?v=<?= filemtime(__DIR__ . '/../../src/js/loading-state.js') ?>"></script>
     <script src="../../src/js/admin_feedback.js" defer></script>
@@ -184,7 +176,7 @@ $escape = [View::class, 'escape'];
                                 <?php elseif ($activePage === 'bearing_capacity'): ?>
                                     <tr><th>Borehole</th><th>Layer</th><th>Soil Type</th><th>Depth</th><th>SPT N</th><th>Bearing Capacity</th></tr>
                                 <?php else: ?>
-                                    <tr><th>Borehole</th><th>Location</th><th>Depth</th><th>Latitude</th><th>Longitude</th><th>Elevation</th><th>Layers</th></tr>
+                                    <tr><th>Borehole</th><th>Location</th><th>Boundary</th><th>Depth</th><th>Latitude</th><th>Longitude</th><th>Elevation</th><th>Layers</th></tr>
                                 <?php endif; ?>
                             </thead>
                             <tbody>
@@ -217,6 +209,8 @@ $escape = [View::class, 'escape'];
                                         <tr>
                                             <td><strong><?= $escape($row['borehole_code']) ?></strong></td>
                                             <td><?= $escape(trim(($row['barangay_name'] ?: '') . ', ' . ($row['municipality_name'] ?: ''), ', ') ?: 'Not recorded') ?></td>
+                                            <?php $boundaryStatus = $row['boundary_status'] ?? 'unknown'; ?>
+                                            <td><span class="badge<?= $boundaryStatus !== 'inside' ? ' danger' : '' ?>"><?= $boundaryStatus === 'outside' ? 'Review: outside study area' : ($boundaryStatus === 'inside' ? 'Inside study area' : 'Boundary unavailable') ?></span></td>
                                             <td><?= $escape($row['borehole_depth_m']) ?> m</td>
                                             <td><span class="badge"><?= number_format((int) $row['layer_count']) ?></span></td>
                                             <td><?= $row['shallowest_layer_m'] !== null ? $escape($row['shallowest_layer_m']) . ' - ' . $escape($row['deepest_layer_m']) . ' m' : 'No layers' ?></td>

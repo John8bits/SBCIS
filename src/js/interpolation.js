@@ -7,6 +7,7 @@ class SbcisInterpolation {
         this.admin = this.root.dataset.mode === 'admin';
         // Keep Window as the receiver. Detached native fetch throws in Chrome.
         this.fetcher = options.fetcher || ((url, init) => window.fetch(url, init));
+        this.geometry = options.geometry || null;
         this.requestId = 0;
         this.listeners = [];
         this.destroyed = false;
@@ -92,7 +93,7 @@ class SbcisInterpolation {
             if (this.admin) {
                 const status = await this.request(regenerate ? 'regenerate' : 'status', this.abort.signal);
                 if (id !== this.requestId || this.destroyed) return;
-                if (!['current', 'needs_regeneration', 'no_data', 'insufficient_data', 'pending_configuration', 'generation_failed'].includes(status.status) ||
+                if (!['current', 'needs_regeneration', 'no_data', 'insufficient_data', 'pending_configuration', 'generation_failed', 'review_required', 'validation_failed'].includes(status.status) ||
                     !Number.isInteger(status.eligible_count) || !Number.isInteger(status.excluded_count)) {
                     throw new Error('Invalid interpolation management response.');
                 }
@@ -102,11 +103,13 @@ class SbcisInterpolation {
             if (id !== this.requestId || this.destroyed) return;
             if (data.status === 'current') {
                 const result = data.result;
-                if (!result || result.surface?.type !== 'FeatureCollection' || !Array.isArray(result.surface.features) ||
+                const surface = this.materializeSurface(result);
+                if (!result || surface?.type !== 'FeatureCollection' || !Array.isArray(surface.features) ||
                     !Number.isFinite(result.legend?.min) || !Number.isFinite(result.legend?.max) || result.legend.min > result.legend.max ||
                     typeof result.legend.unit !== 'string') throw new Error('Invalid published interpolation result.');
                 this.legend = result.legend;
                 this.colorScale = this.createColorScale(result.legend);
+                result.surface = surface;
                 window.SBCIS_ACTIVE_INTERPOLATION = result;
                 this.shadowLayer.addData(result.surface);
                 this.layer.addData(result.surface);
@@ -188,20 +191,31 @@ class SbcisInterpolation {
     }
 
     createColorScale(legend) {
-        const d3 = typeof window === 'undefined' ? null : window.d3;
-        const min = Number(legend?.min);
-        const max = Number(legend?.max);
-        // A muted, ordered engineering ramp keeps the surface legible over
-        // labels and coastlines. Numeric values and classification limits stay
-        // server-defined and unchanged.
-        if (d3?.scaleLinear &&
-            Number.isFinite(min) && Number.isFinite(max) && max > min) {
-            return d3.scaleLinear()
-                .domain([min, min + (max - min) * .25, min + (max - min) * .5, min + (max - min) * .75, max])
-                .range(['#a94442', '#c77745', '#d5ad56', '#7fa36d', '#28745d'])
-                .interpolate(d3.interpolateRgb);
-        }
-        return null;
+        const classes = Array.isArray(legend?.classes) ? legend.classes : [];
+        if (!classes.length) return null;
+        return value => this.classification(value, classes)?.color || '#d9e2dd';
+    }
+
+    materializeSurface(result) {
+        if (result?.surface?.type === 'FeatureCollection') return result.surface;
+        if (!Array.isArray(result?.surface_values) || this.geometry?.type !== 'FeatureCollection') return null;
+        const values = new Map(result.surface_values.map(item => [item.boundary_id, item]));
+        return {
+            type: 'FeatureCollection',
+            features: this.geometry.features.filter(feature => values.has(feature.properties?.GID_3)).map(feature => ({
+                ...feature,
+                properties: { ...(feature.properties || {}), ...values.get(feature.properties.GID_3) }
+            }))
+        };
+    }
+
+    classification(value, classes = this.legend?.classes || []) {
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) return null;
+        return classes.find(item =>
+            (item.min === null || numeric >= Number(item.min)) &&
+            (item.max === null || (item.key === 'very_low' ? numeric < Number(item.max) : numeric <= Number(item.max)))
+        ) || null;
     }
 
     surfaceColor(value) {
@@ -241,7 +255,8 @@ class SbcisInterpolation {
             loading: 'Checking data', current: 'Current interpolation surface', unavailable: 'Interpolation unavailable',
             outdated: 'Update required', needs_regeneration: 'Update required', no_data: 'No verified source data',
             insufficient_data: 'Insufficient measurements', pending_configuration: 'Configuration required',
-            generation_failed: 'Generation unsuccessful', unauthorized: 'Sign-in required', forbidden: 'Page refresh required',
+            generation_failed: 'Generation unsuccessful', review_required: 'Scientific review required',
+            validation_failed: 'Publication checks failed', unauthorized: 'Sign-in required', forbidden: 'Page refresh required',
             system_error: 'Service unavailable'
         };
         this.element('state-label').textContent = labels[status] || labels.system_error;
@@ -266,6 +281,8 @@ class SbcisInterpolation {
             no_data: 'No valid records are available for interpolation.',
             insufficient_data: 'Not enough valid measurement locations are available.',
             pending_configuration: 'An approved measurement, depth policy, method and coverage policy are still required.',
+            review_required: 'A candidate surface was generated but is withheld until reviewed thresholds and spatial coverage are approved.',
+            validation_failed: 'The candidate surface did not meet the configured publication thresholds and is withheld.',
             generation_failed: 'Generation failed. Any previous result has been retained separately.',
             unauthorized: 'Your session has expired. Sign in again.',
             forbidden: 'Reload this admin page before retrying.',
@@ -285,13 +302,14 @@ class SbcisInterpolation {
             (data.published_outdated ? ' (outdated; hidden from public map)' : '') +
             '. Last checked: ' + (data.last_attempt_at || 'never') + '. Source version: ' + data.source_hash : '';
         this.element('admin').textContent = data?.outside_borehole_count ?
-            data.outside_borehole_count + ' borehole(s) are outside the province boundary.' : '';
+            data.outside_borehole_count + ' borehole(s) are outside the province boundary and quarantined from interpolation.' :
+            (data?.publication_review?.reasons || []).join(' ');
         const validation = data?.validation;
         this.element('validation').textContent = validation ?
             'Leave-one-out validation (' + validation.sample_count +
             (validation.sampled ? ' of ' + validation.population_count : '') + ' points): MAE ' + this.number(validation.mae) +
             ' kPa; RMSE ' + this.number(validation.rmse) + ' kPa; bias ' + this.number(validation.bias) +
-            ' kPa. Exact-location maximum error: ' + this.number(validation.exact_location_max_error) + ' kPa.' :
+            ' kPa; spatial span ' + this.number(validation.spatial_span_km) + ' km. Exact-location maximum error: ' + this.number(validation.exact_location_max_error) + ' kPa.' :
             'Validation metrics will be available after a valid surface is generated.';
     }
 

@@ -1,2 +1,10 @@
 /config/database.local.php
-
+/.env
+/.env.*
+!/config/database.local.example.php
+*.log
+*.bak
+*.backup
+*.dump
+*.sql.gz
+/storage/

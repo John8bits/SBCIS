@@ -60,24 +60,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         ]);
 
         const result = interpolationResponse.status === 'current' ? interpolationResponse.result : null;
-        const d3 = window.d3;
-        const surfaceScale = d3?.scaleLinear && typeof d3.interpolateRgb === 'function' &&
-            Number.isFinite(Number(result?.legend?.min)) && Number.isFinite(Number(result?.legend?.max)) &&
-            Number(result.legend.max) > Number(result.legend.min)
-            ? d3.scaleLinear()
-                .domain([
-                    Number(result.legend.min),
-                    Number(result.legend.min) + (Number(result.legend.max) - Number(result.legend.min)) * .25,
-                    Number(result.legend.min) + (Number(result.legend.max) - Number(result.legend.min)) * .5,
-                    Number(result.legend.min) + (Number(result.legend.max) - Number(result.legend.min)) * .75,
-                    Number(result.legend.max)
-                ])
-                .range(['#a94442', '#c77745', '#d5ad56', '#7fa36d', '#28745d'])
-                .interpolate(d3.interpolateRgb)
-            : null;
-        const surfaceColor = value => surfaceScale
-            ? surfaceScale(Number(value))
-            : (Number.isFinite(Number(value)) ? '#28745d' : '#d9e2dd');
+        if (result && !result.surface && Array.isArray(result.surface_values)) {
+            const values = new Map(result.surface_values.map(item => [item.boundary_id, item]));
+            result.surface = {
+                type: 'FeatureCollection',
+                features: barangayData.features.filter(feature => values.has(feature.properties?.GID_3)).map(feature => ({
+                    ...feature,
+                    properties: { ...(feature.properties || {}), ...values.get(feature.properties.GID_3) }
+                }))
+            };
+        }
+        const classes = Array.isArray(result?.legend?.classes) ? result.legend.classes : [];
+        const surfaceColor = value => {
+            const numeric = Number(value);
+            const match = classes.find(item => Number.isFinite(numeric) &&
+                (item.min === null || numeric >= Number(item.min)) &&
+                (item.max === null || (item.key === 'very_low' ? numeric < Number(item.max) : numeric <= Number(item.max))));
+            return match?.color || '#d9e2dd';
+        };
         if (result?.surface?.type === 'FeatureCollection' && window.SbcisInterpolation) {
             L.geoJSON(result.surface, {
                 pane: 'heroInterpolationShadowPane', interactive: false,

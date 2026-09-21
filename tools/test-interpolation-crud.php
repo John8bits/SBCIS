@@ -21,8 +21,11 @@ function expectInvalidated(string $before): void {
 }
 try {
     $before = $version(); $id = $repository->create($input); expectInvalidated($before);
+    $input['record_lock_version'] = 1;
     $before = $version(); $input['bearing_capacity_kpa'][0] = '23'; $repository->update($id,$input); expectInvalidated($before);
+    $input['record_lock_version'] = 2;
     $before = $version(); $input['longitude'] = '124.85'; $repository->update($id,$input); expectInvalidated($before);
+    $input['record_lock_version'] = 3;
     $before = $version(); $invalid = $input; $invalid['latitude'] = 'invalid';
     try { $repository->update($id,$invalid); throw new LogicException('Invalid save accepted'); } catch (InvalidArgumentException $expected) {}
     if ($store->read()['outdated'] || $version() !== $before) throw new RuntimeException('Failed save invalidated data');

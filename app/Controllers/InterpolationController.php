@@ -8,8 +8,10 @@ use App\Models\InterpolationRepository;
 use App\Services\BoundaryService;
 use App\Services\InterpolationDataService;
 use App\Services\InterpolationPublicationService;
+use App\Services\InterpolationPublicationPolicy;
 use App\Services\InterpolationGeneratorService;
 use App\Services\InterpolationResultStore;
+use App\Services\AuditLogger;
 use App\Support\AdminSession;
 use Config\InterpolationConfig;
 use InvalidArgumentException;
@@ -40,7 +42,8 @@ final class InterpolationController
             fn() => $this->data(),
             new InterpolationResultStore(),
             static fn(array $input): array => (new InterpolationGeneratorService())->generate($input),
-            static fn(): int => (new InterpolationRepository(Connection::get()))->revision()
+            static fn(): int => (new InterpolationRepository(Connection::get()))->revision(),
+            static fn(array $input, array $output): array => (new InterpolationPublicationPolicy())->evaluate($input, $output)
         );
     }
 
@@ -58,8 +61,7 @@ final class InterpolationController
                 throw new InvalidArgumentException('Unsupported interpolation action.');
             }
             if ($action !== 'result') {
-                AdminSession::start();
-                if (($_SESSION['admin_logged_in'] ?? false) !== true) {
+                if (!AdminSession::isLoggedIn()) {
                     $this->respond(['status' => 'unauthorized', 'message' => 'Sign in as an administrator.'], 401);
                     return;
                 }
@@ -79,10 +81,16 @@ final class InterpolationController
                 }
                 if ($_POST) throw new InvalidArgumentException('Generation settings are managed by the system.');
             }
+            $auditAdminId = $action === 'regenerate' ? (int)($_SESSION['admin_id'] ?? 0) : 0;
             if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
             if ($action === 'measurements') $result = $this->data();
             elseif ($action === 'status') $result = $this->publication()->status();
-            elseif ($action === 'regenerate') $result = $this->publication()->regenerate();
+            elseif ($action === 'regenerate') {
+                $result = $this->publication()->regenerate();
+                AuditLogger::record(Connection::get(), 'regenerate', 'interpolation_publication',
+                    $result['model_revision'] ?? $result['source_revision'] ?? null,
+                    ['status'=>$result['status'] ?? 'unknown'], $auditAdminId ?: null);
+            }
             else $result = $this->publication()->result();
             $this->respond($result);
         } catch (InvalidArgumentException $error) {
