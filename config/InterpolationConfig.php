@@ -111,6 +111,12 @@ final class InterpolationConfig
         return false;
     }
 
+    public static function allowSyntheticTestData(): bool
+    {
+        return ProductionConfig::environment() === 'test' &&
+            getenv('SBCIS_ALLOW_SYNTHETIC_INTERPOLATION') === '1';
+    }
+
     public static function bearingCapacityClasses(): array
     {
         return self::BEARING_CAPACITY_CLASSES;

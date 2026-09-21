@@ -100,6 +100,12 @@ $mapJson = json_encode(
     </nav>
   </header>
 
+  <?php if (Config\InterpolationConfig::allowSyntheticTestData()): ?>
+  <div role="status" style="padding:10px 16px;background:#fff3cd;color:#5f4700;text-align:center;font-weight:700;border-bottom:1px solid #e6ce78">
+    Test mode: synthetic borehole records are enabled for interpolation UI verification. Not for engineering use.
+  </div>
+  <?php endif; ?>
+
   <main class="gis-main">
     <?php require __DIR__ . '/partials/map_explorer.php'; ?>
     <noscript>Enable JavaScript to explore municipalities and barangays on the map.</noscript>
