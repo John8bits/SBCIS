@@ -31,7 +31,7 @@ final class InterpolationDataService
         // from that borehole so a renamed code or a clean-looking layer cannot
         // accidentally enter the production model.
         foreach ($rows as $row) {
-            if (InterpolationConfig::isNonFieldRecord($row)) {
+            if (!InterpolationConfig::allowSyntheticTestData() && InterpolationConfig::isNonFieldRecord($row)) {
                 $nonFieldBoreholes[(string) ($row['borehole_id'] ?? '')] = true;
             }
         }
