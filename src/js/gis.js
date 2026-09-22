@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const backdrop = document.querySelector('#gisBackdrop');
     const workspace = document.querySelector('.gis-map-shell');
     const mobileLayout = window.matchMedia('(max-width: 760px)');
+    const mobileNavigation = window.matchMedia('(max-width: 900px)');
     const dataModal = document.querySelector('#gisDataModal');
     const closeDataModal = document.querySelector('#closeDataModal');
     const dataModalBackdrop = document.querySelector('#gisDataModalBackdrop');
@@ -133,10 +134,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!event.target.closest('.site-header')) closeNavigation();
     });
     mobileLayout.addEventListener('change', () => {
-        closeNavigation();
         setExplorer(false);
         setInsights(false);
     });
+    mobileNavigation.addEventListener('change', closeNavigation);
     setExplorer(false);
     setInsights(false);
 
