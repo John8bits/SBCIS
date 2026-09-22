@@ -1,6 +1,11 @@
 -- Southern Leyte Soil Bearing Capacity Information System
--- Complete MySQL 8+ database setup for a clean installation.
--- This intentionally contains no borehole test data and no default admin password.
+-- phpMyAdmin-compatible clean installation.
+-- Target: MySQL 5.6.5+ or MariaDB 10.1+ using the InnoDB engine.
+-- This intentionally contains no borehole test data. Initial administrator
+-- accounts are provisioned at the end with pre-generated password hashes.
+
+SET NAMES utf8mb4;
+SET time_zone = '+00:00';
 
 CREATE DATABASE IF NOT EXISTS sbcdb
     CHARACTER SET utf8mb4
@@ -12,7 +17,7 @@ CREATE TABLE municipalities (
     municipality_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     municipality_name VARCHAR(100) NOT NULL UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE barangays (
     barangay_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -31,7 +36,7 @@ CREATE TABLE barangays (
 
     CONSTRAINT unique_barangay_parent
         UNIQUE (barangay_id, municipality_id)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE boreholes (
     borehole_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -76,7 +81,7 @@ CREATE TABLE boreholes (
 
     CONSTRAINT chk_longitude
         CHECK (longitude BETWEEN -180 AND 180)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE soil_layers (
     soil_layer_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -106,7 +111,7 @@ CREATE TABLE soil_layers (
 
     CONSTRAINT chk_bearing_capacity
         CHECK (bearing_capacity_kpa IS NULL OR bearing_capacity_kpa >= 0)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE INDEX idx_borehole_coordinates
     ON boreholes(latitude, longitude);
@@ -129,41 +134,14 @@ CREATE INDEX idx_soil_type
 CREATE INDEX idx_soil_layer_recent
     ON soil_layers(created_at, soil_layer_id);
 
-CREATE VIEW v_geotechnical_map_data AS
-SELECT
-    b.borehole_id,
-    b.borehole_code,
-    m.municipality_name,
-    br.barangay_name,
-    b.latitude,
-    b.longitude,
-    b.elevation_m,
-    b.borehole_depth_m,
-    sl.soil_layer_id,
-    sl.layer_number,
-    sl.soil_type,
-    sl.soil_classification,
-    sl.soil_description,
-    sl.depth_from_m,
-    sl.depth_to_m,
-    sl.spt_n_value,
-    sl.bearing_capacity_kpa
-FROM boreholes b
-LEFT JOIN municipalities m
-    ON b.municipality_id = m.municipality_id
-LEFT JOIN barangays br
-    ON b.barangay_id = br.barangay_id
-LEFT JOIN soil_layers sl
-    ON b.borehole_id = sl.borehole_id
-WHERE b.archived_at IS NULL;
-
 CREATE TABLE admins (
     admin_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(255) NOT NULL UNIQUE,
+    -- 191 characters stays inside the legacy 767-byte utf8mb4 index limit.
+    email VARCHAR(191) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     role ENUM('admin', 'super_admin') NOT NULL DEFAULT 'admin',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE login_attempts (
     attempt_key CHAR(64) PRIMARY KEY,
@@ -173,7 +151,7 @@ CREATE TABLE login_attempts (
     blocked_until DATETIME NULL,
     INDEX idx_login_attempts_cleanup (last_failed_at),
     INDEX idx_login_attempts_blocked (blocked_until)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE boreholes ADD CONSTRAINT fk_borehole_archived_by
     FOREIGN KEY (archived_by) REFERENCES admins(admin_id)
@@ -191,68 +169,24 @@ CREATE TABLE audit_log (
         ON UPDATE CASCADE ON DELETE SET NULL,
     INDEX idx_audit_created (created_at, audit_id),
     INDEX idx_audit_entity (entity_type, entity_id)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE system_revisions (
     revision_name VARCHAR(50) PRIMARY KEY,
     revision_value BIGINT UNSIGNED NOT NULL DEFAULT 0,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO system_revisions (revision_name, revision_value)
 VALUES ('interpolation_source', 0);
 
-DELIMITER $$
+-- Views and triggers are intentionally omitted because many shared-hosting
+-- database accounts cannot create them. The application performs the joins
+-- directly and updates system_revisions in the same write transactions.
 
-CREATE TRIGGER trg_boreholes_interpolation_insert
-AFTER INSERT ON boreholes FOR EACH ROW
-BEGIN
-    UPDATE system_revisions
-    SET revision_value = revision_value + 1
-    WHERE revision_name = 'interpolation_source';
-END$$
-
-CREATE TRIGGER trg_boreholes_interpolation_update
-AFTER UPDATE ON boreholes FOR EACH ROW
-BEGIN
-    UPDATE system_revisions
-    SET revision_value = revision_value + 1
-    WHERE revision_name = 'interpolation_source';
-END$$
-
-CREATE TRIGGER trg_boreholes_interpolation_delete
-AFTER DELETE ON boreholes FOR EACH ROW
-BEGIN
-    UPDATE system_revisions
-    SET revision_value = revision_value + 1
-    WHERE revision_name = 'interpolation_source';
-END$$
-
-CREATE TRIGGER trg_layers_interpolation_insert
-AFTER INSERT ON soil_layers FOR EACH ROW
-BEGIN
-    UPDATE system_revisions
-    SET revision_value = revision_value + 1
-    WHERE revision_name = 'interpolation_source';
-END$$
-
-CREATE TRIGGER trg_layers_interpolation_update
-AFTER UPDATE ON soil_layers FOR EACH ROW
-BEGIN
-    UPDATE system_revisions
-    SET revision_value = revision_value + 1
-    WHERE revision_name = 'interpolation_source';
-END$$
-
-CREATE TRIGGER trg_layers_interpolation_delete
-AFTER DELETE ON soil_layers FOR EACH ROW
-BEGIN
-    UPDATE system_revisions
-    SET revision_value = revision_value + 1
-    WHERE revision_name = 'interpolation_source';
-END$$
-
-DELIMITER ;
-
--- No default administrator is inserted for security. Provision the initial
--- account through a deployment-only process and a protected secret channel.
+-- Initial administrator accounts. The password values are bcrypt hashes,
+-- not plaintext passwords, and are compatible with PHP password_verify().
+INSERT INTO admins (email, password, role)
+VALUES
+    ('shawngaldo@gmail.com', '$2y$10$XEVTVz.b46jiwBdfdIkOkej1DxC.UCvTm5RCh.bVrCcVzyE6HCQDe', 'super_admin'),
+    ('jbitss@gmail.com', '$2y$10$JEpD/ne4IfQl2wK6fVb.Pe/f/LDYq1jmxM4NMdPdF.1lNLqHvQ3vuW', 'super_admin');
