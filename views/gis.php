@@ -92,8 +92,8 @@ $mapJson = json_encode(
             <i class="fa-solid fa-magnifying-glass"></i>
           </button>
           <a href="#" id="openLogin" class="login-btn">
-            <i class="fa-solid fa-user-shield"></i>
-            Login
+            <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
+            <span>Login</span>
           </a>
         </div>
       </div>
