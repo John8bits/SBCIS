@@ -6436,6 +6436,7 @@ main .user-card p { margin-top: 8px; font-size: 14px; line-height: 1.65; }
 @media (max-width: 900px) {
   .nav-panel { max-height: calc(100dvh - var(--header-height)); overflow-y: auto; }
   .nav-links a { font-size: 14px; }
+  .nav-links a::after { height: 18px; }
   .about-layout { grid-template-columns: 1fr; gap: 36px; }
   .about-image { height: min(58vw, 430px); }
   .about-copy { max-width: 720px; }
