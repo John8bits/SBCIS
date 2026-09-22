@@ -132,22 +132,34 @@ function sbcis_write_backup(PDO $db, $stream): void
         fwrite($stream, "\n");
     }
     fwrite($stream, "COMMIT;\n\n");
-    $view = $db->query('SHOW CREATE VIEW `v_geotechnical_map_data`')->fetch(PDO::FETCH_ASSOC);
-    $viewDefinition = (string) ($view['Create View'] ?? '');
-    $viewDefinition = preg_replace('/DEFINER=`[^`]+`@`[^`]+`\s+/i', '', $viewDefinition);
-    $viewDefinition = str_ireplace('SQL SECURITY DEFINER', 'SQL SECURITY INVOKER', $viewDefinition);
-    if ($viewDefinition !== '') fwrite($stream, $viewDefinition . ";\n\n");
-    fwrite($stream, "DELIMITER $$\n");
+    try {
+        $view = $db->query('SHOW CREATE VIEW `v_geotechnical_map_data`')->fetch(PDO::FETCH_ASSOC);
+        $viewDefinition = (string) ($view['Create View'] ?? '');
+        $viewDefinition = preg_replace('/DEFINER=`[^`]+`@`[^`]+`\s+/i', '', $viewDefinition);
+        $viewDefinition = str_ireplace('SQL SECURITY DEFINER', 'SQL SECURITY INVOKER', $viewDefinition);
+        if ($viewDefinition !== '') fwrite($stream, $viewDefinition . ";\n\n");
+    } catch (PDOException $ignored) {
+        // Shared-hosting accounts may not have permission to create or inspect views.
+    }
+    $triggerDefinitions = [];
     foreach ([
         'trg_boreholes_interpolation_insert', 'trg_boreholes_interpolation_update', 'trg_boreholes_interpolation_delete',
         'trg_layers_interpolation_insert', 'trg_layers_interpolation_update', 'trg_layers_interpolation_delete',
     ] as $triggerName) {
-        $trigger = $db->query('SHOW CREATE TRIGGER `' . $triggerName . '`')->fetch(PDO::FETCH_ASSOC);
-        $definition = (string) ($trigger['SQL Original Statement'] ?? '');
-        $definition = preg_replace('/CREATE\s+DEFINER=`[^`]+`@`[^`]+`\s+/i', 'CREATE ', $definition);
-        if ($definition !== '') fwrite($stream, $definition . "$$\n");
+        try {
+            $trigger = $db->query('SHOW CREATE TRIGGER `' . $triggerName . '`')->fetch(PDO::FETCH_ASSOC);
+            $definition = (string) ($trigger['SQL Original Statement'] ?? '');
+            $definition = preg_replace('/CREATE\s+DEFINER=`[^`]+`@`[^`]+`\s+/i', 'CREATE ', $definition);
+            if ($definition !== '') $triggerDefinitions[] = $definition;
+        } catch (PDOException $ignored) {
+            // Application-level revision updates make database triggers optional.
+        }
     }
-    fwrite($stream, "DELIMITER ;\n\n");
+    if ($triggerDefinitions) {
+        fwrite($stream, "DELIMITER $$\n");
+        foreach ($triggerDefinitions as $definition) fwrite($stream, $definition . "$$\n");
+        fwrite($stream, "DELIMITER ;\n\n");
+    }
     fwrite($stream, "SET UNIQUE_CHECKS = @SBCIS_OLD_UNIQUE_CHECKS;\n" .
         "SET FOREIGN_KEY_CHECKS = @SBCIS_OLD_FOREIGN_KEY_CHECKS;\n" .
         "SET SQL_MODE = @SBCIS_OLD_SQL_MODE;\n-- End of SBCIS backup.\n");
