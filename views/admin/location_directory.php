@@ -13,7 +13,7 @@ $directory = $pageData['directory'];
 $rows = $pageData['rows'];
 $error = $pageData['error'];
 $escape = [View::class, 'escape'];
-$title = $kind === 'barangays' ? 'Barangays' : 'Municipalities'; $subtitle = 'Southern Leyte locations from the PSGC directory'; $activePage = $kind . '.php';
+$title = $kind === 'barangays' ? 'Barangays' : 'Municipalities'; $subtitle = 'Southern Leyte location directory'; $activePage = $kind . '.php';
 $topbarActions = [['href' => 'admin_gis.php', 'label' => 'Open map', 'icon' => 'fa-map-location-dot']];
 $extraHead = '<script defer src="../../src/js/admin_tables.js"></script>';
 require __DIR__ . '/overview_shell.php';
@@ -21,12 +21,12 @@ require __DIR__ . '/overview_shell.php';
 <?php if ($error): ?><div hidden data-toast data-icon="error" data-title="Locations unavailable"><?= $escape($error) ?></div><?php endif; ?>
 <section class="panel location-directory-panel">
     <div class="panel-header">
-        <h3>PSGC directory</h3>
-        <span><?= number_format(count($rows)) ?> locations</span>
+        <h3>Locations</h3>
+        <span><?= number_format(count($rows)) ?> total</span>
     </div>
     <div class="table-toolbar" data-local-table-toolbar role="search">
         <div class="table-search-control">
-            <label for="location-directory-search">Search <?= $kind === 'barangays' ? 'barangays' : 'municipalities' ?></label>
+            <label for="location-directory-search">Search</label>
             <div class="table-search-input">
                 <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
                 <input id="location-directory-search" data-table-search type="search" maxlength="100"
@@ -36,7 +36,7 @@ require __DIR__ . '/overview_shell.php';
         </div>
         <div class="table-toolbar-actions">
             <label class="table-page-size" for="location-directory-page-size">
-                <span>Rows per page</span>
+                <span>Rows</span>
                 <select id="location-directory-page-size" data-table-page-size aria-label="Rows per page">
                     <?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= $size === 25 ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
                 </select>

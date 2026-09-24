@@ -29,7 +29,7 @@ document.querySelectorAll('.panel > .table-wrap').forEach(wrap => {
         const searchControl = document.createElement('div');
         searchControl.className = 'table-search-control';
         const label = document.createElement('label');
-        label.textContent = 'Search records';
+        label.textContent = 'Search';
         const inputWrap = document.createElement('div');
         inputWrap.className = 'table-search-input';
         const icon = document.createElement('i');
@@ -47,7 +47,7 @@ document.querySelectorAll('.panel > .table-wrap').forEach(wrap => {
         const sizeLabel = document.createElement('label');
         sizeLabel.className = 'table-page-size';
         const sizeText = document.createElement('span');
-        sizeText.textContent = 'Rows per page';
+        sizeText.textContent = 'Rows';
         pageSize = document.createElement('select');
         pageSize.setAttribute('aria-label', 'Rows per page');
         [10, 25, 50, 100].forEach(value => pageSize.add(new Option(String(value), String(value), false, value === 25)));
