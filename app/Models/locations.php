@@ -1,4 +1,5 @@
 <?php
+
 // Public PSGC reference data; application records remain in the existing database.
 function sbcis_location_key(string $name): string
 {
@@ -27,7 +28,11 @@ function sbcis_validate_locations(array $data): bool
 
 function sbcis_location_source(): array
 {
-    $cache = sys_get_temp_dir() . '/sbcis-psgc-' . substr(hash('sha256', __DIR__), 0, 12) . '.json';
+    // Some shared hosts report a temporary directory outside their open_basedir.
+    // Keep location cache files under the application instead.
+    $cacheDirectory = dirname(__DIR__, 2) . '/storage/location-directory';
+    if (!is_dir($cacheDirectory)) @mkdir($cacheDirectory, 0755, true);
+    $cache = $cacheDirectory . '/psgc.json';
     $cached = json_decode((string)@file_get_contents($cache), true);
     if (is_array($cached) && sbcis_validate_locations($cached) && time() - (int)@filemtime($cache) < 86400) return $cached;
     // Brief backoff prevents a provider outage from slowing down every page request.
