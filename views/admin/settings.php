@@ -9,6 +9,12 @@ require_once __DIR__ . '/../../config/bootstrap.php';
 AdminSession::requireLogin();
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
+$section = (string) ($_GET['section'] ?? 'account');
+$validSections = ['account', 'accounts', 'audit', 'system', 'notifications'];
+if (!in_array($section, $validSections, true)) $section = 'account';
+$restrictedSections = ['accounts', 'audit', 'system'];
+if (in_array($section, $restrictedSections, true)) AdminSession::requireSuperAdmin();
+
 $_SESSION['settings_csrf'] = $_SESSION['settings_csrf'] ?? bin2hex(random_bytes(32));
 $settingsMessage = $_SESSION['settings_message'] ?? null;
 $settingsError = null;
@@ -164,9 +170,11 @@ try {
         header('Location: settings.php');
         exit;
     }
-    if ($isSuperAdmin) {
+    if ($section === 'accounts') {
         $roleAccounts = $db->query('SELECT admin_id, email, role, created_at FROM admins ORDER BY email')->fetchAll(PDO::FETCH_ASSOC);
-        $auditEvents = $db->query('SELECT al.action, al.entity_type, al.entity_id, al.created_at, a.email AS administrator_email
+    }
+    if ($section === 'audit') {
+        $auditEvents = $db->query('SELECT al.action, al.entity_type, al.entity_id, al.details_json, al.created_at, a.email AS administrator_email
             FROM audit_log al LEFT JOIN admins a ON a.admin_id=al.admin_id
             ORDER BY al.created_at DESC, al.audit_id DESC LIMIT 100')->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -178,18 +186,25 @@ try {
 }
 
 $escape = [View::class, 'escape'];
-$title = 'Settings';
-$subtitle = 'Manage your administrator account and sign-in security';
+$sectionTitles = [
+    'account' => ['Account & Security', 'Manage your administrator account and sign-in security'],
+    'accounts' => ['Administrator Accounts', 'Manage administrator access and roles'],
+    'audit' => ['Admin Audit History', 'Review administrator and security activity'],
+    'system' => ['System Settings', 'Review system-wide SBCIS configuration'],
+    'notifications' => ['Notifications & Alerts', 'Manage notifications available to your role'],
+];
+[$title, $subtitle] = $sectionTitles[$section];
 $activePage = 'settings.php';
 $topbarActions = [];
 require __DIR__ . '/overview_shell.php';
 ?>
 <?php if ($settingsMessage): ?><div hidden data-toast data-icon="success" data-title="Settings saved"><?= $escape($settingsMessage) ?></div><?php endif; ?>
 <?php if ($settingsError): ?><div hidden data-toast data-icon="error" data-title="Unable to save"><?= $escape($settingsError) ?></div><?php endif; ?>
+<?php if ($section === 'account'): ?>
 <div class="settings-layout">
     <section class="panel settings-panel">
         <div class="panel-header"><div><h3>Account and security</h3><span>Keep your administrator contact and sign-in details current.</span></div></div>
-        <form class="settings-form" method="post" action="settings.php">
+        <form class="settings-form" method="post" action="settings.php?section=account">
             <input type="hidden" name="action" value="account_update"><input type="hidden" name="csrf" value="<?= $escape($_SESSION['settings_csrf']) ?>">
             <div class="settings-section">
                 <h4>Administrator email</h4>
@@ -221,26 +236,46 @@ require __DIR__ . '/overview_shell.php';
         </div>
     </aside>
 </div>
-<?php if ($isSuperAdmin): ?>
+<?php elseif ($section === 'accounts'): ?>
 <section class="panel role-management">
     <div class="panel-header"><div><h3>Administrator accounts</h3><span>Add, edit, delete, and change administrator access.</span></div><button class="submit-button" type="button" id="open-admin-add"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Add admin</button></div>
     <div class="table-wrap"><table><thead><tr><th>Email</th><th>Role</th><th>Actions</th></tr></thead><tbody>
-    <?php foreach ($roleAccounts as $account): $isCurrentAccount = (int) $account['admin_id'] === (int) $_SESSION['admin_id']; ?><tr><td><strong><?= $escape($account['email']) ?></strong></td><td><?= $account['role'] === 'super_admin' ? 'Super admin' : 'Admin' ?></td><td><div class="admin-actions"><button class="icon-button edit-admin-button" type="button" title="<?= $isCurrentAccount ? 'Edit your account above' : 'Edit ' . $account['email'] ?>" aria-label="<?= $isCurrentAccount ? 'Edit your account above' : 'Edit ' . $account['email'] ?>" data-admin-id="<?= (int) $account['admin_id'] ?>" data-admin-email="<?= $escape($account['email']) ?>" data-admin-role="<?= $escape($account['role']) ?>"<?= $isCurrentAccount ? ' disabled' : '' ?>><i class="fa-solid fa-pen" aria-hidden="true"></i></button><form class="delete-admin-form" method="post" action="settings.php" data-admin-email="<?= $escape($account['email']) ?>"><input type="hidden" name="action" value="delete_admin"><input type="hidden" name="csrf" value="<?= $escape($_SESSION['settings_csrf']) ?>"><input type="hidden" name="admin_id" value="<?= (int) $account['admin_id'] ?>"><input type="password" name="current_password" class="visually-hidden-input" aria-label="Your password" autocomplete="current-password"><button class="icon-button danger-button" type="submit" title="<?= $isCurrentAccount ? 'You cannot delete your own account' : 'Delete ' . $account['email'] ?>" aria-label="<?= $isCurrentAccount ? 'You cannot delete your own account' : 'Delete ' . $account['email'] ?>"<?= $isCurrentAccount ? ' disabled' : '' ?>><i class="fa-solid fa-trash" aria-hidden="true"></i></button></form></div></td></tr><?php endforeach; ?>
+    <?php foreach ($roleAccounts as $account): $isCurrentAccount = (int) $account['admin_id'] === (int) $_SESSION['admin_id']; ?><tr><td><strong><?= $escape($account['email']) ?></strong></td><td><?= $account['role'] === 'super_admin' ? 'Super admin' : 'Admin' ?></td><td><div class="admin-actions"><button class="icon-button edit-admin-button" type="button" title="<?= $isCurrentAccount ? 'Edit your account above' : 'Edit ' . $account['email'] ?>" aria-label="<?= $isCurrentAccount ? 'Edit your account above' : 'Edit ' . $account['email'] ?>" data-admin-id="<?= (int) $account['admin_id'] ?>" data-admin-email="<?= $escape($account['email']) ?>" data-admin-role="<?= $escape($account['role']) ?>"<?= $isCurrentAccount ? ' disabled' : '' ?>><i class="fa-solid fa-pen" aria-hidden="true"></i></button><form class="delete-admin-form" method="post" action="settings.php?section=accounts" data-admin-email="<?= $escape($account['email']) ?>"><input type="hidden" name="action" value="delete_admin"><input type="hidden" name="csrf" value="<?= $escape($_SESSION['settings_csrf']) ?>"><input type="hidden" name="admin_id" value="<?= (int) $account['admin_id'] ?>"><input type="password" name="current_password" class="visually-hidden-input" aria-label="Your password" autocomplete="current-password"><button class="icon-button danger-button" type="submit" title="<?= $isCurrentAccount ? 'You cannot delete your own account' : 'Delete ' . $account['email'] ?>" aria-label="<?= $isCurrentAccount ? 'You cannot delete your own account' : 'Delete ' . $account['email'] ?>"<?= $isCurrentAccount ? ' disabled' : '' ?>><i class="fa-solid fa-trash" aria-hidden="true"></i></button></form></div></td></tr><?php endforeach; ?>
     </tbody></table></div>
 </section>
+<?php elseif ($section === 'audit'): ?>
 <section class="panel role-management">
     <div class="panel-header"><div><h3>Administrative audit history</h3><span>Latest 100 security and data-governance events.</span></div></div>
-    <?php if ($auditEvents): ?><div class="table-wrap"><table><thead><tr><th>Time</th><th>Administrator</th><th>Action</th><th>Record</th></tr></thead><tbody>
+    <?php if ($auditEvents): ?><div class="table-wrap"><table><thead><tr><th>Time</th><th>Administrator</th><th>Action</th><th>Record</th><th>Details</th></tr></thead><tbody>
     <?php foreach ($auditEvents as $event): ?><tr>
         <td><?= $escape($event['created_at']) ?> UTC</td>
         <td><?= $escape($event['administrator_email'] ?: 'System / removed account') ?></td>
         <td><?= $escape(ucfirst($event['action'])) ?></td>
         <td><?= $escape($event['entity_type'] . ($event['entity_id'] !== null ? ' #' . $event['entity_id'] : '')) ?></td>
+        <td><?= $escape($event['details_json'] ?: '—') ?></td>
     </tr><?php endforeach; ?>
     </tbody></table></div><?php else: ?><div class="system-message">No audit events have been recorded yet.</div><?php endif; ?>
 </section>
+<?php elseif ($section === 'system'): ?>
+<section class="panel settings-panel">
+    <div class="panel-header"><div><h3>System settings</h3><span>System-wide configuration is restricted to super administrators.</span></div></div>
+    <div class="settings-summary-body">
+        <div class="settings-status"><i class="fa-solid fa-sliders" aria-hidden="true"></i><div><strong>Protected system configuration</strong><span>Super administrator access</span></div></div>
+        <p class="settings-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> No additional system-wide configuration controls are registered in the current SBCIS installation.</p>
+    </div>
+</section>
+<?php elseif ($section === 'notifications'): ?>
+<section class="panel settings-panel">
+    <div class="panel-header"><div><h3>Notifications &amp; alerts</h3><span>Review notification options available to your administrator account.</span></div></div>
+    <div class="settings-summary-body">
+        <div class="settings-status"><i class="fa-solid fa-bell" aria-hidden="true"></i><div><strong>Application alerts</strong><span>Available to <?= $isSuperAdmin ? 'super administrators' : 'administrators' ?></span></div></div>
+        <p class="settings-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Personal notification preferences are not configured in the current SBCIS installation.</p>
+    </div>
+</section>
+<?php endif; ?>
+<?php if ($section === 'accounts'): ?>
 <dialog class="admin-edit-dialog" id="admin-add-dialog" aria-labelledby="admin-add-title">
-    <form class="admin-edit-form" method="post" action="settings.php">
+    <form class="admin-edit-form" method="post" action="settings.php?section=accounts">
         <div class="dialog-heading"><div><h2 id="admin-add-title">Add administrator</h2><p>Create a new administrator account and assign its access level.</p></div><button class="dialog-close" type="button" data-close-admin-add aria-label="Close add administrator dialog">&times;</button></div>
         <input type="hidden" name="action" value="add_admin"><input type="hidden" name="csrf" value="<?= $escape($_SESSION['settings_csrf']) ?>">
         <label>Email address<input type="email" name="email" autocomplete="email" required></label>
@@ -251,7 +286,7 @@ require __DIR__ . '/overview_shell.php';
     </form>
 </dialog>
 <dialog class="admin-edit-dialog" id="admin-edit-dialog" aria-labelledby="admin-edit-title">
-    <form class="admin-edit-form" method="post" action="settings.php">
+    <form class="admin-edit-form" method="post" action="settings.php?section=accounts">
         <div class="dialog-heading"><div><h2 id="admin-edit-title">Edit administrator</h2><p>Update this administrator's access and sign-in details.</p></div><button class="dialog-close" type="button" data-close-admin-dialog aria-label="Close edit dialog">&times;</button></div>
         <input type="hidden" name="action" value="edit_admin"><input type="hidden" name="csrf" value="<?= $escape($_SESSION['settings_csrf']) ?>"><input type="hidden" name="admin_id" id="edit-admin-id">
         <label>Email address<input type="email" name="email" id="edit-admin-email" required></label>

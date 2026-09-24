@@ -43,7 +43,7 @@ if (!isset($title, $activePage, $escape) || ($_SESSION['admin_logged_in'] ?? fal
                 <div class="topbar-actions"><?php if ($activePage === 'admin_dashboard.php'): ?><div class="dashboard-clock" aria-label="Current date and time">
                     <div class="dashboard-clock-item"><i class="fa-regular fa-calendar" aria-hidden="true"></i><span><small>Date</small><time data-live-date>Loading date</time></span></div>
                     <div class="dashboard-clock-item"><i class="fa-regular fa-clock" aria-hidden="true"></i><span><small>Local time</small><time data-live-time>--:--</time></span></div>
-                </div><span class="admin-panel-indicator"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Admin panel</span><?php else: ?><?php foreach (($topbarActions ?? []) as $action): ?><a
+                </div><?php $headerEmail = (string) ($_SESSION['admin_email'] ?? 'administrator'); $headerUsername = strstr($headerEmail, '@', true) ?: $headerEmail; $headerRole = (string) ($_SESSION['admin_role'] ?? 'admin'); $headerRoleLabel = $headerRole === 'super_admin' ? 'superadmin' : 'admin'; ?><span class="admin-panel-indicator"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span><strong><?= $escape($headerUsername) ?></strong><small><?= $escape($headerRoleLabel) ?></small></span></span><?php else: ?><?php foreach (($topbarActions ?? []) as $action): ?><a
                         class="ov-button <?= !empty($action['primary']) ? '' : 'secondary' ?>"
                         href="<?= $escape($action['href'] ?? '#') ?>"><?php if (!empty($action['icon'])): ?><i
                                 class="fa-solid <?= $escape($action['icon']) ?>"

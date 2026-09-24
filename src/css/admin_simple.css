@@ -195,6 +195,60 @@ body,
     color: #a94442;
 }
 
+.nav-item-toggle {
+    width: 100%;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+}
+
+.nav-item-toggle .nav-chevron {
+    width: auto;
+    margin-left: auto;
+    font-size: 10px;
+    transition: transform .18s ease;
+}
+
+.nav-item-toggle[aria-expanded="true"] .nav-chevron { transform: rotate(180deg); }
+
+.nav-submenu {
+    display: none;
+    margin: -2px 0 8px 35px;
+    padding-left: 12px;
+    border-left: 1px solid #dce6df;
+}
+
+.nav-submenu.open { display: block; }
+
+.nav-subitem {
+    display: block;
+    padding: 8px 10px;
+    color: #68737b;
+    border-radius: 5px;
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.nav-subitem:hover,
+.nav-subitem.active {
+    color: #175f44;
+    background: #eaf3ed;
+}
+
+.admin-panel-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: #53645b;
+}
+
+.admin-panel-indicator > i { color: #176b4d; }
+.admin-panel-indicator span { display: grid; gap: 1px; }
+.admin-panel-indicator strong { font-size: 12px; font-weight: 600; }
+.admin-panel-indicator small { color: #7a858c; font-size: 10px; text-transform: lowercase; }
+
 .topbar,
 .overview-page .topbar {
     background: #fff;
