@@ -16,42 +16,42 @@ header('Expires: 0');
 $pages = [
     'boreholes' => [
         'title' => 'Boreholes',
-        'subtitle' => 'Location and drilling depth records',
+        'subtitle' => 'Borehole locations and drilling depths',
         'icon' => 'fa-location-dot',
         'eyebrow' => 'LOCATION DATA',
         'search_placeholder' => 'Search borehole code or location',
     ],
     'soil_layers' => [
         'title' => 'Soil Layers',
-        'subtitle' => 'Geotechnical layer descriptions and SPT values',
+        'subtitle' => 'Layer descriptions and SPT values',
         'icon' => 'fa-layer-group',
         'eyebrow' => 'SOIL DATA',
         'search_placeholder' => 'Search borehole, soil type, or class',
     ],
     'municipalities' => [
         'title' => 'Municipalities',
-        'subtitle' => 'Municipalities and cities with saved borehole records',
+        'subtitle' => 'Locations with borehole records',
         'icon' => 'fa-map-location-dot',
         'eyebrow' => 'LOCATION DATA',
         'search_placeholder' => 'Search municipality or city',
     ],
     'barangays' => [
         'title' => 'Barangays',
-        'subtitle' => 'Barangays with saved borehole records',
+        'subtitle' => 'Locations with borehole records',
         'icon' => 'fa-location-crosshairs',
         'eyebrow' => 'LOCATION DATA',
         'search_placeholder' => 'Search barangay or municipality',
     ],
     'soil_reports' => [
         'title' => 'Soil Reports',
-        'subtitle' => 'Summary of boreholes, soil layers, and capacities',
+        'subtitle' => 'Borehole and soil summaries',
         'icon' => 'fa-file-lines',
         'eyebrow' => 'REPORTS',
         'search_placeholder' => 'Search borehole or location',
     ],
     'bearing_capacity' => [
         'title' => 'Bearing Capacity',
-        'subtitle' => 'Recorded soil bearing capacity by borehole layer',
+        'subtitle' => 'Bearing capacity by soil layer',
         'icon' => 'fa-chart-column',
         'eyebrow' => 'REPORTS',
         'search_placeholder' => 'Search borehole or soil type',
@@ -139,13 +139,13 @@ $escape = [View::class, 'escape'];
 
             <section class="panel">
                 <div class="panel-header">
-                    <h3>Saved records</h3>
-                    <span><?= number_format($pagination['total']) ?> records</span>
+                    <h3>Records</h3>
+                    <span><?= number_format($pagination['total']) ?> total</span>
                 </div>
 
                 <form class="table-toolbar" method="GET" data-server-search role="search">
                     <div class="table-search-control">
-                        <label for="record-search">Search records</label>
+                        <label for="record-search">Search</label>
                         <div class="table-search-input">
                             <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
                             <input id="record-search" type="search" name="search" maxlength="100" value="<?= $escape($pagination['search']) ?>" placeholder="<?= $escape($page['search_placeholder']) ?>">
@@ -153,7 +153,7 @@ $escape = [View::class, 'escape'];
                     </div>
                     <div class="table-toolbar-actions">
                         <label class="table-page-size" for="record-page-size">
-                            <span>Rows per page</span>
+                            <span>Rows</span>
                             <select id="record-page-size" name="page_size" aria-label="Rows per page"><?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= $pagination['page_size'] === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?></select>
                         </label>
                         <?php if ($pagination['search'] !== ''): ?><a class="table-clear-button" href="?<?= $escape(http_build_query(['page_size' => $pagination['page_size']])) ?>">Clear</a><?php endif; ?>

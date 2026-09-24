@@ -353,14 +353,14 @@ function old_raw(string $key, string $default = ''): string
                 </div>
                 <div>
                     <h1>Soil Records</h1>
-                    <p>Add borehole locations and geotechnical layers</p>
+                    <p>Manage boreholes and soil layers</p>
                 </div>
             </div>
             <div class="topbar-actions">
-                <button type="button" class="submit-button" id="openRecord" <?= $databaseAvailable ? '' : 'disabled' ?>><i class="fa-solid fa-plus" aria-hidden="true"></i> Add record</button>
+                <button type="button" class="submit-button" id="openRecord" <?= $databaseAvailable ? '' : 'disabled' ?>><i class="fa-solid fa-plus" aria-hidden="true"></i> Add borehole</button>
                 <a href="admin_gis.php" class="public-site">
                     <i class="fa-solid fa-map-location-dot"></i>
-                    <span>View Admin Map</span>
+                    <span>Map</span>
                 </a>
             </div>
         </header>
@@ -410,23 +410,23 @@ function old_raw(string $key, string $default = ''): string
                 <noscript><p class="system-message">Enable JavaScript to open the record entry form.</p></noscript>
                 <section class="panel">
                     <div class="panel-header">
-                        <h3>Saved boreholes</h3>
-                        <span><?= number_format($recordPagination['total']) ?> records</span>
+                        <h3>Boreholes</h3>
+                        <span><?= number_format($recordPagination['total']) ?> total</span>
                     </div>
 
                     <form class="table-toolbar" method="GET" data-server-search role="search">
                         <input type="hidden" name="status" value="<?= $escape($recordPagination['status']) ?>">
                         <div class="table-search-control">
-                            <label for="soil-record-search">Search records</label>
+                            <label for="soil-record-search">Search</label>
                             <div class="table-search-input">
                                 <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
                                 <input id="soil-record-search" type="search" name="search" maxlength="100" value="<?= $escape($recordPagination['search']) ?>" placeholder="Borehole or location">
                             </div>
                         </div>
                         <div class="table-toolbar-actions">
-                            <a class="table-clear-button" href="?status=<?= $recordPagination['status'] === 'archived' ? 'active' : 'archived' ?>"><?= $recordPagination['status'] === 'archived' ? 'View active' : 'View archive' ?></a>
+                            <a class="table-clear-button table-archive-button" href="?status=<?= $recordPagination['status'] === 'archived' ? 'active' : 'archived' ?>"><?= $recordPagination['status'] === 'archived' ? 'Active boreholes' : 'Archived boreholes' ?></a>
                             <label class="table-page-size" for="soil-record-page-size">
-                                <span>Rows per page</span>
+                                <span>Rows</span>
                                 <select id="soil-record-page-size" name="page_size" aria-label="Rows per page"><?php foreach ([10,25,50,100] as $size): ?><option value="<?= $size ?>" <?= $recordPagination['page_size'] === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?></select>
                             </label>
                             <?php if ($recordPagination['search'] !== ''): ?><a class="table-clear-button" href="?<?= $escape(http_build_query(['page_size' => $recordPagination['page_size']])) ?>">Clear</a><?php endif; ?>
@@ -485,7 +485,7 @@ function old_raw(string $key, string $default = ''): string
                         </div></nav>
                         <?php endif; ?>
                     <?php else: ?>
-                        <div class="system-message"><?= $recordPagination['search'] !== '' ? 'No boreholes match this search.' : ($recordPagination['status'] === 'archived' ? 'No archived boreholes.' : 'No borehole records have been added yet.') ?></div>
+                        <div class="system-message"><?= $recordPagination['search'] !== '' ? 'No boreholes match your search.' : ($recordPagination['status'] === 'archived' ? 'No archived boreholes.' : 'No boreholes yet. Add one to get started.') ?></div>
                     <?php endif; ?>
                 </section>
             </div>

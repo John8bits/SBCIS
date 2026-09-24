@@ -116,7 +116,7 @@ $rowChart = static fn(array $rows) => ['labels' => array_column($rows, 'label'),
 $chartData = ['coverage' => $rowChart($coverage), 'soils' => $rowChart($soils), 'capacities' => $rowChart($capacities), 'activity' => $activity];
 $hasChartValues = static fn(array $values) => $available && array_sum(array_map('intval', $values)) > 0;
 $title = 'Dashboard';
-$subtitle = 'Soil investigation overview and recent activity';
+$subtitle = 'Soil data and recent activity';
 $activePage = 'admin_dashboard.php';
 $bodyClass = 'dashboard-page';
 $topbarActions = [['href' => 'soil_records.php?new=1', 'label' => 'Add record', 'icon' => 'fa-plus', 'primary' => true]];
@@ -147,7 +147,7 @@ require __DIR__ . '/overview_shell.php';
     <?php endforeach; ?>
 </section>
 <div class="dashboard-section-heading">
-    <div><span class="dashboard-section-icon"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></span><div><h2>Data insights</h2><p>Activity, coverage, soil composition, and recorded capacity at a glance</p></div></div>
+    <div><span class="dashboard-section-icon"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></span><div><h2>Data insights</h2><p>Activity, coverage, soil types, and capacity</p></div></div>
     <span class="dashboard-section-meta"><i class="fa-solid fa-circle" aria-hidden="true"></i> Live database view</span>
 </div>
 <div class="ov-grid">
@@ -292,7 +292,7 @@ require __DIR__ . '/overview_shell.php';
             </table>
         </div><?php else: ?>
         <div class="ov-empty">
-            <?= $available ? 'No boreholes yet. Choose Add record to enter your first borehole.' : 'Recent records are unavailable while the database is disconnected.' ?>
+            <?= $available ? 'No boreholes yet. Add one to get started.' : 'Recent records are unavailable while the database is disconnected.' ?>
         </div><?php endif; ?>
 </section>
 </main>

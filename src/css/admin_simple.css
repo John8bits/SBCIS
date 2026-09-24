@@ -1054,3 +1054,345 @@ body.modal-open {
     color: #183f30;
     font-variant-numeric: tabular-nums;
 }
+
+/* Responsive safeguards shared by every administration screen. */
+.main,
+.content,
+.ov-content,
+.panel,
+.ov-card,
+.form-card,
+.panel-header > div {
+    min-width: 0;
+}
+
+.content,
+.ov-content {
+    width: 100%;
+}
+
+.panel {
+    padding: 0;
+    overflow: hidden;
+}
+
+.panel-header {
+    gap: 14px;
+    margin-bottom: 0;
+}
+
+.panel > .system-message {
+    margin: 16px;
+    border-color: #e3e9e6;
+    background: #f7f9f8;
+    color: #5b6962;
+}
+
+.panel-header > div,
+.panel-header span,
+.topbar-title h1,
+.topbar-title p {
+    overflow-wrap: anywhere;
+}
+
+.table-wrap,
+.ov-table-scroll {
+    max-width: 100%;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-wrap > table,
+.ov-table-scroll > table {
+    width: max-content;
+    min-width: 100%;
+}
+
+@media(max-width:800px) {
+    body {
+        overflow-x: hidden;
+    }
+
+    .topbar,
+    .overview-page .topbar {
+        height: auto;
+        min-height: 72px;
+        padding: 10px 16px;
+        gap: 12px;
+    }
+
+    .topbar-title {
+        flex: 1 1 auto;
+    }
+
+    .topbar-title > div {
+        min-width: 0;
+    }
+
+    .topbar-actions {
+        flex: 0 1 auto;
+        max-width: 55%;
+    }
+
+    .panel-header {
+        align-items: flex-start;
+    }
+
+    .settings-layout,
+    .data-layout {
+        gap: 16px;
+    }
+}
+
+@media(max-width:600px) {
+    .topbar,
+    .overview-page .topbar {
+        align-items: stretch;
+        flex-wrap: wrap;
+        padding-block: 12px;
+    }
+
+    .topbar-title {
+        flex: 1 0 100%;
+        min-height: 40px;
+    }
+
+    .topbar-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+        width: 100%;
+        max-width: none;
+    }
+
+    .topbar-actions > :is(a, button, .dashboard-clock, .admin-panel-indicator) {
+        width: 100%;
+        min-width: 0;
+        justify-content: center;
+    }
+
+    .content,
+    .ov-content {
+        padding: 18px 12px 32px;
+    }
+
+    .topbar-title-icon {
+        width: 34px;
+        height: 34px;
+        flex: 0 0 34px;
+    }
+
+    .topbar-title h1 {
+        font-size: 17px;
+        line-height: 1.2;
+    }
+
+    .topbar-title p {
+        font-size: 10px;
+        line-height: 1.35;
+    }
+
+    .panel-header {
+        flex-wrap: wrap;
+        padding: 16px;
+    }
+
+    .table-toolbar {
+        gap: 14px;
+        padding: 16px;
+        background: #fff;
+    }
+
+    .table-toolbar .table-search-input input,
+    .table-page-size,
+    .table-search-button,
+    .table-clear-button {
+        min-height: 44px;
+    }
+
+    .table-search-control > label,
+    .table-page-size > span {
+        font-size: 12px;
+    }
+
+    .table-toolbar-actions {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .table-page-size {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .table-search-button {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .table-archive-button,
+    .table-toolbar-actions > .table-clear-button:not(.table-archive-button) {
+        grid-column: 1 / -1;
+    }
+
+    .table-archive-button {
+        grid-row: 2;
+    }
+
+    .table-toolbar-actions > .table-clear-button:not(.table-archive-button) {
+        grid-row: 3;
+    }
+
+    .panel-header > .submit-button {
+        width: 100%;
+    }
+
+    .ov-heading {
+        gap: 14px;
+        margin-bottom: 20px;
+    }
+
+    .ov-heading .ov-actions,
+    .page-heading .ov-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+
+    .ov-heading .ov-button,
+    .page-heading .ov-button {
+        width: 100%;
+        white-space: normal;
+        text-align: center;
+    }
+
+    .table-footer {
+        align-items: stretch;
+        flex-direction: column;
+        padding: 14px;
+    }
+
+    .table-pages {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        width: 100%;
+    }
+
+    .table-pages > * {
+        display: inline-flex;
+        min-height: 40px;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .form-actions,
+    .entry-dialog .form-actions,
+    .admin-edit-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+
+    .form-actions > *,
+    .entry-dialog .form-actions > *,
+    .admin-edit-actions > * {
+        width: 100%;
+    }
+
+    .admin-account-form {
+        grid-template-columns: 1fr;
+        padding: 16px;
+    }
+
+    .admin-account-form .submit-button,
+    .settings-actions .submit-button {
+        width: 100%;
+    }
+
+    .settings-actions {
+        justify-content: stretch;
+    }
+
+    .admin-edit-dialog,
+    .entry-dialog {
+        width: calc(100% - 20px);
+        max-height: calc(100dvh - 20px);
+    }
+
+    .admin-edit-form {
+        padding: 20px 18px;
+    }
+}
+
+@media(max-width:430px) {
+    .topbar,
+    .overview-page .topbar {
+        padding-inline: 10px;
+    }
+
+    .topbar-title {
+        gap: 8px;
+    }
+
+    .topbar-title-icon {
+        display: none;
+    }
+
+    .topbar-title p {
+        display: none;
+    }
+
+    .mobile-menu {
+        flex: 0 0 40px;
+        width: 40px;
+        height: 40px;
+        margin-right: 0;
+    }
+
+    .topbar-actions {
+        max-width: none;
+        gap: 5px;
+    }
+
+    .topbar-actions :is(.public-site, .submit-button, .ov-button) {
+        min-height: 40px;
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+
+    .topbar-actions .public-site span {
+        display: inline;
+    }
+
+    .panel,
+    .ov-card,
+    .form-card {
+        border-radius: 7px;
+    }
+
+    .panel-header h3,
+    .ov-card h3 {
+        font-size: 14px;
+    }
+
+    .panel-header span {
+        padding: 4px 7px;
+        border-radius: 999px;
+        background: #f2f5f3;
+        font-size: 11px;
+        line-height: 1.2;
+    }
+
+    .table-toolbar-actions {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .settings-form,
+    .settings-summary-body,
+    .entry-dialog .form-card {
+        padding: 16px;
+    }
+
+    .layer-entry {
+        padding: 14px;
+    }
+}
