@@ -7,7 +7,7 @@ The shared location service uses the public [PSGC API](https://psgc.gitlab.io/ap
 
 This is a public third-party PSGC service, not the authenticated PSA API. No API key is required. Only public location lists are requested; saved borehole information is never sent to the provider.
 
-`app/Models/locations.php` validates the province, unique codes, and parent relationships. It caches successful responses for 24 hours in PHP's temporary directory. Failed refreshes use the last successful response, or `database/locations_snapshot.json` when no cache exists. Retries are limited to one attempt every five minutes during an outage. The directory UI includes the retrieval date and identifies saved copies.
+`app/Models/locations.php` validates the province, unique codes, and parent relationships. It caches successful responses for 24 hours in `storage/location-directory`, which remains inside the application's permitted filesystem on restricted shared hosts. Failed refreshes use the last successful response, or `database/locations_snapshot.json` when no cache exists. Retries are limited to one attempt every five minutes during an outage. The directory UI includes the retrieval date and identifies saved copies.
 
 `app/Controllers/locations.php` exposes the normalized directory to the map. Admin location pages, record-entry choices, homepage totals, and dashboard location totals use the same service. Reference locations are not automatically inserted into the application's saved-record tables; the backup still exports saved application data.
 
