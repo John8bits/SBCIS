@@ -67,7 +67,16 @@ try {
     throw new RuntimeException('Rate limiter did not block repeated failures.');
 } catch (RuntimeException $error) {
     $expect(str_starts_with($error->getMessage(), 'Too many sign-in attempts'), 'Unexpected rate-limit error.');
+    $expect(str_contains($error->getMessage(), 'seconds'), 'Remaining cooldown was not reported.');
 }
+$db->exec("UPDATE login_attempts SET blocked_until=DATE_ADD(UTC_TIMESTAMP(), INTERVAL 15 MINUTE),
+    last_failed_at=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 31 SECOND)");
+$limiter->assertAllowed('192.0.2.10');
+$checks++; // Legacy long backoff cannot keep a user locked after the new cooldown.
+$db->exec("UPDATE login_attempts SET first_failed_at=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 16 MINUTE)");
+$limiter->recordFailure('192.0.2.10');
+$expect((int)$db->query('SELECT failure_count FROM login_attempts')->fetchColumn() === 1,
+    'Expired failure window did not reset.');
 $limiter->clear('192.0.2.10');
 $limiter->assertAllowed('192.0.2.10');
 $checks++;

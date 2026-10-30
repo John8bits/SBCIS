@@ -132,8 +132,7 @@ final class AdminSession
 
     private static function isHttps(): bool
     {
-        return (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off') ||
-            (string) ($_SERVER['SERVER_PORT'] ?? '') === '443';
+        return \Config\ProductionConfig::environment() === 'production' || \Config\ProductionConfig::isHttps();
     }
 }
 

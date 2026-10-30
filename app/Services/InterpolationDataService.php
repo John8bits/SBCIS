@@ -106,10 +106,11 @@ final class InterpolationDataService
         ksort($reasons);
         $values = array_column($points, 'value');
         $configuration = [
+            'publication_fingerprint' => InterpolationConfig::publicationFingerprint(),
             'schema' => InterpolationConfig::PUBLICATION_POLICY_VERSION, 'boundary' => $this->boundary->version(), 'selection' => $selection,
             'public_variables' => $this->config->publicVariables(),
             'technical_minimum_points' => $this->config->minimumPoints(),
-            'record_policy' => 'exclude_non_field_then_include_records_with_valid_world_coordinates',
+            'record_policy' => 'exclude_non_field_and_require_study_boundary_membership',
             'duplicate_policy' => 'exclude_all',
             'depth_policy' => 'shallowest_valid_layer_per_borehole',
             'method' => InterpolationConfig::INTERPOLATION_METHOD,
@@ -122,6 +123,7 @@ final class InterpolationDataService
         if ($variable === null && isset($reasons['variable_not_selected'])) $status = 'pending_configuration';
         return [
             'status' => $status, 'variable' => $variable,
+            'publication_fingerprint' => $configuration['publication_fingerprint'],
             'unit' => $variable === null ? null : InterpolationConfig::VARIABLES[$variable]['unit'],
             'scope' => $selection['scope'], 'version' => $version,
             'eligible_count' => count($points), 'excluded_count' => array_sum($reasons),

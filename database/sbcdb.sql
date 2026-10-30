@@ -181,6 +181,23 @@ CREATE TABLE login_attempts (
     INDEX idx_login_attempts_blocked (blocked_until)
 );
 
+CREATE TABLE password_reset_tokens (
+    token_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT UNSIGNED NOT NULL,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    expires_at DATETIME NOT NULL,
+    used_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_reset_admin (admin_id, used_at),
+    INDEX idx_reset_expiry (expires_at),
+    CONSTRAINT fk_reset_admin FOREIGN KEY (admin_id) REFERENCES admins(admin_id) ON DELETE CASCADE
+);
+
+CREATE TABLE password_reset_requests (
+    request_key CHAR(64) PRIMARY KEY,
+    last_requested_at DATETIME NOT NULL
+);
+
 ALTER TABLE boreholes ADD CONSTRAINT fk_borehole_archived_by
     FOREIGN KEY (archived_by) REFERENCES admins(admin_id)
     ON UPDATE CASCADE ON DELETE SET NULL;

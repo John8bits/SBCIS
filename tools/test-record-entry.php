@@ -6,6 +6,8 @@ if (PHP_SAPI !== 'cli') {
 require_once __DIR__ . '/../app/Models/geotechnical_data.php';
 require_once __DIR__ . '/../app/Models/InterpolationRepository.php';
 $db = sbcis_get_database();
+$db->exec('CREATE TEMPORARY TABLE system_revisions (revision_name VARCHAR(50) PRIMARY KEY, revision_value BIGINT UNSIGNED NOT NULL DEFAULT 0)');
+$db->exec("INSERT INTO system_revisions VALUES ('interpolation_source',0)");
 // Shadow application tables on this connection so saved fixtures never reach real tables.
 foreach (['municipalities', 'barangays', 'boreholes', 'soil_layers'] as $table) {
     $columns = [];
@@ -134,13 +136,27 @@ if (!$audit || $audit['action'] !== 'restore' || $audit['entity_type'] !== 'bore
     (int)$audit['entity_id'] !== $id || json_decode($audit['details_json'], true)['safe'] !== 'detail')
     throw new RuntimeException('Audit event was not stored correctly.');
 $checks++;
-if (!sbcis_delete_geotechnical_record($db, $id))
+try {
+    sbcis_delete_geotechnical_record($db, $id, 'TEST-UPDATED');
+    throw new RuntimeException('Active borehole was permanently deleted.');
+} catch (InvalidArgumentException $e) { $checks++; }
+if (!sbcis_archive_geotechnical_record($db, $id, 1))
+    throw new RuntimeException('Unable to archive borehole before permanent deletion.');
+$checks++;
+try {
+    sbcis_delete_geotechnical_record($db, $id, 'WRONG-ID');
+    throw new RuntimeException('Incorrect confirmation deleted the borehole.');
+} catch (InvalidArgumentException $e) { $checks++; }
+if (sbcis_fetch_geotechnical_record($db, $id, true) === null)
+    throw new RuntimeException('Incorrect confirmation removed the archived record.');
+$checks++;
+if (!sbcis_delete_geotechnical_record($db, $id, 'TEST-UPDATED'))
     throw new RuntimeException('Delete failed.');
 $checks++;
 if (sbcis_fetch_geotechnical_record($db, $id) !== null || (int) $db->query('SELECT COUNT(*) FROM soil_layers')->fetchColumn() !== 0)
     throw new RuntimeException('Delete did not cascade to layers.');
 $checks++;
-if (sbcis_delete_geotechnical_record($db, $id))
+if (sbcis_delete_geotechnical_record($db, $id, 'TEST-UPDATED'))
     throw new RuntimeException('Missing record reported deleted.');
 $checks++;
 echo "$checks record-entry checks passed.\n";

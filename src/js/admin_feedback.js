@@ -34,10 +34,29 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     document.addEventListener('submit', async event => {
-        const form = event.target.closest('.archive-record-form, .delete-admin-form');
+        const form = event.target.closest('.archive-record-form, .delete-admin-form, .permanent-delete-record-form');
         if (!form || form.dataset.confirmed === 'true') return;
         event.preventDefault();
         event.stopImmediatePropagation();
+        if (form.classList.contains('permanent-delete-record-form')) {
+            const code = form.dataset.recordName;
+            const entered = window.Swal
+                ? (await Swal.fire({
+                    icon: 'warning', title: 'Delete this borehole permanently?',
+                    text: `This removes ${code} and all its soil layers. Type the borehole ID to continue.`,
+                    input: 'text', inputLabel: `Borehole ID: ${code}`, inputAttributes: { autocomplete: 'off' },
+                    showCancelButton: true, focusCancel: true,
+                    confirmButtonText: 'Delete permanently', cancelButtonText: 'Keep record',
+                    customClass: { popup: 'sbcis-alert-danger' },
+                    inputValidator: value => value === code ? undefined : 'Enter the exact borehole ID.'
+                })).value
+                : window.prompt(`Permanently delete ${code} and its soil layers? Type the exact borehole ID:`);
+            if (entered !== code) return;
+            form.querySelector('[name="confirm_code"]').value = entered;
+            form.dataset.confirmed = 'true';
+            form.submit();
+            return;
+        }
         if (form.classList.contains('delete-admin-form')) {
             const email = form.dataset.adminEmail || 'this administrator';
             const password = window.prompt('Enter your current password to delete this administrator.');

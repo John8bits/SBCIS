@@ -52,6 +52,10 @@ foreach (array_keys(sbcis_export_queries()) as $table) {
 $original = [];
 foreach (array_keys(sbcis_export_queries()) as $table) {
     $original[$table] = $db->query('SELECT * FROM `' . $table . '` ORDER BY 1')->fetchAll();
+    if ($table === 'boreholes') {
+        foreach ($original[$table] as &$row) $row['archived_by'] = null;
+        unset($row);
+    }
     $columns = [];
     foreach ($db->query('SHOW COLUMNS FROM `' . $table . '`')->fetchAll() as $column) {
         $columns[] = '`' . $column['Field'] . '` ' . $column['Type'] . ' NULL';

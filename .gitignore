@@ -1,4 +1,5 @@
 /config/database.local.php
+/config/email.local.php
 /.env
 /.env.*
 !/config/database.local.example.php

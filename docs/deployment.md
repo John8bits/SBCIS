@@ -1,5 +1,15 @@
 # SBCIS production deployment
 
+**InfinityFree free hosting limitation:** This production profile is not deployable
+there unchanged. InfinityFree does not provide custom PHP process environment
+variables or the scheduled PHP CLI worker required below. The password-reset
+EmailJS keys alone can be configured through the ignored
+`config/email.local.php` file (see [password-reset.md](password-reset.md)), but
+that does not satisfy the database, persistent cache, worker, and production
+checks for the full SBCIS installation. Select a host with these capabilities
+or separately redesign and verify the production infrastructure before treating
+the site as deployment ready.
+
 Use PHP 8.2+ and MySQL 8 with the web server document root restricted by the supplied Apache `.htaccess`, IIS `web.config`, or equivalent Nginx rules. The repository root remains the application root for compatibility, so the server must deny HTTP access to `tools`, `database`, `config`, `docs`, tests, dot-directories, SQL files, database files, logs, and backups.
 
 ## Required environment
@@ -12,16 +22,18 @@ Use PHP 8.2+ and MySQL 8 with the web server document root restricted by the sup
 
 The application refuses production startup when database settings or persistent interpolation storage are absent, when the database user is `root`, or when HTTPS is not detected. HTTPS responses receive HSTS. Do not enable proxy trust unless direct client traffic cannot reach the application server.
 
-## Scientific publication gate
+## Interpolation publication
 
-The interpolation remains in `review_required` until a qualified authority approves and configures all of:
-
-- `SBCIS_INTERPOLATION_REVIEWED=1`
-- `SBCIS_INTERPOLATION_MAX_MAE_KPA`
-- `SBCIS_INTERPOLATION_MAX_RMSE_KPA`
-- `SBCIS_INTERPOLATION_MIN_SPAN_KM`
-
-These values are intentionally not supplied by the software.
+Pre-create the persistent cache as a writable directory outside the web root;
+paths resolving into the project are rejected. Do not enable QA mode in production.
+Valid source data produces a screening estimate after server-side regeneration.
+The software checks boundary membership, duplicate coordinates, support distance,
+minimum input count, and exact-location reproduction. MAE, RMSE, and spatial span
+are reported as diagnostics; they are not unpublished thresholds supplied by the
+application. An administrator must inspect source provenance and diagnostics.
+The surface is an estimate for reference and planning, never a signed engineering
+recommendation or substitute for site investigation. Policy version 5 invalidates
+older cache artifacts; regenerate with the normal server configuration after upgrade.
 
 ## Scheduled regeneration
 
@@ -36,6 +48,10 @@ Back up the database, then apply these additive migrations in order before switc
 1. `database/auth_security_migration.sql`
 2. `database/location_integrity_migration.sql`
 3. `database/governance_migration.sql`
+4. `database/password_reset_migration.sql`
+
+Configure the server-side email API and public base URL as described in
+[password-reset.md](password-reset.md) before advertising password recovery.
 
 Run `php tools/test-production-readiness.php` using the deployment database account afterward. Existing out-of-bound boreholes are retained and flagged; no migration deletes or rewrites research values.
 

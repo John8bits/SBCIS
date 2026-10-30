@@ -45,7 +45,7 @@ final class InterpolationGeneratorService
 
             $feature['properties'] = is_array($feature['properties'] ?? null) ? $feature['properties'] : [];
             $feature['properties']['value'] = round($value, 2);
-            $classification = InterpolationConfig::classifyBearingCapacity($value);
+            $classification = InterpolationConfig::classifyBearingCapacity($feature['properties']['value']);
             $feature['properties']['classification'] = $classification['key'];
             $feature['properties']['support_distance_km'] = round($nearestKm, 2);
             $feature['properties']['observation_count'] = count($observations);
@@ -85,7 +85,8 @@ final class InterpolationGeneratorService
             [$obsLongitude, $obsLatitude] = $observation['coordinates'];
             $distanceKm = $this->distanceKm($latitude, $longitude, (float) $obsLatitude, (float) $obsLongitude);
             $nearestKm = min($nearestKm, $distanceKm);
-            if ($distanceKm < 0.001) return [(float) $observation['value'], 0.0];
+            if (abs($longitude - (float) $obsLongitude) < 1.0e-10 &&
+                abs($latitude - (float) $obsLatitude) < 1.0e-10) return [(float) $observation['value'], 0.0];
             $weight = 1 / ($distanceKm ** InterpolationConfig::IDW_POWER);
             $weighted += $weight * (float) $observation['value'];
             $weightTotal += $weight;
@@ -156,27 +157,31 @@ final class InterpolationGeneratorService
         $polygons = ($geometry['type'] ?? '') === 'Polygon'
             ? [$geometry['coordinates'] ?? []]
             : (($geometry['type'] ?? '') === 'MultiPolygon' ? ($geometry['coordinates'] ?? []) : []);
-        $largestRing = [];
+        // Planar area centroid across every component, subtracting holes regardless
+        // of ring winding. This remains a degree-coordinate centroid, not a raster.
+        $areaTotal = 0.0;
+        $weightedX = 0.0;
+        $weightedY = 0.0;
         foreach ($polygons as $polygon) {
-            $ring = $polygon[0] ?? [];
-            if (count($ring) > count($largestRing)) $largestRing = $ring;
+            foreach ($polygon as $ringIndex => $ring) {
+                if (count($ring) < 4) throw new RuntimeException('Invalid barangay polygon.');
+                // Translate the origin to reduce cancellation at longitude ~125.
+                [$originX, $originY] = $ring[0];
+                $area = $x = $y = 0.0;
+                for ($i = 1; $i < count($ring); $i++) {
+                    $ax = $ring[$i - 1][0] - $originX; $ay = $ring[$i - 1][1] - $originY;
+                    $bx = $ring[$i][0] - $originX; $by = $ring[$i][1] - $originY;
+                    $cross = $ax * $by - $bx * $ay;
+                    $area += $cross; $x += ($ax + $bx) * $cross; $y += ($ay + $by) * $cross;
+                }
+                if (abs($area) < 1.0e-15) continue;
+                $weight = ($ringIndex === 0 ? 1 : -1) * abs($area);
+                $areaTotal += $weight;
+                $weightedX += ($originX + $x / (3 * $area)) * $weight;
+                $weightedY += ($originY + $y / (3 * $area)) * $weight;
+            }
         }
-        if (count($largestRing) < 4) throw new RuntimeException('Invalid barangay polygon.');
-
-        $twiceArea = 0.0;
-        $xTotal = 0.0;
-        $yTotal = 0.0;
-        for ($i = 1; $i < count($largestRing); $i++) {
-            $a = $largestRing[$i - 1];
-            $b = $largestRing[$i];
-            $cross = (float) $a[0] * (float) $b[1] - (float) $b[0] * (float) $a[1];
-            $twiceArea += $cross;
-            $xTotal += ((float) $a[0] + (float) $b[0]) * $cross;
-            $yTotal += ((float) $a[1] + (float) $b[1]) * $cross;
-        }
-        if (abs($twiceArea) < 1.0e-12) {
-            return [(float) $largestRing[0][0], (float) $largestRing[0][1]];
-        }
-        return [$xTotal / (3 * $twiceArea), $yTotal / (3 * $twiceArea)];
+        if ($areaTotal <= 0) throw new RuntimeException('Barangay has no valid positive area.');
+        return [$weightedX / $areaTotal, $weightedY / $areaTotal];
     }
 }

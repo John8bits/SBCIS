@@ -1,10 +1,12 @@
 const assert = require('node:assert/strict');
 class Element {
-    constructor() { this.dataset = {}; this.listeners = {}; this.style = {}; this.nodes = {}; }
+    constructor() { this.dataset = {}; this.listeners = {}; this.style = {}; this.nodes = {}; this.children = []; this.classList = { add() {} }; }
     addEventListener(name, fn) { this.listeners[name] = fn; }
     removeEventListener(name) { delete this.listeners[name]; }
     setAttribute(name, value) { this[name] = value; }
     querySelector(key) { return this.nodes[key] ||= new Element(); }
+    replaceChildren(...nodes) { this.children = nodes; }
+    append(...nodes) { this.children.push(...nodes); }
 }
 global.window = new Element();
 const requests = [];
@@ -46,8 +48,19 @@ const adminStatus = status => ({status, eligible_count:0,excluded_count:2,exclus
     assert.equal(viewer.layer.data.type,'FeatureCollection');
     assert.ok(viewer.element('legend').textContent.includes('Surface range: 0–10 test units'));
     assert.equal(viewer.surfaceColor(5), '#d73027', 'Server-owned classification color is applied');
+    assert.equal(viewer.classification(null), null, 'Missing value classified as zero');
+    const legendElements = new Map(['#gisSurfaceLegend','#gisSurfaceLegendMin','#gisSurfaceLegendMax','#gisSurfaceLegendUnit','#gisSurfaceGradient'].map(key => [key,new Element()]));
+    global.document = { querySelector: key => legendElements.get(key) || null, createElement: () => new Element() };
+    viewer.updateFloatingLegend(published.result.legend);
+    const category = legendElements.get('#gisSurfaceGradient').children[0];
+    assert.equal(category.children[0].style.backgroundColor, '#d73027', 'Legend swatch differs from map category');
+    assert.ok(category.children[1].textContent.includes('< 100'), 'Legend hides fixed classification threshold');
+    viewer.clearPublication();
+    assert.equal(legendElements.get('#gisSurfaceLegend').hidden, true, 'Removed surface retains floating legend');
+    delete global.document;
     viewer.refresh(); response(requests.shift(),{status:'outdated',result:null}); await tick();
     assert.equal(viewer.layer.data,null,'Outdated surface removed');
+    assert.equal(window.SBCIS_ACTIVE_INTERPOLATION,null,'Outdated active values retained');
     const errors = []; const logger = console.error;
     console.error = (...args) => errors.push(args);
     viewer.refresh(); response(requests.shift(),{},500,'text/html'); await tick();

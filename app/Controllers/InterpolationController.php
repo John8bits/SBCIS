@@ -96,6 +96,10 @@ final class InterpolationController
         } catch (InvalidArgumentException $error) {
             $this->respond(['status' => 'invalid_selection', 'message' => $error->getMessage()], 400);
         } catch (Throwable $error) {
+            if ($error->getMessage() === 'Another interpolation update is running.') {
+                $this->respond(['status'=>'generating', 'message'=>'Another interpolation worker is running. Refresh its status.'], 409);
+                return;
+            }
             error_log('Interpolation endpoint: ' . $error->getMessage());
             $this->respond(['status' => 'system_error', 'message' => 'The interpolation service is unavailable. Please retry.'], 503);
         }
