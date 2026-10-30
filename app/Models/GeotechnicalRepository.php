@@ -60,10 +60,14 @@ final class GeotechnicalRepository
         $this->invalidateInterpolation();
     }
 
-    public function delete(int $boreholeId): bool
+    public function delete(int $boreholeId, string $confirmation, int $adminId): bool
     {
-        $deleted = sbcis_delete_geotechnical_record($this->database, $boreholeId);
-        if ($deleted) $this->invalidateInterpolation();
+        $deleted = sbcis_delete_geotechnical_record($this->database, $boreholeId, $confirmation);
+        if ($deleted) {
+            AuditLogger::record($this->database, 'permanent_delete', 'borehole', $boreholeId,
+                ['borehole_code'=>$confirmation], $adminId);
+            $this->invalidateInterpolation();
+        }
         return $deleted;
     }
 

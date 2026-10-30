@@ -52,6 +52,9 @@ final class ProductionConfig
 
     private static function validateProductionEnvironment(): void
     {
+        if (getenv('SBCIS_QA_INTERPOLATION') === '1') {
+            throw new RuntimeException('QA interpolation must not be enabled in production.');
+        }
         foreach (['SBCIS_DB_HOST','SBCIS_DB_NAME','SBCIS_DB_USER','SBCIS_DB_PASSWORD','SBCIS_INTERPOLATION_CACHE_DIR'] as $name) {
             if (!is_string(getenv($name)) || trim((string) getenv($name)) === '') {
                 throw new RuntimeException('Missing required production environment setting: ' . $name);
@@ -62,7 +65,7 @@ final class ProductionConfig
         }
     }
 
-    private static function isHttps(): bool
+    public static function isHttps(): bool
     {
         if (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off') return true;
         if ((string) ($_SERVER['SERVER_PORT'] ?? '') === '443') return true;

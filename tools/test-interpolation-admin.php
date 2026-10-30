@@ -1,9 +1,14 @@
 <?php
 declare(strict_types=1);
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+$previousMode = getenv('SBCIS_ENV');
+$previousQa = getenv('SBCIS_QA_INTERPOLATION');
+putenv('SBCIS_ENV=test'); putenv('SBCIS_QA_INTERPOLATION=1');
 require dirname(__DIR__) . '/config/bootstrap.php';
 
 $authDb = App\Database\Connection::get();
+$authDb->exec('CREATE TEMPORARY TABLE audit_log (audit_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT UNSIGNED NULL, action VARCHAR(50), entity_type VARCHAR(50), entity_id VARCHAR(100), details_json MEDIUMTEXT)');
 $authDb->exec("CREATE TEMPORARY TABLE admins (
     admin_id INT UNSIGNED PRIMARY KEY, email VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL, role ENUM('admin','super_admin') NOT NULL
@@ -69,8 +74,11 @@ try {
 } finally {
     if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
     foreach (glob($directory . '/sess_*') ?: [] as $file) if (is_file($file)) unlink($file);
-    foreach ([$sessionFile,$directory.'/cache/state.json',$directory.'/cache/generation.lock'] as $file) if (is_file($file)) unlink($file);
+    foreach ([$sessionFile,$directory.'/cache/qa/state.json',$directory.'/cache/qa/generation.lock',$directory.'/cache/qa/worker.lock'] as $file) if (is_file($file)) unlink($file);
+    if (is_dir($directory.'/cache/qa')) rmdir($directory.'/cache/qa');
     if (is_dir($directory.'/cache')) rmdir($directory.'/cache');
     rmdir($directory);
     putenv($previousCache === false ? 'SBCIS_INTERPOLATION_CACHE_DIR' : 'SBCIS_INTERPOLATION_CACHE_DIR=' . $previousCache);
+    putenv($previousMode === false ? 'SBCIS_ENV' : 'SBCIS_ENV='.$previousMode);
+    putenv($previousQa === false ? 'SBCIS_QA_INTERPOLATION' : 'SBCIS_QA_INTERPOLATION='.$previousQa);
 }

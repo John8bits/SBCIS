@@ -9,7 +9,7 @@ let hasDraft = recordDialog.dataset.autoOpen === 'true' && !!document.getElement
 function openForm(source) {
     recordDialog.showModal(); document.body.classList.add('modal-open');
     window.SBCISModalOrigin?.apply(recordDialog, source);
-    document.getElementById('borehole_code').focus();
+    (document.getElementById('record-error') || document.getElementById('borehole_code')).focus();
 }
 openRecord.addEventListener('click', event => openForm(event.currentTarget));
 recordDialog.querySelectorAll('[data-close-dialog]').forEach(button => button.addEventListener('click', () => recordDialog.close()));

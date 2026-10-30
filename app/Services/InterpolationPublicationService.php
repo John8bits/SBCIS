@@ -30,31 +30,46 @@ final class InterpolationPublicationService
 
     public function status(): array
     {
-        $input = ($this->prepare)();
         $state = $this->store->read();
+        $fingerprint = InterpolationConfig::publicationFingerprint();
+        $revision = $this->revision !== null ? ($this->revision)() : null;
+        $summary = $state['prepared'] ?? null;
+        $input = $revision !== null && is_array($summary) &&
+            ($summary['source_revision'] ?? null) === $revision &&
+            ($summary['publication_fingerprint'] ?? null) === $fingerprint ? $summary : ($this->prepare)();
         $published = $state['published'];
+        $current = empty($state['outdated']) && $this->isCurrent($published, $input);
         $status = $input['status'];
         if ($status === 'ready') {
-            $status = $this->isCurrent($published, $input) ? 'current' : 'needs_regeneration';
+            $status = $current ? 'current' : 'needs_regeneration';
             if (!$input['generation_enabled'] || !$this->generate) $status = 'pending_configuration';
         }
         if (($state['attempt']['source_hash'] ?? null) === $input['version'] &&
             in_array(($state['attempt']['status'] ?? ''), ['generation_failed','review_required','validation_failed'], true)) {
             $status = $state['attempt']['status'];
         }
-        $candidate = ($state['candidate']['source_hash'] ?? null) === $input['version'] ? $state['candidate'] : null;
+        $candidate = ($state['candidate']['source_hash'] ?? null) === $input['version'] &&
+            ($state['candidate']['publication_fingerprint'] ?? null) === $fingerprint ? $state['candidate'] : null;
+        $job = $state['job'] ?? null;
+        if ($this->store->generationRunning()) {
+            $status = 'generating';
+        } elseif (($job['status'] ?? null) === 'generating') {
+            $job['status'] = 'expired';
+            $status = 'generation_interrupted';
+        }
         unset($input['points'], $input['available_variables'], $input['available_scopes']);
         return array_merge($input, [
             'status' => $status, 'source_hash' => $input['version'],
             'last_generated_at' => $published['generated_at'] ?? null,
             'interpolation_version' => $published['interpolation_version'] ?? null,
             'method' => $published['method'] ?? null,
-            'validation' => $this->isCurrent($published, $input) ? ($published['validation'] ?? null) : ($candidate['validation'] ?? null),
-            'interpolated_range' => $this->isCurrent($published, $input) ? ($published['legend'] ?? null) : ($candidate['legend'] ?? null),
+            'validation' => $current ? ($published['validation'] ?? null) : ($candidate['validation'] ?? null),
+            'interpolated_range' => $current ? ($published['legend'] ?? null) : ($candidate['legend'] ?? null),
             'publication_review' => $candidate['review'] ?? null,
-            'published_outdated' => $published !== null && !$this->isCurrent($published, $input),
+            'published_outdated' => $published !== null && !$current,
             'last_attempt_at' => $state['attempt']['checked_at'] ?? null,
-            'job' => $state['job'] ?? null,
+            'job' => $job,
+            'publication_mode' => InterpolationConfig::qaPublicationEnabled() ? 'qa' : 'screening',
         ]);
     }
 
@@ -66,6 +81,7 @@ final class InterpolationPublicationService
             $currentRevision = ($this->revision)();
             if ($published === null || !empty($state['outdated']) ||
                 ($published['source_revision'] ?? null) !== $currentRevision ||
+                ($published['publication_fingerprint'] ?? null) !== InterpolationConfig::publicationFingerprint() ||
                 ($published['policy_version'] ?? null) !== InterpolationConfig::PUBLICATION_POLICY_VERSION) {
                 return ['status' => $published ? 'outdated' : 'unavailable', 'result' => null];
             }
@@ -103,23 +119,37 @@ final class InterpolationPublicationService
     private function isCurrent(?array $published, array $input): bool
     {
         return $published !== null && $input['generation_enabled'] === true &&
+            ($published['publication_fingerprint'] ?? null) === InterpolationConfig::publicationFingerprint() &&
             ($published['source_hash'] ?? '') === $input['version'] &&
             ($published['policy_version'] ?? null) === InterpolationConfig::PUBLICATION_POLICY_VERSION;
     }
 
     public function regenerate(): array
     {
-        $claim = ($this->prepare)();
-        if (($claim['status'] ?? null) === 'ready' && !empty($claim['generation_enabled']) && $this->generate) {
-            $this->store->beginGeneration((string) $claim['version'], isset($claim['source_revision']) ? (int) $claim['source_revision'] : null);
-        }
-        $this->store->update(function (array $state): array {
+        $this->store->withGenerationLock(function (): void {
             $input = null;
             try {
+                // Claim before preparation, so status and retries reflect an actual worker lease.
+                $this->store->beginGeneration('preparing', $this->revision !== null ? ($this->revision)() : null);
+                $fingerprint = InterpolationConfig::publicationFingerprint();
+                $timing = microtime(true);
                 $input = ($this->prepare)();
+                $prepareMs = round((microtime(true) - $timing) * 1000, 2);
+                $this->store->update(static function (array $state) use ($input, $fingerprint): array {
+                    $summary = $input;
+                    unset($summary['points'], $summary['available_variables'], $summary['available_scopes']);
+                    $summary['publication_fingerprint'] = $fingerprint;
+                    $state['prepared'] = $summary;
+                    $state['job']['source_hash'] = $input['version'];
+                    $state['job']['updated_at'] = gmdate('c');
+                    return $state;
+                });
                 $status = $input['status'];
+                $output = null;
+                $review = null;
                 if ($status === 'ready' && (!$input['generation_enabled'] || !$this->generate)) $status = 'pending_configuration';
                 if ($status === 'ready') {
+                    $timing = microtime(true);
                     $output = ($this->generate)($input);
                     $this->validateOutput($output, $input);
                     $output['legend']['min'] = (float) $output['legend']['min'];
@@ -128,14 +158,27 @@ final class InterpolationPublicationService
                     if (!is_array($review) || !in_array($review['status'] ?? '', ['approved','review_required','validation_failed'], true)) {
                         throw new RuntimeException('Invalid interpolation publication review.');
                     }
+                    $status = $review['status'] === 'approved' ? 'current' : $review['status'];
+                }
+                $generateMs = $output !== null ? round((microtime(true) - $timing) * 1000, 2) : 0.0;
+                $this->store->update(function (array $state) use ($input, $output, $review, $status, $fingerprint, $prepareMs, $generateMs): array {
+                    // Revision reads replace repeated full preparation. In-memory callers fall back to hashing.
+                    $changed = $this->revision !== null
+                        ? ($this->revision)() !== ($input['source_revision'] ?? null)
+                        : ($this->prepare)()['version'] !== $input['version'];
+                    $changed = $changed || $fingerprint !== InterpolationConfig::publicationFingerprint();
+                    if ($changed) $status = 'needs_regeneration';
+                    $summary = $input;
+                    unset($summary['points'], $summary['available_variables'], $summary['available_scopes']);
+                    $summary['publication_fingerprint'] = $fingerprint;
+                    $state['prepared'] = $summary;
+                    if ($output !== null) {
                     $state['candidate'] = [
                         'source_hash'=>$input['version'], 'generated_at'=>gmdate('c'),
+                        'publication_fingerprint'=>$fingerprint,
                         'legend'=>$output['legend'], 'validation'=>$output['validation'], 'review'=>$review,
                     ];
-                    $latest = ($this->prepare)();
-                    if ($latest['version'] !== $input['version']) {
-                        $status = 'needs_regeneration';
-                    } elseif ($review['status'] === 'approved') {
+                    if ($status === 'current') {
                         $state['published'] = [
                             'source_hash' => $input['version'], 'generated_at' => gmdate('c'),
                             'source_revision' => $input['source_revision'] ?? null,
@@ -144,21 +187,24 @@ final class InterpolationPublicationService
                             'legend' => $output['legend'], 'surface' => $output['surface'],
                             'validation' => $output['validation'] ?? null,
                             'policy_version' => InterpolationConfig::PUBLICATION_POLICY_VERSION,
+                            'publication_fingerprint' => $fingerprint,
+                            'publication_mode' => InterpolationConfig::qaPublicationEnabled() ? 'qa' : 'screening',
                         ];
-                        $status = 'current';
-                    } else {
-                        $status = $review['status'];
                     }
-                }
+                    }
                 $state['outdated'] = $status !== 'current';
                 $state['attempt'] = ['status' => $status, 'source_hash' => $input['version'], 'checked_at' => gmdate('c')];
                 $state['job'] = [
                     'status'=>$status === 'current' ? 'succeeded' : $status,
                     'source_hash'=>$input['version'], 'queued_revision'=>$input['source_revision'] ?? null,
                     'finished_at'=>gmdate('c'), 'updated_at'=>gmdate('c'),
+                    'prepare_ms'=>$prepareMs, 'generate_validate_ms'=>$generateMs,
                 ];
+                    return $state;
+                });
             } catch (Throwable $error) {
                 error_log('Interpolation generation: ' . $error->getMessage());
+                $this->store->update(function (array $state) use ($input): array {
                 // Never replace the previous publication with failed or incomplete output.
                 $state['attempt'] = ['status' => 'generation_failed', 'source_hash' => $input['version'] ?? null, 'checked_at' => gmdate('c')];
                 $state['outdated'] = true;
@@ -167,8 +213,9 @@ final class InterpolationPublicationService
                     'queued_revision'=>$input['source_revision'] ?? null,
                     'finished_at'=>gmdate('c'), 'updated_at'=>gmdate('c'),
                 ];
+                    return $state;
+                });
             }
-            return $state;
         });
         return $this->status();
     }

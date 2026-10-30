@@ -1,0 +1,18 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const gis = fs.readFileSync(require.resolve('../src/js/gis.js'), 'utf8');
+const body = gis.match(/function average\(values\) \{([\s\S]*?)\n        \}/)[1];
+const average = new Function('values', body);
+assert.equal(average([null, 100]), 100);
+assert.equal(average([null, null, '', '  ', undefined]), null);
+assert.equal(average([0, null, 100]), 50);
+assert.equal(average(['0', '100.5', '', 'bad']), 50.25);
+const hero = fs.readFileSync(require.resolve('../src/js/hero-map.js'), 'utf8');
+const hasNumber = new Function('value', 'return ' + hero.match(/const hasNumber = value => (.*);/)[1]);
+assert.equal(hasNumber(null), false);
+assert.equal(hasNumber(''), false);
+assert.equal(hasNumber('   '), false);
+assert.equal(hasNumber(0), true);
+assert.equal(hasNumber('0.00'), true);
+assert.equal(hasNumber('abc'), false);
+console.log('10 missing/zero/average/hero measurement checks passed.');

@@ -1,4 +1,7 @@
 <div class="gis-map-shell">
+  <?php if (Config\InterpolationConfig::qaPublicationEnabled()): ?>
+  <p class="gis-local-qa-notice" role="status">LOCAL QA · Invented measurements. Not a reviewed engineering surface.</p>
+  <?php endif; ?>
   <div id="gisMap" tabindex="0" role="region" aria-label="Southern Leyte borehole and interpolation map"></div>
 
   <button id="toggleExplorer" class="gis-panel-toggle gis-explorer-toggle" type="button" aria-expanded="false" aria-controls="gisExplorer">

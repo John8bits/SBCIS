@@ -497,11 +497,19 @@ function sbcis_update_geotechnical_record(PDO $db, int $boreholeId, array $input
     } catch (Throwable $error) { if ($db->inTransaction()) $db->rollBack(); throw $error; }
 }
 
-function sbcis_delete_geotechnical_record(PDO $db, int $boreholeId): bool
+function sbcis_delete_geotechnical_record(PDO $db, int $boreholeId, string $confirmation): bool
 {
     if ($boreholeId < 1) throw new InvalidArgumentException('Choose a valid record to delete.');
     $db->beginTransaction();
     try {
+        $lock = $db->prepare('SELECT borehole_code, archived_at FROM boreholes WHERE borehole_id = ? FOR UPDATE');
+        $lock->execute([$boreholeId]);
+        $record = $lock->fetch(PDO::FETCH_ASSOC);
+        if (!$record) { $db->rollBack(); return false; }
+        if ($record['archived_at'] === null) throw new InvalidArgumentException('Archive this borehole before deleting it permanently.');
+        if ($confirmation === '' || !hash_equals((string)$record['borehole_code'], $confirmation)) {
+            throw new InvalidArgumentException('Type the exact borehole ID to confirm permanent deletion.');
+        }
         $stmt = $db->prepare('DELETE FROM soil_layers WHERE borehole_id = ?');
         $stmt->execute([$boreholeId]);
         $stmt = $db->prepare('DELETE FROM boreholes WHERE borehole_id = ?');
@@ -519,21 +527,35 @@ function sbcis_delete_geotechnical_record(PDO $db, int $boreholeId): bool
 function sbcis_archive_geotechnical_record(PDO $db, int $boreholeId, int $adminId): bool
 {
     if ($boreholeId < 1 || $adminId < 1) throw new InvalidArgumentException('Choose a valid record to archive.');
+    $db->beginTransaction();
+    try {
     $statement = $db->prepare('UPDATE boreholes SET archived_at=UTC_TIMESTAMP(), archived_by=:admin_id,
         lock_version=lock_version+1 WHERE borehole_id=:id AND archived_at IS NULL');
     $statement->execute([':admin_id'=>$adminId, ':id'=>$boreholeId]);
     $changed = $statement->rowCount() === 1;
     if ($changed) sbcis_touch_interpolation_revision($db);
+    $db->commit();
     return $changed;
+    } catch (Throwable $error) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $error;
+    }
 }
 
 function sbcis_restore_geotechnical_record(PDO $db, int $boreholeId): bool
 {
     if ($boreholeId < 1) throw new InvalidArgumentException('Choose a valid record to restore.');
+    $db->beginTransaction();
+    try {
     $statement = $db->prepare('UPDATE boreholes SET archived_at=NULL, archived_by=NULL,
         lock_version=lock_version+1 WHERE borehole_id=:id AND archived_at IS NOT NULL');
     $statement->execute([':id'=>$boreholeId]);
     $changed = $statement->rowCount() === 1;
     if ($changed) sbcis_touch_interpolation_revision($db);
+    $db->commit();
     return $changed;
+    } catch (Throwable $error) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $error;
+    }
 }

@@ -226,6 +226,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }).addTo(map);
         const availabilityLayer = L.layerGroup().addTo(map);
         const boreholeLayer = L.layerGroup().addTo(map);
+        const boreholeRenderer = L.canvas({ padding: 0.35 });
 
         let boreholes = Array.isArray(window.SBCIS_BOREHOLES) ? window.SBCIS_BOREHOLES : [];
         document.getElementById('visibleBoreholeCount').textContent = String(boreholes.length) + (window.SBCIS_CATALOGUE_TRUNCATED ? '+' : '');
@@ -245,7 +246,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         function average(values) {
-            const numeric = values.map(Number).filter(Number.isFinite);
+            const numeric = values.filter(value => value !== null && value !== undefined && String(value).trim() !== '').map(Number).filter(Number.isFinite);
             return numeric.length ? numeric.reduce((sum, value) => sum + value, 0) / numeric.length : null;
         }
 
@@ -288,7 +289,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
                 // Canvas-backed points avoid one DOM node per borehole.
                 const marker = L.circleMarker([latitude, longitude], {
-                    renderer: L.canvas({ padding: 0.35 }), radius: 6, weight: 2,
+                    renderer: boreholeRenderer, radius: 6, weight: 2,
                     color: '#ffffff', fillColor: '#0b6b4f', fillOpacity: 0.95,
                     keyboard: true,
                     title: `${borehole.borehole_code || 'Borehole'}: view soil record`
@@ -337,6 +338,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!response.ok) throw new Error('Viewport records are unavailable.');
                 const payload = await response.json();
                 renderBoreholes(payload.records, Boolean(payload.truncated));
+                if (selectedDataFeature && !dataModal.hidden) renderAreaData(selectedDataFeature, selectedDataType);
                 if (selectedDataFeature && selectedDataType) renderAvailabilityMarkers(selectedDataType,
                     selectedDataType === 'barangay' ? selectedDataFeature.properties?.GID_2 : null);
                 else renderAvailabilityMarkers('municipality');
@@ -367,7 +369,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 availabilityMarkersVisible = false;
             }
             if (typeof map.setView === 'function') map.setView([latitude, longitude], 16);
-            const marker = boreholePins.get(String(borehole.borehole_code || '').toLocaleLowerCase());
+            const key = String(borehole.borehole_code || '').toLocaleLowerCase();
+            let marker = boreholePins.get(key);
+            if (!marker) {
+                marker = L.circleMarker([latitude, longitude], {
+                    renderer: boreholeRenderer, radius: 6, weight: 2,
+                    color: '#ffffff', fillColor: '#0b6b4f', fillOpacity: .95
+                }).addTo(boreholeLayer).bindPopup(boreholePopup(borehole));
+                boreholePins.set(key, marker);
+            }
             marker?.openPopup?.();
             status.textContent = `${borehole.borehole_code || 'Borehole'} selected — click the pin for its saved soil record.`;
         }
@@ -474,7 +484,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const distances = surfaceMatchesFor(feature, type)
                 .map(surface => Number(surface.properties?.support_distance_km))
                 .filter(Number.isFinite);
-            return distances.length ? Math.min(...distances) : null;
+            return distances.length ? Math.max(...distances) : null;
         }
 
         function showCapacity(feature, type) {
@@ -490,8 +500,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('gisCapacityValue').textContent = value === null ? '—' : formatMetric(value, 'kPa');
             document.getElementById('gisCapacityClass').textContent = classification?.label || 'No estimate';
             document.getElementById('gisCapacityRange').textContent = classification
-                ? classification.label + ' (' + classification.range + ' kPa) · Estimated at the area prediction point' +
-                    (supportDistance === null ? '' : ' · nearest support ' + supportDistance.toFixed(1) + ' km') +
+                ? classification.label + ' (' + classification.range + ' kPa) · ' +
+                    (type === 'barangay' ? 'Estimate at the barangay prediction point' : 'Mean of supported barangay estimates; equal weight per supported barangay') +
+                    (supportDistance === null ? '' : (type === 'barangay' ? ' · nearest support ' : ' · largest nearest-support distance among supported barangays ') + supportDistance.toFixed(1) + ' km') +
                     (window.SBCIS_ACTIVE_INTERPOLATION?.surface?.features?.[0]?.properties?.observation_count ?
                         ' · based on ' + window.SBCIS_ACTIVE_INTERPOLATION.surface.features[0].properties.observation_count + ' boreholes' : '')
                 : 'No supported interpolation is available for this area.';
@@ -554,7 +565,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('gisDataModalTitle').textContent = name;
             document.getElementById('gisDataModalLocation').textContent = type === 'barangay' ? municipality + ', Southern Leyte' : 'Southern Leyte';
             document.getElementById('gisDataModalBadge').textContent = 'RECORDS';
-            document.getElementById('gisDataModalSource').textContent = 'Borehole records whose coordinates fall inside this boundary.';
+            document.getElementById('gisDataModalSource').textContent = window.SBCIS_CATALOGUE_TRUNCATED
+                ? 'Partial loaded-map records inside this boundary. Counts and averages are not full-area totals.'
+                : 'Borehole records whose coordinates fall inside this boundary.';
             document.getElementById('modalBoreholeCount').textContent = String(matchingBoreholes.length);
             document.getElementById('modalLayerCount').textContent = String(layerCount);
             document.getElementById('modalBearingAverage').textContent = bearingAverage === null ? '—' : formatMetric(bearingAverage, 'kPa');
@@ -562,7 +575,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('modalEstimatedValue').textContent = estimate === null ?
                 'No approved estimated value is available for this area.' :
                 formatMetric(estimate, active?.legend?.unit || '') + ' · ' + (active?.method || 'Interpolated surface') +
-                (supportDistance === null ? '' : ' · nearest supporting borehole ' + supportDistance.toFixed(1) + ' km away');
+                (supportDistance === null ? '' : (type === 'barangay' ? ' · nearest supporting borehole ' : ' · largest nearest-support distance across supported barangays ') + supportDistance.toFixed(1) + ' km');
             const records = document.getElementById('gisDataModalRecords');
             records.replaceChildren();
             matchingBoreholes.forEach(borehole => records.append(recordCard(borehole)));
@@ -688,13 +701,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (feature && showDetails) showCapacity(feature, 'barangay');
         }
 
-        function renderSearch() {
+        let searchRequest = null;
+        let searchTimer = null;
+        function renderSearch(remoteBoreholes = null) {
             results.replaceChildren();
             const term = search.value.trim().toLocaleLowerCase();
+            if (remoteBoreholes === null) {
+                if (typeof clearTimeout === 'function') clearTimeout(searchTimer);
+                searchRequest?.abort();
+            }
             if (!term) return;
+            if (remoteBoreholes === null && window.SBCIS_CATALOGUE_TRUNCATED && window.SBCIS_BOREHOLE_ENDPOINT) {
+                searchTimer = window.setTimeout(async () => {
+                    searchRequest = new AbortController();
+                    try {
+                        const response = await fetch(`${window.SBCIS_BOREHOLE_ENDPOINT}?bbox=-180,-90,180,90&limit=30&search=${encodeURIComponent(term)}`, { signal: searchRequest.signal });
+                        if (!response.ok) throw new Error('Search unavailable');
+                        const payload = await response.json();
+                        if (search.value.trim().toLocaleLowerCase() === term) renderSearch(payload.records || []);
+                    } catch (error) {
+                        if (error.name !== 'AbortError') status.textContent = 'Server search unavailable. Current results contain loaded records only.';
+                    }
+                }, 250);
+            }
             const locationMatches = [...directory.municipalities, ...directory.barangays].filter(row =>
                 (row.name + ' ' + (row.municipalityName || '') + ' ' + row.code).toLocaleLowerCase().includes(term));
-            const boreholeMatches = boreholes.filter(borehole =>
+            const boreholeMatches = (Array.isArray(remoteBoreholes) ? remoteBoreholes : boreholes).filter(borehole =>
                 String(borehole.borehole_code || '').toLocaleLowerCase().includes(term));
             const count = document.createElement('p');
             const total = locationMatches.length + boreholeMatches.length;
@@ -734,7 +766,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             selectBarangay(barangaySelect.value, Boolean(barangaySelect.value));
             if (barangaySelect.value) setExplorer(false, true);
         });
-        search.addEventListener('input', renderSearch);
+        search.addEventListener('input', () => renderSearch());
         const resetView = () => {
             search.value = '';
             results.replaceChildren();

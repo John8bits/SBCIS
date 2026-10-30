@@ -1863,6 +1863,10 @@
 .gis-surface-legend-heading strong { font-size: 12px; line-height: 1.2; }
 .gis-surface-legend-heading em { padding: 3px 5px; border-radius: 4px; background: #edf5f0; color: #286247; font-size: 7px; font-style: normal; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .gis-surface-gradient { height: 10px; margin-top: 11px; border: 1px solid rgba(15, 52, 39, .13); border-radius: 3px; }
+.gis-category-legend { height: auto; border: 0; display: grid; gap: 5px; }
+.gis-category-legend > div { display: flex; align-items: center; gap: 7px; font-size: 9px; }
+.gis-category-legend i { display: inline-block; flex: 0 0 13px; height: 10px; }
+.gis-local-qa-notice { position: absolute; z-index: 470; top: 48px; left: 12px; max-width: calc(100% - 90px); padding: 7px 10px; background: #fff4cf; color: #614600; font-size: 11px; pointer-events: none; }
 .gis-surface-legend-scale { display: flex; margin-top: 5px; justify-content: space-between; color: #375448; font-size: 9px; font-weight: 700; }
 .gis-surface-legend-card > p { margin-top: 4px; color: #6b7f75; font-size: 8px; }
 .gis-insights .gis-surface-legend { display: none; }

@@ -76,6 +76,6 @@ try {
     flock($lock, LOCK_UN); fclose($lock);
     echo "$checks publication checks passed; isolated temporary cache only.\n";
 } finally {
-    foreach (['state.json', 'generation.lock'] as $file) if (is_file($directory . '/' . $file)) unlink($directory . '/' . $file);
+    foreach (['state.json', 'generation.lock', 'worker.lock'] as $file) if (is_file($directory . '/' . $file)) unlink($directory . '/' . $file);
     if (is_dir($directory)) rmdir($directory);
 }

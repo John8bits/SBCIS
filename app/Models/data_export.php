@@ -122,6 +122,7 @@ function sbcis_write_backup(PDO $db, $stream): void
         $stmt = $db->query('SELECT * FROM `' . $table . '` ORDER BY 1');
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             if ($table === 'audit_log') $row['admin_id'] = null;
+            if ($table === 'boreholes') $row['archived_by'] = null;
             $columns = array_map(static function ($key) {
                 return '`' . str_replace('`', '``', $key) . '`'; }, array_keys($row));
             // Hex-encoded UTF-8 strings preserve quotes, newlines, and NULL vs empty text in any SQL mode.

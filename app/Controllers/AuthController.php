@@ -66,7 +66,9 @@ final class AuthController
         } catch (RuntimeException $error) {
             if (str_starts_with($error->getMessage(), 'Too many sign-in attempts')) {
                 $this->securityLog('login_throttled', $email);
-                $this->redirect('../../index.php?login=throttled');
+                preg_match('/Try again in (\d+) seconds\./', $error->getMessage(), $matches);
+                $seconds = min(30, max(1, (int)($matches[1] ?? 30)));
+                $this->redirect('../../index.php?login=throttled&retry=' . $seconds);
             }
             error_log('Login runtime failure: ' . $error->getMessage());
             $this->redirect('../../index.php?login=error');

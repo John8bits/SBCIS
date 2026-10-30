@@ -801,7 +801,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
                 Password
               </label>
 
-              <a href="#" class="forgot-link" id="forgotPassword">
+              <a href="views/forgot_password.php" class="forgot-link" id="forgotPassword">
                 Forgot password?
               </a>
 
@@ -824,21 +824,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
           </div>
 
-          <div class="form-options">
-
-            <label class="remember-me">
-
-              <input type="checkbox" name="remember" value="1">
-
-              <span class="custom-checkbox"></span>
-
-              <span>
-                Remember me
-              </span>
-
-            </label>
-
-          </div>
+          <p class="form-description">Your session expires after inactivity.</p>
 
           <button type="submit" class="login-submit">
 
@@ -1015,30 +1001,6 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 
     }
 
-    const forgotPassword =
-      document.getElementById(
-        "forgotPassword"
-      );
-
-    if (forgotPassword) {
-
-      forgotPassword.addEventListener(
-        "click",
-        function (event) {
-
-          event.preventDefault();
-
-          AppToast.fire({
-            icon: 'info',
-            title: 'Contact your admin to reset your password.'
-          });
-
-        }
-      );
-
-    }
-
-
     const footerLogin =
       document.getElementById("footerLogin");
 
@@ -1076,7 +1038,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
       invalid: 'Enter a valid email address.',
       error: 'Unable to sign in. Please try again.',
       expired: 'Your sign-in form expired. Reload the page and try again.',
-      throttled: 'Too many sign-in attempts. Please wait and try again.',
+      throttled: `Too many sign-in attempts. Try again in ${Math.min(30, Math.max(1, Number(urlParams.get('retry')) || 30))} seconds.`,
       required: 'Please sign in to continue.'
     };
 

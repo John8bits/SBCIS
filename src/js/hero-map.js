@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const status = document.getElementById('heroMapStatus');
     const legend = document.getElementById('heroInterpolationLegend');
 
-    const metric = (value, unit = '') => Number.isFinite(Number(value))
+    const hasNumber = value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value));
+    const metric = (value, unit = '') => hasNumber(value)
         ? Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 }) + (unit ? ' ' + unit : '')
         : 'Not recorded';
 
@@ -21,7 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const value = document.createElement('b');
         value.textContent = metric(layer?.bearing_capacity_kpa, 'kPa');
         const range = document.createElement('small');
-        range.textContent = Number.isFinite(Number(layer?.bearing_capacity_kpa)) ? 'Observed borehole value' : 'No bearing capacity value';
+        range.textContent = hasNumber(layer?.bearing_capacity_kpa) ? 'Observed borehole value' : 'No bearing capacity value';
         popup.append(title, place, value, range);
         return popup;
     }
@@ -132,31 +133,74 @@ document.addEventListener('DOMContentLoaded', async () => {
         }).addTo(map);
 
         const boreholes = Array.isArray(window.SBCIS_HERO_BOREHOLES) ? window.SBCIS_HERO_BOREHOLES : [];
-        boreholes.forEach(borehole => {
-            const latitude = Number(borehole.latitude);
-            const longitude = Number(borehole.longitude);
-            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
-            L.circleMarker([latitude, longitude], {
-                renderer: L.canvas({ padding: 0.35 }), radius: 5, weight: 2,
-                color: '#ffffff', fillColor: '#0b6b4f', fillOpacity: 0.95,
-                keyboard: true,
-                title: `${borehole.borehole_code || 'Borehole'}: view soil record`
-            }).addTo(map).bindPopup(popupFor(borehole));
-        });
+        const boreholeRenderer = L.canvas({ padding: 0.35 });
+        const points = boreholes.map(borehole => ({
+            borehole, lat: Number(borehole.latitude), lng: Number(borehole.longitude)
+        })).filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+        const pointLayer = L.layerGroup().addTo(map);
+        const renderBoreholes = () => {
+            pointLayer.clearLayers();
+            // Keep the compact province overview readable; show records on zoom.
+            if (map.getZoom() < 10) return;
+            const bounds = map.getBounds();
+            const groups = new Map();
+            for (const point of points) {
+                const location = L.latLng(point.lat, point.lng);
+                if (!bounds.contains(location)) continue;
+                const pixel = map.latLngToContainerPoint(location);
+                const key = `${Math.floor(pixel.x / 48)},${Math.floor(pixel.y / 48)}`;
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(point);
+            }
+            for (const group of groups.values()) {
+                if (group.length > 1) {
+                    const center = group.reduce((sum, point) => [sum[0] + point.lat, sum[1] + point.lng], [0, 0]);
+                    const marker = L.marker([center[0] / group.length, center[1] / group.length], {
+                        pane: 'heroPointPane',
+                        icon: L.divIcon({ className: 'hero-borehole-group', html: `<span>${group.length}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] }),
+                        title: `${group.length} boreholes in this area`, keyboard: true
+                    });
+                    if (map.getZoom() < 16) {
+                        marker.on('click', () => map.fitBounds(L.latLngBounds(group.map(point => [point.lat, point.lng])), { padding: [35, 35], maxZoom: 16 }));
+                    } else {
+                        const summary = document.createElement('article');
+                        summary.className = 'hero-borehole-popup';
+                        const count = document.createElement('strong');
+                        count.textContent = `${group.length} boreholes in this area`;
+                        const link = document.createElement('a');
+                        link.href = 'views/gis.php';
+                        link.textContent = 'Explore records on the full map';
+                        summary.append(count, link);
+                        marker.bindPopup(summary);
+                    }
+                    pointLayer.addLayer(marker);
+                } else {
+                    for (const point of group) pointLayer.addLayer(L.circleMarker([point.lat, point.lng], {
+                        pane: 'heroPointPane', renderer: boreholeRenderer, radius: 3.5, weight: 1.5,
+                        color: '#ffffff', fillColor: '#0b6b4f', fillOpacity: .9,
+                        keyboard: true,
+                        title: `${point.borehole.borehole_code || 'Borehole'}: view soil record`
+                    }).bindPopup(popupFor(point.borehole)));
+                }
+            }
+        };
+        map.on('zoomend moveend', renderBoreholes);
 
         const fit = () => {
             barangays.clearLayers();
             selected.clearLayers();
             map.fitBounds(province.getBounds(), { padding: [14, 14] });
             status.textContent = result
-                ? 'IDW surface • ' + boreholes.length + ' boreholes • click a point for details.'
-                : 'Interpolation unavailable. Boundaries and borehole records remain visible.';
+                ? 'IDW surface - ' + points.length + ' boreholes - zoom in to view locations.'
+                : 'Interpolation unavailable. Zoom in to view borehole locations.';
+            if (result?.publication_mode === 'qa') status.textContent = 'LOCAL QA — invented measurements. ' + status.textContent;
             if (tilesUnavailable) status.textContent += ' Background map unavailable.';
         };
         reset.disabled = false;
         reset.addEventListener('click', fit);
         new ResizeObserver(() => map.invalidateSize()).observe(container);
         fit();
+        renderBoreholes();
     } catch (error) {
         status.textContent = error.message || 'Map unavailable. Please try again.';
     }

@@ -70,17 +70,43 @@ final class InterpolationResultStore
     public function beginGeneration(string $sourceHash, ?int $revision): void
     {
         $this->update(static function (array $state) use ($sourceHash, $revision): array {
-            $job = $state['job'] ?? [];
-            $updated = strtotime((string) ($job['updated_at'] ?? '')) ?: 0;
-            if (($job['status'] ?? '') === 'generating' && $updated > time() - 3600) {
-                throw new RuntimeException('Another interpolation update is running.');
-            }
             $state['job'] = [
                 'status'=>'generating', 'source_hash'=>$sourceHash,
+                'owner'=>bin2hex(random_bytes(16)),
                 'queued_revision'=>$revision, 'started_at'=>gmdate('c'), 'updated_at'=>gmdate('c'),
             ];
             return $state;
         });
+    }
+
+    /** The OS releases this lease even after a fatal error or terminated worker. */
+    public function withGenerationLock(callable $work): mixed
+    {
+        if (!is_dir($this->directory) && !@mkdir($this->directory, 0700, true) && !is_dir($this->directory)) {
+            throw new RuntimeException('Cannot create interpolation cache directory.');
+        }
+        $lease = @fopen($this->directory . '/worker.lock', 'c');
+        if (!$lease) throw new RuntimeException('Cannot open interpolation worker lease.');
+        try {
+            if (!flock($lease, LOCK_EX | LOCK_NB)) throw new RuntimeException('Another interpolation update is running.');
+            return $work();
+        } finally {
+            flock($lease, LOCK_UN);
+            fclose($lease);
+        }
+    }
+
+    public function generationRunning(): bool
+    {
+        $path = $this->directory . '/worker.lock';
+        if (!is_file($path)) return false;
+        $lease = @fopen($path, 'r');
+        if (!$lease) throw new RuntimeException('Cannot inspect interpolation worker lease.');
+        try {
+            if (!flock($lease, LOCK_EX | LOCK_NB)) return true;
+            flock($lease, LOCK_UN);
+            return false;
+        } finally { fclose($lease); }
     }
 
     public function clear(): void

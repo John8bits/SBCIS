@@ -162,13 +162,7 @@ $mapJson = json_encode(
             </div>
           </div>
 
-          <div class="form-options">
-            <label class="remember-me">
-              <input type="checkbox" name="remember" value="1">
-              <span class="custom-checkbox"></span>
-              <span>Remember me</span>
-            </label>
-          </div>
+          <p class="form-description">Your session expires after inactivity.</p>
 
           <button type="submit" class="login-submit">
             <span>Sign In</span>

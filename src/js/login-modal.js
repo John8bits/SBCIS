@@ -46,8 +46,4 @@ document.addEventListener('DOMContentLoaded', () => {
         passwordToggle.setAttribute('aria-label', showPassword ? 'Hide password' : 'Show password');
     });
 
-    forgotPassword?.addEventListener('click', event => {
-        event.preventDefault();
-        AppToast.fire({ icon: 'info', title: 'Contact your admin to reset your password.' });
-    });
 });

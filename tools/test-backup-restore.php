@@ -46,6 +46,8 @@ try {
             'Restored row count differs for ' . $table . '.');
     }
     $expect((int)$database->query('SELECT COUNT(*) FROM admins')->fetchColumn() === 0, 'Administrator credentials were restored.');
+    $expect((int)$database->query('SELECT COUNT(*) FROM boreholes b LEFT JOIN admins a ON a.admin_id=b.archived_by
+        WHERE b.archived_by IS NOT NULL AND a.admin_id IS NULL')->fetchColumn() === 0, 'Orphan archive actor retained after credential-free restore.');
     $expect((int)$database->query("SELECT COUNT(*) FROM information_schema.views WHERE table_schema=" . $database->quote($testSchema) . " AND table_name='v_geotechnical_map_data'")->fetchColumn() === 1, 'Map view was not restored.');
     $expect((int)$database->query('SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=' . $database->quote($testSchema))->fetchColumn() === 6, 'Interpolation triggers were not restored.');
     $expect((int)$database->query("SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_schema=" . $database->quote($testSchema) . " AND constraint_name='fk_borehole_barangay_municipality'")->fetchColumn() === 1, 'Composite location constraint was not restored.');

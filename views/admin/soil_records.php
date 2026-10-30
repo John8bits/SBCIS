@@ -24,6 +24,7 @@ $successMessage = $_SESSION['record_success'] ?? null;
 unset($_SESSION['record_success']);
 $_SESSION['record_csrf'] = $_SESSION['record_csrf'] ?? bin2hex(random_bytes(32));
 $errorMessage = null;
+$actionError = null;
 $recentBoreholes = [];
 $recordPagination = ['total'=>0, 'page'=>1, 'pages'=>1, 'page_size'=>50, 'search'=>'', 'sort'=>'created', 'dir'=>'desc'];
 $municipalityOptions = [];
@@ -45,7 +46,14 @@ function refreshMapInterpolation(): string
         }
         $state = (new InterpolationController())->publication()->regenerate();
         if (($state['status'] ?? '') === 'current') return ' The GIS interpolation has been refreshed.';
-        return ' The borehole marker is saved; the GIS surface will update when enough valid bearing-capacity records are available.';
+        $messages = [
+            'review_required'=>' Publication requires the review settings shown in GIS Map. For local fixtures use the documented QA launcher.',
+            'validation_failed'=>' The candidate failed validation. Review the diagnostics in GIS Map.',
+            'generation_failed'=>' Surface generation failed. Review GIS Map and retry.',
+            'no_data'=>' No eligible bearing-capacity observations are available.',
+            'insufficient_data'=>' At least five distinct eligible observation locations are required.',
+        ];
+        return $messages[$state['status'] ?? ''] ?? ' The source changed; update the surface from GIS Map.';
     } catch (Throwable $error) {
         error_log('Interpolation refresh after record save: ' . $error->getMessage());
         return ' The borehole marker is saved. The GIS surface can be refreshed from GIS Map.';
@@ -85,6 +93,18 @@ try {
                     $_SESSION['record_success'] = 'The borehole was restored.' . refreshMapInterpolation();
                     header('Location: soil_records.php'); exit;
                 }
+                if ($action === 'permanent_delete') {
+                    if (!AdminSession::isSuperAdmin()) {
+                        http_response_code(403);
+                        throw new InvalidArgumentException('Only a super administrator can permanently delete boreholes.');
+                    }
+                    $confirmation = is_string($_POST['confirm_code'] ?? null) ? trim($_POST['confirm_code']) : '';
+                    if (!$records->delete($recordId, $confirmation, (int)$_SESSION['admin_id'])) {
+                        throw new InvalidArgumentException('This archived borehole no longer exists. Refresh the list.');
+                    }
+                    $_SESSION['record_success'] = 'The archived borehole and its soil layers were permanently deleted.';
+                    header('Location: soil_records.php?status=archived'); exit;
+                }
                 if ($action !== 'save') throw new InvalidArgumentException('Unknown record action.');
                 $chosenMunicipality = trim((string)($_POST['municipality_name'] ?? ''));
                 $chosenBarangay = trim((string)($_POST['barangay_name'] ?? ''));
@@ -105,16 +125,23 @@ try {
                 // boreholes can be encoded without navigating back from the map.
                 header('Location: soil_records.php'); exit;
             } catch (InvalidArgumentException $e) {
-                $errorMessage = $e->getMessage();
-                $formData = $_POST;
-                $editingId = (int)($_POST['record_id'] ?? 0);
+                if (($_POST['action'] ?? '') === 'permanent_delete') $actionError = $e->getMessage();
+                else {
+                    $errorMessage = $e->getMessage();
+                    $formData = $_POST;
+                    $editingId = (int)($_POST['record_id'] ?? 0);
+                }
             } catch (Throwable $e) {
                 error_log('Save soil record: ' . $e->getMessage());
-                $errorMessage = $e instanceof PDOException && $e->getCode() === '23000'
+                $message = $e instanceof PDOException && $e->getCode() === '23000'
                     ? 'This borehole ID already exists or a value conflicts with saved data. Check the ID and try again.'
                     : 'We could not save this record. Your entries are still here. Please try again.';
-                $formData = $_POST;
-                $editingId = (int)($_POST['record_id'] ?? 0);
+                if (($_POST['action'] ?? '') === 'permanent_delete') $actionError = 'The borehole could not be deleted. Please refresh and try again.';
+                else {
+                    $errorMessage = $message;
+                    $formData = $_POST;
+                    $editingId = (int)($_POST['record_id'] ?? 0);
+                }
             }
         }
 
@@ -367,6 +394,7 @@ function old_raw(string $key, string $default = ''): string
 
         <main class="content">
             <?php if ($successMessage): ?><div hidden data-toast data-icon="success" data-title="Saved"><?= $escape($successMessage) ?></div><?php endif; ?>
+            <?php if ($actionError): ?><div class="system-message error" role="alert"><?= $escape($actionError) ?></div><?php endif; ?>
 
             <?php if ($databaseError || !$databaseAvailable): ?>
                 <div hidden data-toast data-icon="error" data-title="Database unavailable"><?= $escape($databaseError ?: 'Database connection is unavailable.') ?></div>
@@ -380,7 +408,7 @@ function old_raw(string $key, string $default = ''): string
                     <input type="hidden" name="record_id" value="<?= $editingId ?: '' ?>">
                     <input type="hidden" name="record_lock_version" value="<?= $editingId ? $escape($formData['record_lock_version'] ?? 1) : '' ?>">
                     <div class="dialog-heading"><div><h2 id="record-title"><?= $editingId ? 'Edit soil record' : 'Add soil record' ?></h2><p><?= $editingId ? 'Update the borehole details and soil layers below.' : 'Enter the borehole location, then add its soil layers.' ?></p></div><button type="button" class="dialog-close" data-close-dialog aria-label="Close form">&times;</button></div>
-                    <?php if ($errorMessage): ?><div hidden data-toast data-icon="error" data-title="Unable to save" id="record-error"><?= $escape($errorMessage) ?></div><?php endif; ?>
+                    <?php if ($errorMessage): ?><div class="system-message error" id="record-error" role="alert" tabindex="-1"><strong>Unable to save.</strong> <?= $escape($errorMessage) ?></div><?php endif; ?>
                     <p class="entry-help">Fields marked * are required. Closing this window keeps your draft until you leave the page.</p>
                     <div class="section-title"><h3>1. Borehole and location</h3></div>
                     <div class="form-grid">
@@ -471,6 +499,15 @@ function old_raw(string $key, string $default = ''): string
                                                     <input type="hidden" name="record_id" value="<?= (int)$borehole['borehole_id'] ?>">
                                                     <button class="table-action" type="submit">Restore</button>
                                                 </form>
+                                                <?php if (AdminSession::isSuperAdmin()): ?>
+                                                <form method="POST" action="soil_records.php" class="permanent-delete-record-form" data-record-name="<?= $escape($borehole['borehole_code']) ?>">
+                                                    <input type="hidden" name="csrf" value="<?= $escape($_SESSION['record_csrf']) ?>">
+                                                    <input type="hidden" name="action" value="permanent_delete">
+                                                    <input type="hidden" name="record_id" value="<?= (int)$borehole['borehole_id'] ?>">
+                                                    <input type="hidden" name="confirm_code" value="">
+                                                    <button class="table-action danger" type="submit">Delete permanently</button>
+                                                </form>
+                                                <?php endif; ?>
                                                 <?php endif; ?>
                                             </td>
                                         </tr>

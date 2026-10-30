@@ -9,6 +9,8 @@ use RuntimeException;
 final class BoundaryService
 {
     private array $polygons = [];
+    private array $bounds = [];
+    private array $locations = [];
     private string $version;
 
     public function __construct(?array $collection = null)
@@ -45,6 +47,9 @@ final class BoundaryService
                     }
                 }
                 $this->polygons[] = $polygon;
+                $xs = array_column($polygon[0], 0);
+                $ys = array_column($polygon[0], 1);
+                $this->bounds[] = [min($xs), min($ys), max($xs), max($ys)];
             }
         }
         $this->version = hash('sha256', json_encode($this->polygons, JSON_THROW_ON_ERROR));
@@ -67,7 +72,13 @@ final class BoundaryService
     public function contains($latitude, $longitude): bool
     {
         if (!self::validCoordinates($latitude, $longitude)) return false;
-        foreach ($this->polygons as $polygon) {
+        $key = serialize([(float) $latitude, (float) $longitude]);
+        if (array_key_exists($key, $this->locations)) return $this->locations[$key];
+        // Bound request memory while reusing membership for multi-layer boreholes.
+        if (count($this->locations) >= 20000) $this->locations = [];
+        foreach ($this->polygons as $index => $polygon) {
+            [$west, $south, $east, $north] = $this->bounds[$index];
+            if ($longitude < $west || $longitude > $east || $latitude < $south || $latitude > $north) continue;
             if ($this->ringLocation((float) $longitude, (float) $latitude, $polygon[0]) === 0) continue;
             $insideHole = false;
             foreach (array_slice($polygon, 1) as $hole) {
@@ -77,9 +88,9 @@ final class BoundaryService
                     break;
                 }
             }
-            if (!$insideHole) return true;
+            if (!$insideHole) return $this->locations[$key] = true;
         }
-        return false;
+        return $this->locations[$key] = false;
     }
 
     /**

@@ -83,8 +83,8 @@ class SbcisInterpolation {
         this.abort?.abort();
         this.abort = new AbortController();
         this.busy = true;
-        this.layer.clearLayers();
-        this.shadowLayer.clearLayers();
+        if (typeof clearTimeout === 'function') clearTimeout(this.pollTimer);
+        this.clearPublication();
         this.element('legend').textContent = 'No approved estimated surface is displayed.';
         this.element('scale').hidden = true;
         this.element('ticks').hidden = true;
@@ -93,7 +93,7 @@ class SbcisInterpolation {
             if (this.admin) {
                 const status = await this.request(regenerate ? 'regenerate' : 'status', this.abort.signal);
                 if (id !== this.requestId || this.destroyed) return;
-                if (!['current', 'needs_regeneration', 'no_data', 'insufficient_data', 'pending_configuration', 'generation_failed', 'review_required', 'validation_failed'].includes(status.status) ||
+                if (!['current', 'needs_regeneration', 'no_data', 'insufficient_data', 'pending_configuration', 'generation_failed', 'review_required', 'validation_failed', 'generating', 'generation_interrupted'].includes(status.status) ||
                     !Number.isInteger(status.eligible_count) || !Number.isInteger(status.excluded_count)) {
                     throw new Error('Invalid interpolation management response.');
                 }
@@ -132,7 +132,7 @@ class SbcisInterpolation {
                     ? 'IDW estimate'
                     : (result.method || 'Published');
                 this.element('output-range').textContent = this.number(result.legend.min) + '–' + this.number(result.legend.max) + ' ' + result.legend.unit;
-                this.element('legend').textContent = 'Surface range: ' + this.number(result.legend.min) + '–' +
+                this.element('legend').textContent = (result.publication_mode === 'qa' ? 'LOCAL QA — invented measurements. ' : '') + 'Surface range: ' + this.number(result.legend.min) + '–' +
                     this.number(result.legend.max) + ' ' + result.legend.unit + '.';
                 this.element('scale').hidden = false;
                 this.setTicks(result.legend);
@@ -144,22 +144,39 @@ class SbcisInterpolation {
             } else if (!['unavailable', 'outdated'].includes(data.status)) {
                 throw new Error('Invalid interpolation result state.');
             } else if (!this.admin) {
-                window.SBCIS_ACTIVE_INTERPOLATION = null;
+                this.clearPublication();
                 this.show(data.status);
             }
         } catch (error) {
             if (id !== this.requestId || this.destroyed || error.name === 'AbortError') return;
             console.error('SBCIS interpolation:', error);
-            this.layer.clearLayers();
-            this.show(error.status === 'unauthorized' || error.status === 'forbidden' ? error.status : 'system_error');
+            this.clearPublication();
+            this.show(['unauthorized', 'forbidden', 'generating'].includes(error.status) ? error.status : 'system_error');
         } finally {
             if (id === this.requestId) {
                 this.busy = false;
                 if (this.admin) {
-                    this.element('regenerate').disabled = false;
+                    this.element('regenerate').disabled = ['generating', 'review_required'].includes(this.root.dataset.state);
                     this.element('retry').disabled = false;
+                    if (this.root.dataset.state === 'generating') this.pollTimer = window.setTimeout(() => this.refresh(), 5000);
                 }
             }
+        }
+    }
+
+    clearPublication() {
+        this.layer.clearLayers();
+        this.shadowLayer.clearLayers();
+        this.legend = null;
+        this.colorScale = null;
+        window.SBCIS_ACTIVE_INTERPOLATION = null;
+        for (const name of ['generated', 'observations', 'coverage', 'model', 'output-range']) this.element(name).textContent = '—';
+        if (typeof document !== 'undefined') {
+            const card = document.querySelector('#gisSurfaceLegend');
+            if (card) card.hidden = true;
+        }
+        if (typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
+            window.dispatchEvent(new CustomEvent('sbcis:interpolation-updated', { detail: null }));
         }
     }
 
@@ -181,7 +198,18 @@ class SbcisInterpolation {
         min.textContent = this.number(legend.min);
         max.textContent = this.number(legend.max) + ' ' + legend.unit;
         unit.textContent = 'Published range · ' + legend.unit;
-        gradient.style.background = 'linear-gradient(90deg, #a94442, #c77745, #d5ad56, #7fa36d, #28745d)';
+        gradient.style.background = 'none';
+        gradient.classList.add('gis-category-legend');
+        gradient.replaceChildren();
+        for (const band of legend.classes || []) {
+            const row = document.createElement('div');
+            const swatch = document.createElement('i');
+            swatch.style.backgroundColor = band.color;
+            const label = document.createElement('span');
+            label.textContent = `${band.label}: ${band.range} ${legend.unit}`;
+            row.append(swatch, label);
+            gradient.append(row);
+        }
         card.hidden = false;
     }
 
@@ -210,6 +238,7 @@ class SbcisInterpolation {
     }
 
     classification(value, classes = this.legend?.classes || []) {
+        if (value === null || value === undefined || value === '') return null;
         const numeric = Number(value);
         if (!Number.isFinite(numeric)) return null;
         return classes.find(item =>
@@ -257,7 +286,7 @@ class SbcisInterpolation {
             insufficient_data: 'Insufficient measurements', pending_configuration: 'Configuration required',
             generation_failed: 'Generation unsuccessful', review_required: 'Scientific review required',
             validation_failed: 'Publication checks failed', unauthorized: 'Sign-in required', forbidden: 'Page refresh required',
-            system_error: 'Service unavailable'
+            system_error: 'Service unavailable', generating: 'Generation running', generation_interrupted: 'Generation interrupted'
         };
         this.element('state-label').textContent = labels[status] || labels.system_error;
         if (status === 'loading' || status === 'system_error') {
@@ -281,15 +310,17 @@ class SbcisInterpolation {
             no_data: 'No valid records are available for interpolation.',
             insufficient_data: 'Not enough valid measurement locations are available.',
             pending_configuration: 'An approved measurement, depth policy, method and coverage policy are still required.',
-            review_required: 'A candidate surface was generated but is withheld until reviewed thresholds and spatial coverage are approved.',
-            validation_failed: 'The candidate surface did not meet the configured publication thresholds and is withheld.',
+            review_required: 'The candidate is withheld because source coordinates need review. Correct outside-boundary or duplicate locations, then update the surface.',
+            validation_failed: 'Exact-location reproduction failed. Check the inputs and calculation before retrying.',
             generation_failed: 'Generation failed. Any previous result has been retained separately.',
+            generating: 'A worker is preparing the surface. Status refreshes automatically.',
+            generation_interrupted: 'The previous worker stopped before completing. Select Update surface to retry; no active worker holds the lease.',
             unauthorized: 'Your session has expired. Sign in again.',
             forbidden: 'Reload this admin page before retrying.',
             system_error: 'The interpolation service could not be reached or returned an error. Please retry.'
         };
         this.element('status').textContent = messages[status] || messages.system_error;
-        this.element('regenerate').disabled = status === 'loading';
+        this.element('regenerate').disabled = status === 'loading' || status === 'generating';
         this.element('retry').disabled = status === 'loading';
         this.element('counts').textContent = data ? data.eligible_count + ' usable observation' + (data.eligible_count === 1 ? '' : 's') +
             (data.excluded_count ? '; ' + data.excluded_count + ' excluded' : '') + '.' : '';
@@ -304,6 +335,7 @@ class SbcisInterpolation {
         this.element('admin').textContent = data?.outside_borehole_count ?
             data.outside_borehole_count + ' borehole(s) are outside the province boundary and quarantined from interpolation.' :
             (data?.publication_review?.reasons || []).join(' ');
+        if (status === 'review_required') this.element('regenerate').disabled = true;
         const validation = data?.validation;
         this.element('validation').textContent = validation ?
             'Leave-one-out validation (' + validation.sample_count +
@@ -314,6 +346,7 @@ class SbcisInterpolation {
     }
 
     destroy() {
+        if (typeof clearTimeout === 'function') clearTimeout(this.pollTimer);
         this.destroyed = true;
         this.requestId++;
         this.abort?.abort();

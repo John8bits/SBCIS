@@ -8,7 +8,7 @@ use InvalidArgumentException;
 
 final class InterpolationConfig
 {
-    public const PUBLICATION_POLICY_VERSION = 3;
+    public const PUBLICATION_POLICY_VERSION = 5;
     // Non-field records remain detectable so they can never enter a published
     // engineering-reference surface, even if legacy data is imported.
     public const NON_FIELD_CODE_PREFIXES = ['SYNTH-DEMO-'];
@@ -39,15 +39,47 @@ final class InterpolationConfig
     public const IDW_POWER = 2.0;
     public const MAX_SUPPORT_DISTANCE_KM = 35.0;
     public const MAX_VALIDATION_POINTS = 500;
-    public const SYNCHRONOUS_REGENERATION_MAX_POINTS = 1000;
+    public const SYNCHRONOUS_REGENERATION_MAX_POINTS = 100;
     public static function cacheDirectory(): string
     {
         $configured = getenv('SBCIS_INTERPOLATION_CACHE_DIR');
-        if (is_string($configured) && trim($configured) !== '') return rtrim($configured, '/\\');
+        $suffix = self::qaPublicationEnabled() ? '/qa' : '';
+        if (ProductionConfig::environment() === 'production' && is_string($configured) && trim($configured) !== '') {
+            $resolved = realpath($configured);
+            $project = str_replace('\\', '/', (string) realpath(dirname(__DIR__)));
+            $normalized = str_replace('\\', '/', (string) $resolved);
+            if ($resolved === false || !is_dir($resolved) || !is_writable($resolved) ||
+                strtolower($normalized) === strtolower($project) ||
+                str_starts_with(strtolower($normalized), strtolower($project) . '/')) {
+                throw new \RuntimeException('Production interpolation storage must be an existing writable directory outside the web root.');
+            }
+        }
+        if (is_string($configured) && trim($configured) !== '') return rtrim($configured, '/\\') . $suffix;
         if (ProductionConfig::environment() === 'production') {
             throw new \RuntimeException('Persistent interpolation storage is required in production.');
         }
-        return sys_get_temp_dir() . '/sbcis-interpolation-' . substr(hash('sha256', dirname(__DIR__)), 0, 16);
+        return sys_get_temp_dir() . '/sbcis-interpolation-' . substr(hash('sha256', dirname(__DIR__)), 0, 16) . $suffix;
+    }
+
+    public static function qaPublicationEnabled(): bool
+    {
+        return ProductionConfig::environment() === 'test' && getenv('SBCIS_QA_INTERPOLATION') === '1' &&
+            (PHP_SAPI === 'cli' || in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true));
+    }
+
+    /** Cheap enough for cached reads; changes revoke incompatible publications. */
+    public static function publicationFingerprint(): string
+    {
+        $settings = [self::PUBLICATION_POLICY_VERSION, self::qaPublicationEnabled(), self::BEARING_CAPACITY_CLASSES,
+            self::PUBLIC_VARIABLES, self::MAX_OBSERVATIONS, self::NON_FIELD_CODE_PREFIXES, self::INTERPOLATION_METHOD,
+            self::IDW_POWER, self::MAX_SUPPORT_DISTANCE_KM, self::TECHNICAL_MINIMUM_POINTS,
+            self::MAX_VALIDATION_POINTS, self::APPROVED_VARIABLE, self::allowSyntheticTestData()];
+        foreach (['boundary', 'municipalities', 'barangays'] as $name) {
+            $hash = @hash_file('sha256', dirname(__DIR__) . '/src/qgis/southern_leyte_' . $name . '.geojson');
+            if ($hash === false) throw new \RuntimeException('Publication geometry is unavailable.');
+            $settings[$name] = $hash;
+        }
+        return hash('sha256', json_encode($settings, JSON_THROW_ON_ERROR));
     }
 
     public function systemQuery(): array
@@ -114,7 +146,7 @@ final class InterpolationConfig
     public static function allowSyntheticTestData(): bool
     {
         return ProductionConfig::environment() === 'test' &&
-            getenv('SBCIS_ALLOW_SYNTHETIC_INTERPOLATION') === '1';
+            (getenv('SBCIS_ALLOW_SYNTHETIC_INTERPOLATION') === '1' || self::qaPublicationEnabled());
     }
 
     public static function bearingCapacityClasses(): array

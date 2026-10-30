@@ -98,6 +98,23 @@
   box-shadow: 0 3px 0 rgba(109, 20, 17, .62), 0 10px 16px rgba(76, 18, 15, .4);
 }
 
+/* Compact counts belong only to the landing-page hero map. */
+#heroMap .hero-borehole-group {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+  background: #0b6b4f;
+  color: #fff;
+  font: 700 11px/1 var(--map-font);
+  box-shadow: 0 1px 4px rgba(10, 48, 35, .25);
+}
+
+#heroMap .hero-borehole-group span { pointer-events: none; }
+#heroMap .hero-borehole-group:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
 .gis-map-shell .leaflet-popup-content-wrapper,
 .gis-map-shell .leaflet-popup-tip,
 #heroMap .leaflet-popup-content-wrapper,
