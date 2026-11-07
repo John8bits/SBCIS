@@ -28,7 +28,7 @@ $mapJson = json_encode(
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="icon" type="image/png" href="../src/images/logo.png">
+  <link rel="icon" type="image/png" href="../src/images/logo_icon.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Explore municipality and barangay boundaries across Southern Leyte.">
