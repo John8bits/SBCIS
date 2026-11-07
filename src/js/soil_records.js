@@ -31,7 +31,11 @@ function numberLayers() {
 }
 document.getElementById('addLayer').addEventListener('click', () => {
     const entry = entries.firstElementChild.cloneNode(true);
-    entry.querySelectorAll('input, textarea').forEach(field => { field.value = ''; field.defaultValue = ''; field.setCustomValidity(''); });
+    entry.querySelectorAll('input, textarea, select').forEach(field => {
+        field.value = '';
+        if (field.matches('input, textarea')) field.defaultValue = '';
+        field.setCustomValidity('');
+    });
     entries.append(entry); numberLayers(); hasDraft = true; entry.querySelector('input').focus();
 });
 entries.addEventListener('click', async event => {

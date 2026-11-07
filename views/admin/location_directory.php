@@ -33,6 +33,7 @@ require __DIR__ . '/overview_shell.php';
                     placeholder="<?= $kind === 'barangays' ? 'Barangay or municipality name' : 'Municipality or city name' ?>"
                     autocomplete="off">
             </div>
+            
         </div>
         <div class="table-toolbar-actions">
             <label class="table-page-size" for="location-directory-page-size">
