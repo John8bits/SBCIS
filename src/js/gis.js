@@ -165,9 +165,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const boundaryPane = map.createPane('boundaryPane');
         const selectionPane = map.createPane('selectionPane');
         const availabilityPane = map.createPane('availabilityPane');
+
         Object.assign(boundaryPane.style, { zIndex: '410', pointerEvents: 'none' });
         Object.assign(selectionPane.style, { zIndex: '430', pointerEvents: 'none' });
         Object.assign(availabilityPane.style, { zIndex: '450', pointerEvents: 'auto' });
+
         L.control.zoom({ position: 'bottomright' }).addTo(map);
         const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             tileSize: 256,
@@ -225,10 +227,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             style: { color: '#0f766e', weight: 2.6, opacity: .96, fillColor: '#5fa98d', fillOpacity: .12 }
         }).addTo(map);
         const availabilityLayer = L.layerGroup().addTo(map);
+        const placeLabelLayer = L.layerGroup().addTo(map);
         const boreholeLayer = L.layerGroup().addTo(map);
         const boreholeRenderer = L.canvas({ padding: 0.35 });
 
         let boreholes = Array.isArray(window.SBCIS_BOREHOLES) ? window.SBCIS_BOREHOLES : [];
+        let distanceMeasure = null;
         document.getElementById('visibleBoreholeCount').textContent = String(boreholes.length) + (window.SBCIS_CATALOGUE_TRUNCATED ? '+' : '');
         const dataKey = document.getElementById('gisDataKey');
         dataKey.hidden = boreholes.length === 0;
@@ -293,13 +297,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const marker = L.circleMarker([latitude, longitude], {
                     renderer: boreholeRenderer, radius: 6, weight: 2,
                     color: '#ffffff', fillColor: window.SBCIS_BEARING_CAPACITY.boreholeClass(borehole).color, fillOpacity: 0.95,
+                    bubblingMouseEvents: false,
                     keyboard: true,
                     title: `${borehole.borehole_code || 'Borehole'}: view soil record`
                 }).addTo(boreholeLayer).bindPopup(boreholePopup(borehole));
+                marker.on('click', () => distanceMeasure?.handleBoreholeClick(borehole));
                 boreholePins.set(String(borehole.borehole_code || '').toLocaleLowerCase(), marker);
             });
             document.getElementById('visibleBoreholeCount').textContent = String(boreholes.length) + (truncated ? '+' : '');
             dataKey.hidden = boreholes.length === 0;
+            distanceMeasure?.refreshRecords();
         }
         renderBoreholes(boreholes, window.SBCIS_CATALOGUE_TRUNCATED);
 
@@ -377,8 +384,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!marker) {
                 marker = L.circleMarker([latitude, longitude], {
                     renderer: boreholeRenderer, radius: 6, weight: 2,
-                    color: '#ffffff', fillColor: window.SBCIS_BEARING_CAPACITY.boreholeClass(borehole).color, fillOpacity: .95
+                    color: '#ffffff', fillColor: window.SBCIS_BEARING_CAPACITY.boreholeClass(borehole).color, fillOpacity: .95,
+                    bubblingMouseEvents: false
                 }).addTo(boreholeLayer).bindPopup(boreholePopup(borehole));
+                marker.on('click', () => distanceMeasure?.handleBoreholeClick(borehole));
                 boreholePins.set(key, marker);
             }
             marker?.openPopup?.();
@@ -465,9 +474,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 marker.bindTooltip(`${name}: ${records.length} ${unit}. View bearing-capacity summary.`, {
                     direction: 'top', offset: [0, -10]
                 });
-                marker.on('click', () => selectBoundary(feature, type));
+                marker.on('click', () => {
+                    if (distanceMeasure?.handleMapClick({ latlng: marker.getLatLng() })) return;
+                    selectBoundary(feature, type);
+                });
             });
             updateBoreholePinVisibility();
+            // renderPlaceLabels();
         }
 
         function surfaceMatchesFor(feature, type) {
@@ -641,6 +654,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Resolve clicks from the map coordinate instead of relying on the
         // visually topmost layer. This keeps every colored area clickable.
         map.on('click', event => {
+            if (distanceMeasure?.handleMapClick(event)) return;
             const latitude = Number(event.latlng?.lat);
             const longitude = Number(event.latlng?.lng);
             if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
@@ -778,6 +792,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         search.addEventListener('input', () => renderSearch());
         const resetView = () => {
+            distanceMeasure?.close();
             search.value = '';
             results.replaceChildren();
             setDataModal(false);
@@ -811,6 +826,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('SBCIS interpolation initialization:', error);
         }
         selectMunicipality('');
+        if (window.SbcisDistanceMeasure) {
+            distanceMeasure = new window.SbcisDistanceMeasure(map, {
+                root: document.getElementById('gisMeasurePanel'),
+                toggle: document.getElementById('toggleMeasure'),
+                records: () => boreholes,
+                onOpen: () => {
+                    setExplorer(false);
+                    setInsights(false);
+                    setDataModal(false);
+                    capacityCard.hidden = true;
+                }
+            });
+            explorerToggle.addEventListener('click', () => distanceMeasure.close());
+            insightsToggle.addEventListener('click', () => distanceMeasure.close());
+        }
         const query = new URLSearchParams(window.location.search);
         if (query.has('barangay')) selectBarangay(query.get('barangay'), true);
         else if (query.has('municipality')) selectMunicipality(query.get('municipality'), true, true);

@@ -16,7 +16,7 @@ class Element {
         this.nodes = {};
     }
     querySelector(key) { return this.nodes[key] ||= new Element(); }
-    addEventListener(key, fn) { this.events[key] = fn; }
+    addEventListener(key, fn) { const previous = this.events[key]; this.events[key] = (...args) => { previous?.(...args); return fn(...args); }; }
     removeEventListener(key) { delete this.events[key]; }
     setAttribute(key, value) { this.attrs[key] = value; }
     getAttribute(key) { return this.attrs[key]; }
@@ -46,6 +46,8 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     const layers = new Set(), markers = [], featureLayers = [];
     const makeLayer = () => ({ children: new Set(), addTo(parent) { layers.add(this); parent.children?.add(this); this.parent = parent; return this; },
         remove() { layers.delete(this); }, events: {}, on(key, fn) { this.events[key] = fn; return this; }, bindTooltip() {}, bindPopup(html) { this.popup = html; return this; },
+        getLayers() { return [...this.children]; },
+        getLatLng() { return Array.isArray(this.position) ? { lat: this.position[0], lng: this.position[1] } : this.position; },
         setStyle() {}, clearLayers() { this.children.clear(); return this; }, addData() { return this; }, bringToFront() { return this; },
         getBounds: () => ({ isValid: () => true }) });
     const map = {
@@ -53,6 +55,8 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
         getZoom() { return this.zoom; }, getBoundsZoom() { return 10; },
         addLayer(layer) { this.children.add(layer); }, removeLayer(layer) { this.children.delete(layer); },
         hasLayer(layer) { return this.children.has(layer); },
+        getContainer: () => document.getElementById('gisMap'),
+        distance(a, b) { return Math.hypot(a.lat - b.lat, a.lng - b.lng) * 111000; },
         on(name, handler) { this.events[name] = handler; return this; },
         fitBounds() { this.fitCount++; }, invalidateSize() {}
     };
@@ -71,6 +75,8 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     };
     const L = { map: (id, options) => { map.options = options; return map; }, tileLayer: makeLayer, geoJSON, layerGroup: makeLayer, canvas: () => ({}), DomEvent: { stopPropagation() {} },
         divIcon: options => options,
+        latLng: (lat, lng) => ({ lat, lng }),
+        polyline: (positions, options) => { const line = makeLayer(); line.positions = positions; line.options = options; return line; },
         marker: (position, options) => { const marker = makeLayer(); marker.position = position; marker.options = options; markers.push(marker); return marker; },
         circleMarker: (position, options) => { const marker = makeLayer(); marker.position = position; marker.options = options; markers.push(marker); return marker; },
         control: { zoom: makeLayer, scale: makeLayer } };
@@ -91,14 +97,14 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
             return {status:'no_data',source_hash:'fixture',eligible_count:0,excluded_count:1,
                 outside_borehole_count:1,exclusion_reasons:{outside_study_boundary:1},available_variables:[]};
         }
-        return url.includes('locations.php') ? directory : {type:'FeatureCollection', features:[feature]};
+        return url.includes('locations.php') ? directory : { type: 'FeatureCollection', features: [feature] };
     } });
     window.fetch = fetcher;
     const context = vm.createContext({ window, document, L, fetch: fetcher, AbortController, URLSearchParams,
         CustomEvent: class { constructor(type, options = {}) { this.type = type; this.detail = options.detail; } },
         Option: class { constructor(text, value) { this.text = text; this.value = value; } },
         ResizeObserver: class { observe() {} } });
-    for (const file of ['interpolation.js', 'gis.js']) {
+    for (const file of ['interpolation.js', 'distance-measure.js', 'gis.js']) {
         vm.runInContext(fs.readFileSync(path.join(__dirname, '../src/js', file), 'utf8'), context);
     }
     const classifier = window.SBCIS_BEARING_CAPACITY;
@@ -118,6 +124,7 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     const estimateRoot = get('gisInterpolation');
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(estimateRoot.dataset.state, base === '../../' ? 'no_data' : 'current');
+
     assert.equal(endpointCalls, base === '../../' ? 2 : 1);
     const fitBeforeSurface = map.fitCount;
     map.events.click({ latlng: { lat: 10.15, lng: 124.85 } });
@@ -142,6 +149,7 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     const availabilityBadge = markers.find(marker => /borehole.*available/.test(marker.options.title || ''));
     assert.ok(availabilityBadge, 'Area data-availability badge rendered with an accessible count');
     const badgeGroup = availabilityBadge.parent;
+
     assert.equal(map.hasLayer(badgeGroup), true, 'Province overview displays the count layer');
     for (let cycle = 0; cycle < 3; cycle++) {
         map.zoom = 11;
@@ -152,6 +160,7 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
         map.events.zoomend();
         assert.equal(map.hasLayer(badgeGroup), false, 'Detailed zoom hides badges in favor of individual pins');
         assert.equal(map.hasLayer(boreholePin.parent), true);
+
         assert.equal(boreholePin.options.fillColor, expectedColor, 'Zoom preserves the bearing-capacity marker color');
         map.zoom = 10;
         map.events.zoomend();
@@ -162,6 +171,7 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
         assert.match([...badgeGroup.children][0].options.icon.html, /<strong>1<\/strong>/);
         assert.equal(map.hasLayer(boreholePin.parent), false, 'Overview hides individual pins');
     }
+
     const fitBeforeBadge = map.fitCount;
     availabilityBadge.events.click();
     assert.ok(map.fitCount > fitBeforeBadge, 'Borehole badge zooms to its area');
@@ -213,6 +223,51 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     assert.equal(get('locationName').textContent, 'Southern Leyte', 'Visible map reset does not require opening Locations');
     assert.equal(get('gisCapacityCard').hidden, true, 'Reset clears the capacity readout');
     assert.equal(estimateRoot.dataset.state, base === '../../' ? 'no_data' : 'current');
+    const measurePanel = get('gisMeasurePanel');
+    const measureField = key => measurePanel.querySelector('[data-measure="' + key + '"]');
+    get('toggleMeasure').fire('click');
+    assert.equal(measurePanel.hidden, false);
+    const fitsBeforeMeasurement = map.fitCount;
+    map.events.click({ latlng: { lat: 10, lng: 125 } });
+    map.events.click({ latlng: { lat: 10.001, lng: 125 } });
+    assert.equal(measureField('distance').textContent, 'Straight-line distance: 111 m');
+    assert.equal(map.fitCount, fitsBeforeMeasurement, 'Measurement clicks do not trigger location selection');
+    const line = [...layers].find(layer => layer.positions);
+    assert.equal(line.options.dashArray, '7 6');
+    assert.equal(line.options.pane, 'measurementPane');
+    measureField('clear').fire('click');
+    assert.equal(line.parent.children.size, 0, 'Clear removes measurement lines');
+    map.events.click({ latlng: { lat: 10, lng: 125 } });
+    map.events.click({ latlng: { lat: 10.1, lng: 125 } });
+    assert.equal(measureField('distance').textContent, 'Straight-line distance: 11.1 km');
+    measureField('mode').value = 'site';
+    measureField('mode').fire('change');
+    map.events.click({ latlng: { lat: 10.149, lng: 124.85 } });
+    assert.equal(measureField('distance').textContent, 'Straight-line distance: 111 m');
+    assert.ok(measureField('details').textContent.includes(expectedClass));
+    assert.ok(measureField('details').textContent.includes(capacity === null ? 'Not recorded' : `${capacity} kPa`));
+    const siteMarker = markers.find(marker => marker.options.draggable);
+    siteMarker.position = { lat: 10.148, lng: 124.85 };
+    siteMarker.events.dragend();
+    assert.equal(measureField('distance').textContent, 'Straight-line distance: 222 m', 'Dragging a site updates distance');
+    window.SBCIS_BOREHOLES.push({ borehole_code: 'Second', latitude: 10.149, longitude: 124.851,
+        layers: [{ bearing_capacity_kpa: 275 }] });
+    siteMarker.events.dragend();
+    assert.equal(measureField('borehole').children.length, 2);
+    assert.ok(measureField('borehole').children[0].text.startsWith('Second'), 'Nearby choices are sorted by distance');
+    measureField('borehole').value = '0';
+    measureField('borehole').fire('change');
+    assert.equal(measureField('details').textContent, 'Second · 275 kPa · Very High');
+    assert.equal(measureField('distance').textContent, 'Straight-line distance: 157 m');
+    boreholePin.events.click();
+    assert.ok(measureField('details').textContent.startsWith('Fixture'), 'Clicking a different borehole updates the measurement');
+    measureField('clear').fire('click');
+    assert.equal(siteMarker.parent.children.size, 0, 'Clear removes the temporary house marker');
+    measureField('close').fire('click');
+    assert.equal(measurePanel.hidden, true);
+    assert.equal(get('toggleMeasure').attrs['aria-expanded'], 'false');
+    get('quickResetMap').fire('click');
+    window.SBCIS_BOREHOLES.pop();
 }
 (async () => {
     const gisSource = fs.readFileSync(path.join(__dirname, '../src/js/gis.js'), 'utf8');

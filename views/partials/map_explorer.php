@@ -2,6 +2,7 @@
   window.SBCIS_BEARING_CAPACITY_CLASSES = <?= json_encode(Config\InterpolationConfig::bearingCapacityClasses(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
   window.SBCIS_UNKNOWN_BEARING_CAPACITY = <?= json_encode(Config\InterpolationConfig::UNKNOWN_BEARING_CAPACITY, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 </script>
+<script defer src="<?= !empty($interpolationAdmin) ? '../../' : '../' ?>src/js/distance-measure.js?v=<?= filemtime(__DIR__ . '/../../src/js/distance-measure.js') ?>"></script>
 <div class="gis-map-shell">
   <?php if (Config\InterpolationConfig::qaPublicationEnabled()): ?>
   <p class="gis-local-qa-notice" role="status">LOCAL QA · Invented measurements. Not a reviewed engineering surface.</p>
@@ -27,12 +28,36 @@
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M5 5h14v14H5zM8 9h8M8 12h8M8 15h5"></path></svg>
       <span>Map data</span>
     </button>
+    <button id="toggleMeasure" class="gis-panel-toggle gis-measure-toggle" type="button" aria-expanded="false" aria-controls="gisMeasurePanel" disabled>
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="m4 16 12-12 4 4L8 20zM8 12l2 2m2-6 2 2m2-6 2 2"></path></svg>
+      <span>Measure Distance</span>
+    </button>
     <button id="toggleFullscreen" class="gis-panel-toggle gis-fullscreen-toggle" type="button" aria-label="View map fullscreen" aria-pressed="false">
       <svg class="gis-fullscreen-enter" aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"></path></svg>
       <svg class="gis-fullscreen-exit" aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M3 8h5V3M21 8h-5V3M3 16h5v5M21 16h-5v5"></path></svg>
       <span>Fullscreen</span>
     </button>
   </div>
+
+  <section id="gisMeasurePanel" class="gis-measure-panel" aria-labelledby="gisMeasureTitle" hidden>
+    <div class="gis-measure-heading"><strong id="gisMeasureTitle">Measure distance</strong><button data-measure="close" type="button" aria-label="Close distance measurement">&times;</button></div>
+    <label for="gisMeasureMode">Measurement type</label>
+    <select id="gisMeasureMode" data-measure="mode">
+      <option value="points">Two map locations</option>
+      <option value="site">Construction site to borehole</option>
+    </select>
+    <p data-measure="instruction" role="status">Click the first location on the map.</p>
+    <div data-measure="site-fields" hidden>
+      <p data-measure="coordinates"></p>
+      <label for="gisMeasureBorehole">Borehole (nearest first)</label>
+      <select id="gisMeasureBorehole" data-measure="borehole" disabled><option value="">Place a site on the map first</option></select>
+      <p data-measure="catalogue"></p>
+    </div>
+    <p data-measure="details"></p>
+    <output data-measure="distance" aria-live="polite">Straight-line distance: &mdash;</output>
+    <button data-measure="clear" class="gis-reset" type="button">Clear Measurement</button>
+    <p class="gis-measure-note">Straight-line distance, not road or travel distance. Proximity does not establish site safety or imply the same soil bearing capacity. A site investigation is required.</p>
+  </section>
 
   <section id="gisSurfaceLegend" class="gis-surface-legend-card" aria-label="Soil bearing capacity legend" hidden>
     <div class="gis-surface-legend-heading">

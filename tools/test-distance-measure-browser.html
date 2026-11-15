@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><base href="../views/">
+  <title>Distance measurement browser regression</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="../src/css/gis.css">
+  <link rel="stylesheet" href="../src/css/map-theme.css">
+</head>
+<body class="gis-embedded">
+<pre id="result" style="position:absolute;bottom:0;left:0;z-index:10000;background:white;font-size:10px">RUNNING</pre>
+<script>
+(async () => {
+    const output = document.getElementById('result');
+    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const assert = (condition, message) => { if (!condition) throw new Error(message); };
+    const load = src => new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src; script.onload = resolve; script.onerror = reject; document.head.append(script);
+    });
+    try {
+        const response = await fetch('gis.php', { cache: 'no-store' });
+        const markup = new DOMParser().parseFromString(await response.text(), 'text/html');
+        // Use actual public map records, palette, controls, and runtime. The
+        // public page itself cannot be framed because it correctly sends DENY.
+        for (const original of markup.querySelectorAll('script:not([src])')) {
+            if (!/window\.SBCIS_(BOREHOLES|BEARING_CAPACITY_CLASSES)\s*=/.test(original.textContent)) continue;
+            const script = document.createElement('script'); script.textContent = original.textContent; document.head.append(script);
+        }
+        const shell = document.importNode(markup.querySelector('.gis-map-shell'), true);
+        document.body.append(shell);
+        await load('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js');
+        for (const file of ['interpolation.js', 'distance-measure.js', 'gis.js']) await load('../src/js/' + file);
+        document.dispatchEvent(new Event('DOMContentLoaded'));
+        for (let attempt = 0; attempt < 100; attempt++) {
+            if (window.SBCIS_INTERPOLATION_VIEWER && !document.getElementById('toggleMeasure').disabled) break;
+            await wait(200);
+        }
+        assert(window.SBCIS_INTERPOLATION_VIEWER, 'Map did not initialize');
+        const map = window.SBCIS_INTERPOLATION_VIEWER.map;
+        const panel = document.getElementById('gisMeasurePanel');
+        const field = name => panel.querySelector('[data-measure="' + name + '"]');
+        document.getElementById('toggleMeasure').click();
+        assert(!panel.hidden, 'Measure Distance did not open');
+        map.fire('click', { latlng: L.latLng(10, 125) });
+        map.fire('click', { latlng: L.latLng(10.001, 125) });
+        assert(field('distance').textContent === 'Straight-line distance: 111.2 m', 'Real Leaflet meter calculation is incorrect');
+        field('mode').value = 'site'; field('mode').dispatchEvent(new Event('change'));
+        const record = window.SBCIS_BOREHOLES[0];
+        assert(record, 'Site/borehole tests require existing public borehole records');
+        map.fire('click', { latlng: L.latLng(Number(record.latitude) - .001, Number(record.longitude)) });
+        const layers = () => { const all = []; map.eachLayer(layer => all.push(layer)); return all; };
+        const line = () => layers().find(layer => layer.options.pane === 'measurementPane' && layer instanceof L.Polyline);
+        const site = layers().find(layer => layer.options.pane === 'measurementSitePane');
+        assert(site && line()?.options.dashArray === '7 6', 'Site marker or dashed line is missing');
+        assert(line().getTooltip()?.isOpen(), 'Distance label is not visible');
+        site.setLatLng([Number(record.latitude) - .002, Number(record.longitude)]).fire('dragend');
+        const choices = field('borehole');
+        if (choices.options.length > 1) {
+            choices.selectedIndex = 1; choices.dispatchEvent(new Event('change'));
+            assert(field('details').textContent.startsWith(choices.selectedOptions[0].textContent.split(' · ')[0]), 'Borehole selection did not update details');
+        }
+        const beforePan = JSON.stringify(line().getLatLngs());
+        map.panBy([20, 20], { animate: false });
+        assert(JSON.stringify(line().getLatLngs()) === beforePan, 'Panning changed geographic endpoints');
+        assert(field('details').textContent.includes('kPa') || field('details').textContent.includes('Not recorded'), 'Capacity details missing');
+        field('clear').click();
+        assert(!layers().some(layer => ['measurementPane', 'measurementSitePane'].includes(layer.options.pane) &&
+            (layer instanceof L.Marker || layer instanceof L.Path)), 'Clear left temporary geometry on the map');
+        field('close').click();
+        assert(panel.hidden && !map.getContainer().classList.contains('gis-measuring'), 'Close did not restore normal map mode');
+        if (location.search.includes('preview')) {
+            document.getElementById('toggleMeasure').click();
+            map.fire('click', { latlng: L.latLng(Number(record.latitude) - .005, Number(record.longitude)) });
+            map.fitBounds([site.getLatLng(), [record.latitude, record.longitude]], { paddingTopLeft: [340, 80], paddingBottomRight: [40, 40], maxZoom: 15, animate: false });
+        }
+        output.textContent = 'PASS: Leaflet distances, two-point measurement, site marker, borehole switching, draggable site, dashed line/label, panning, clear, and close.';
+    } catch (error) { output.textContent = 'FAIL: ' + error.message; }
+})();
+</script>
+</body></html>
