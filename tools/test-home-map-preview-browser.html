@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><base href="../"><title>Homepage preview browser regression</title>
+<link rel="stylesheet" href="src/css/style.css"><link rel="stylesheet" href="src/css/map-theme.css"></head>
+<body>
+<pre id="result">RUNNING</pre>
+<script>
+(async () => {
+    const result = document.getElementById('result');
+    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const assert = (condition, message) => { if (!condition) throw new Error(message); };
+    try {
+        // The homepage itself correctly denies framing. Test its actual preview
+        // markup at top level instead of trying to iframe the entire homepage.
+        const response = await fetch('index.php', { cache: 'no-store' });
+        const markup = new DOMParser().parseFromString(await response.text(), 'text/html');
+        const card = markup.querySelector('.hero-map-card');
+        assert(card, 'Homepage preview markup is missing');
+        document.body.append(document.importNode(card, true));
+        const bridge = document.createElement('script');
+        bridge.src = markup.querySelector('script[src*="src/js/hero-map.js"]').getAttribute('src');
+        await new Promise((resolve, reject) => {
+            bridge.onload = resolve; bridge.onerror = reject; document.head.append(bridge);
+        });
+        document.dispatchEvent(new Event('DOMContentLoaded'));
+        const home = document;
+        let preview, runtime;
+        for (let attempt = 0; attempt < 100; attempt++) {
+            preview = home?.getElementById('heroMap');
+            runtime = preview?.contentWindow;
+            if (runtime?.SBCIS_INTERPOLATION_VIEWER &&
+                preview.contentDocument.getElementById('quickResetMap')?.disabled === false) break;
+            await wait(200);
+        }
+        assert(runtime?.L && runtime?.SBCIS_INTERPOLATION_VIEWER, 'Homepage iframe or Leaflet runtime did not load');
+        const map = runtime.SBCIS_INTERPOLATION_VIEWER.map;
+        // Disable transitions in the harness so virtual-time browser runs can
+        // inspect each zoom state without overlapping animation frames.
+        map.options.zoomAnimation = false;
+        const layers = () => { const all = []; map.eachLayer(layer => all.push(layer)); return all; };
+        const badges = () => layers().filter(layer => layer.options?.icon?.options?.className === 'gis-data-marker-wrap');
+        const originalZoom = map.getZoom();
+        const originalCounts = badges().map(layer => layer.options.title).sort().join('|');
+        const records = runtime.SBCIS_BOREHOLES;
+        if (records.length) {
+            assert(badges().length > 0, 'Overview borehole counts are missing');
+            badges()[0].fire('click');
+            await wait(600);
+            map.stop();
+            map.setView([Number(records[0].latitude), Number(records[0].longitude)], 16, { animate: false, reset: true });
+            await wait(300);
+            assert(badges().length === 0, 'Detailed zoom should display individual boreholes (zoom ' + map.getZoom() + ')');
+            const circles = layers().filter(layer => layer instanceof runtime.L.CircleMarker);
+            assert(circles.length > 0, 'Borehole circles are missing');
+            const record = records[0];
+            const circle = circles.find(layer => layer.options.title === `${record.borehole_code}: view soil record`);
+            assert(circle?.options.fillColor === runtime.SBCIS_BEARING_CAPACITY.boreholeClass(record).color, 'Borehole capacity color differs');
+            circle.openPopup();
+            assert(preview.contentDocument.querySelector('.gis-borehole-popup'), 'Borehole popup did not open');
+            map.setZoom(originalZoom, { animate: false });
+            await wait(300);
+            assert(badges().map(layer => layer.options.title).sort().join('|') === originalCounts,
+                'Province counts did not return after selection and zooming out');
+        }
+        const reset = home.getElementById('heroMapReset');
+        assert(!reset.disabled, 'Homepage Reset View is disabled');
+        reset.click();
+        await wait(600);
+        assert(map.getZoom() === originalZoom, 'Reset View did not restore province zoom');
+        assert(home.querySelector('.hero-map-actions a').getAttribute('href') === 'views/gis.php', 'Open Full Map link changed');
+        assert(!home.getElementById('heroInterpolationLegend').hidden, 'Homepage legend did not appear');
+        result.textContent = 'PASS: homepage iframe, Leaflet, markers, colors, popups, clusters after selection/zoom-out, Reset View, legend, and Open Full Map.';
+    } catch (error) {
+        result.textContent = 'FAIL: ' + error.message;
+    }
+})();
+</script>
+</body></html>

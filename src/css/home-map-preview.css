@@ -1,0 +1,21 @@
+/* Presentation for the homepage iframe only. The map runtime stays shared. */
+.homepage-map-preview { overflow: hidden; }
+.homepage-map-preview .gis-map-actions,
+.homepage-map-preview .gis-panel-toggle,
+.homepage-map-preview .gis-sidebar,
+.homepage-map-preview .gis-insights,
+.homepage-map-preview .gis-capacity-card,
+.homepage-map-preview .gis-surface-legend-card,
+.homepage-map-preview .gis-data-key,
+.homepage-map-preview .gis-status,
+.homepage-map-preview .leaflet-control-scale { display: none !important; }
+
+/* Keep the preview's zoom controls in their existing top-left position. */
+.homepage-map-preview .leaflet-bottom.leaflet-right {
+  top: 0;
+  bottom: auto;
+  right: auto;
+  left: 0;
+}
+.homepage-map-preview .leaflet-control-zoom { margin: 10px 0 0 10px; }
+.homepage-map-preview .leaflet-popup-content { max-width: 260px; }

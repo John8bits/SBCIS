@@ -46,17 +46,12 @@ if (App\Support\AdminSession::isLoggedIn()) {
 
 
 $home = require __DIR__ . '/app/Controllers/home.php';
-$heroMapData = (new App\Controllers\MapController())->data('Homepage map');
-$heroBoreholes = $heroMapData['boreholes'];
 $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 ?>
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
   <link rel="icon" type="image/png" href="src/images/logo_icon.png" class="website-logo">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -74,8 +69,6 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
   <link rel="stylesheet" href="src/css/alerts.css?v=<?= filemtime(__DIR__ . '/src/css/alerts.css') ?>">
   <script src="src/js/modal-origin.js?v=<?= filemtime(__DIR__ . '/src/js/modal-origin.js') ?>"></script>
   <link rel="stylesheet" href="src/css/map-theme.css?v=<?= filemtime(__DIR__ . '/src/css/map-theme.css') ?>">
-  <script>window.SBCIS_HERO_BOREHOLES = <?= json_encode($heroBoreholes, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
-  <script defer src="src/js/interpolation.js?v=<?= filemtime(__DIR__ . '/src/js/interpolation.js') ?>"></script>
   <script defer src="src/js/hero-map.js?v=<?= filemtime(__DIR__ . '/src/js/hero-map.js') ?>"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5"></script>
@@ -223,11 +216,11 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
             </div>
 
             <div class="hero-map-stage">
-              <div id="heroMap" class="mini-map" role="region" aria-label="Southern Leyte bearing capacity interpolation map"></div>
+              <iframe id="heroMap" class="mini-map" src="views/home_map_preview.php" title="Southern Leyte bearing capacity map preview" style="display:block;width:100%;border:0"></iframe>
               <div id="heroInterpolationLegend" class="hero-interpolation-legend" hidden>
                 <strong>Bearing capacity</strong>
-                <?php foreach (Config\InterpolationConfig::bearingCapacityClasses() as $class): ?>
-                <span><i class="range-<?= $escape(str_replace('_', '-', $class['key'])) ?>"></i><?= $escape($class['range']) ?><?= $class['key'] === 'very_high' ? ' kPa' : '' ?> <small><?= $escape($class['label']) ?></small></span>
+                <?php foreach (array_merge(Config\InterpolationConfig::bearingCapacityClasses(), [Config\InterpolationConfig::UNKNOWN_BEARING_CAPACITY]) as $class): ?>
+                <span><i style="background-color:<?= $escape($class['color']) ?>" aria-hidden="true"></i><?= $escape($class['range']) ?><?= $class['key'] === 'very_high' ? ' kPa' : '' ?> <small><?= $escape($class['label']) ?></small></span>
                 <?php endforeach; ?>
               </div>
             </div>

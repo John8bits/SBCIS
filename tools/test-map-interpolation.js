@@ -27,8 +27,9 @@ class Element {
     fire(key) { this.events[key]?.({ target: this }); }
     dispatchEvent(event) { this.events[event.type]?.(event); }
 }
-async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', expectedClass = 'Low') {
+async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', expectedClass = 'Low', embedded = false) {
     const document = new Element(); document.body = new Element();
+    if (embedded) document.body.classList.add('gis-embedded');
     document.getElementById = key => document.querySelector('#' + key);
     document.querySelectorAll = () => [];
     document.createElement = () => new Element();
@@ -68,7 +69,7 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
         addFeatures(data);
         return group;
     };
-    const L = { map: () => map, tileLayer: makeLayer, geoJSON, layerGroup: makeLayer, canvas: () => ({}), DomEvent: { stopPropagation() {} },
+    const L = { map: (id, options) => { map.options = options; return map; }, tileLayer: makeLayer, geoJSON, layerGroup: makeLayer, canvas: () => ({}), DomEvent: { stopPropagation() {} },
         divIcon: options => options,
         marker: (position, options) => { const marker = makeLayer(); marker.position = position; marker.options = options; markers.push(marker); return marker; },
         circleMarker: (position, options) => { const marker = makeLayer(); marker.position = position; marker.options = options; markers.push(marker); return marker; },
@@ -111,6 +112,7 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     }
     assert.equal(classifier.boreholeClass({ layers: [] }).color, '#9CA3AF');
     await document.events.DOMContentLoaded();
+    assert.equal(map.options.scrollWheelZoom, !embedded, 'Embedded preview preserves non-scrolling map behavior');
     const get = id => document.getElementById(id);
     assert.equal(get('gisStatus').textContent, '1 source borehole record available through area details');
     const estimateRoot = get('gisInterpolation');
@@ -222,5 +224,6 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     await testMap(false, '../../');
     await testMap(false, '../', null, '#9CA3AF', 'Unknown');
     await testMap(false, '../../', 275, '#1B985A', 'Very High');
+    await testMap(true, '../', 135, '#FF7043', 'Low', true);
     console.log('Map integration checks passed: borehole points, area badges, details modal, search, persistent reset, responsive drawers, admin/public paths.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

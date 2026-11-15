@@ -1,207 +1,38 @@
-document.addEventListener('DOMContentLoaded', async () => {
-    const container = document.getElementById('heroMap');
-    if (!container) return;
+﻿document.addEventListener('DOMContentLoaded', () => {
+    const frame = document.getElementById('heroMap');
+    if (!frame) return;
 
     const reset = document.getElementById('heroMapReset');
     const status = document.getElementById('heroMapStatus');
     const legend = document.getElementById('heroInterpolationLegend');
+    let observer;
+    let mapReset;
 
-    const hasNumber = value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value));
-    const metric = (value, unit = '') => hasNumber(value)
-        ? Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 }) + (unit ? ' ' + unit : '')
-        : 'Not recorded';
-
-    function popupFor(borehole) {
-        const layer = Array.isArray(borehole.layers) ? borehole.layers[0] : null;
-        const popup = document.createElement('article');
-        popup.className = 'hero-borehole-popup';
-        const title = document.createElement('strong');
-        title.textContent = borehole.borehole_code || 'Borehole';
-        const place = document.createElement('span');
-        place.textContent = [borehole.barangay_name, borehole.municipality_name].filter(Boolean).join(', ') || 'Southern Leyte';
-        const value = document.createElement('b');
-        value.textContent = metric(layer?.bearing_capacity_kpa, 'kPa');
-        const range = document.createElement('small');
-        range.textContent = hasNumber(layer?.bearing_capacity_kpa) ? 'Observed borehole value' : 'No bearing capacity value';
-        popup.append(title, place, value, range);
-        return popup;
-    }
-
-    try {
-        if (!window.L) throw new Error('Map unavailable. Open the full map to try again.');
-        const map = L.map(container, { preferCanvas: true, scrollWheelZoom: false, minZoom: 7, maxZoom: 19 });
-        const shadowPane = map.createPane('heroInterpolationShadowPane');
-        const surfacePane = map.createPane('heroInterpolationPane');
-        const boundaryPane = map.createPane('heroBoundaryPane');
-        const pointPane = map.createPane('heroPointPane');
-        Object.assign(shadowPane.style, { zIndex: '340', pointerEvents: 'none', opacity: '.36', transform: 'translate3d(1px, 2px, 0)' });
-        Object.assign(surfacePane.style, { zIndex: '350', pointerEvents: 'none', filter: 'drop-shadow(0 1px 2px rgba(16, 58, 39, .22))' });
-        Object.assign(boundaryPane.style, { zIndex: '410', pointerEvents: 'auto' });
-        Object.assign(pointPane.style, { zIndex: '450', pointerEvents: 'auto' });
-
-        let tilesUnavailable = false;
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            tileSize: 256,
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        }).on('tileerror', () => {
-            tilesUnavailable = true;
-            status.textContent = 'Background unavailable. Interpolation and boundaries remain visible.';
-        }).addTo(map);
-
-        const [provinceData, municipalityData, barangayData, interpolationResponse] = await Promise.all([
-            ...['boundary', 'municipalities', 'barangays'].map(async name => {
-                const response = await fetch('src/qgis/southern_leyte_' + name + '.geojson');
-                if (!response.ok) throw new Error('Map unavailable. Open the full map to try again.');
-                return response.json();
-            }),
-            fetch('app/Controllers/interpolation.php?action=result', { cache: 'no-store' })
-                .then(response => response.ok ? response.json() : { status: 'unavailable', result: null })
-                .catch(() => ({ status: 'unavailable', result: null }))
-        ]);
-
-        const result = interpolationResponse.status === 'current' ? interpolationResponse.result : null;
-        if (result && !result.surface && Array.isArray(result.surface_values)) {
-            const values = new Map(result.surface_values.map(item => [item.boundary_id, item]));
-            result.surface = {
-                type: 'FeatureCollection',
-                features: barangayData.features.filter(feature => values.has(feature.properties?.GID_3)).map(feature => ({
-                    ...feature,
-                    properties: { ...(feature.properties || {}), ...values.get(feature.properties.GID_3) }
-                }))
-            };
+    // The same-origin preview runs the public GIS runtime. This bridge only
+    // connects the homepage's existing controls and status to that instance.
+    function connect() {
+        observer?.disconnect();
+        const preview = frame.contentDocument;
+        mapReset = preview?.getElementById('quickResetMap');
+        const mapStatus = preview?.getElementById('gisStatus');
+        if (!mapReset || !mapStatus) {
+            reset.disabled = true;
+            status.textContent = 'Map unavailable. Open the full map to try again.';
+            return;
         }
-        const classes = Array.isArray(result?.legend?.classes) ? result.legend.classes : [];
-        const surfaceColor = value => {
-            const numeric = Number(value);
-            const match = classes.find(item => Number.isFinite(numeric) &&
-                (item.min === null || numeric >= Number(item.min)) &&
-                (item.max === null || (item.key === 'very_low' ? numeric < Number(item.max) : numeric <= Number(item.max))));
-            return match?.color || '#d9e2dd';
+        const sync = () => {
+            reset.disabled = mapReset.disabled;
+            status.textContent = mapStatus.textContent;
+            legend.hidden = mapReset.disabled;
         };
-        if (result?.surface?.type === 'FeatureCollection' && window.SbcisInterpolation) {
-            L.geoJSON(result.surface, {
-                pane: 'heroInterpolationShadowPane', interactive: false,
-                style: { color: '#173f2d', weight: 1.4, opacity: .45, fillColor: '#173f2d', fillOpacity: .14 }
-            }).addTo(map);
-            L.geoJSON(result.surface, {
-                pane: 'heroInterpolationPane',
-                interactive: false,
-                style: feature => {
-                    const color = surfaceColor(feature.properties.value);
-                    return { color, fillColor: color, weight: .2, opacity: .18, fillOpacity: .64 };
-                }
-            }).addTo(map);
-            legend.hidden = false;
-        }
-
-        const selected = L.geoJSON(null, {
-            pane: 'heroBoundaryPane', interactive: false,
-            style: { color: '#0b3d2e', weight: 2.5, fillColor: '#fff', fillOpacity: .08 }
-        }).addTo(map);
-        const barangays = L.geoJSON(null, {
-            pane: 'heroBoundaryPane',
-            style: { color: 'rgba(20, 71, 53, .46)', weight: .75, fill: false },
-            onEachFeature: (feature, layer) => {
-                layer.bindTooltip(feature.properties.NAME_3);
-                layer.on('click', () => {
-                    selected.clearLayers().addData(feature).bringToFront();
-                    map.fitBounds(layer.getBounds(), { padding: [16, 16], maxZoom: 17 });
-                    status.textContent = feature.properties.NAME_3 + ', ' + feature.properties.NAME_2;
-                });
-            }
-        }).addTo(map);
-        L.geoJSON(municipalityData, {
-            pane: 'heroBoundaryPane',
-            style: { color: '#174735', weight: 1.15, fill: false },
-            onEachFeature: (feature, layer) => {
-                layer.bindTooltip(feature.properties.NAME_2);
-                layer.on('click', () => {
-                    selected.clearLayers();
-                    barangays.clearLayers().addData({
-                        type: 'FeatureCollection',
-                        features: barangayData.features.filter(candidate => candidate.properties.GID_2 === feature.properties.GID_2)
-                    }).bringToFront();
-                    map.fitBounds(layer.getBounds(), { padding: [16, 16], maxZoom: 14 });
-                    status.textContent = feature.properties.NAME_2 + ': select a barangay or borehole.';
-                });
-            }
-        }).addTo(map);
-        const province = L.geoJSON(provinceData, {
-            pane: 'heroBoundaryPane', interactive: false,
-            style: { color: '#082f24', weight: 2.4, fill: false }
-        }).addTo(map);
-
-        const boreholes = Array.isArray(window.SBCIS_HERO_BOREHOLES) ? window.SBCIS_HERO_BOREHOLES : [];
-        const boreholeRenderer = L.canvas({ padding: 0.35 });
-        const points = boreholes.map(borehole => ({
-            borehole, lat: Number(borehole.latitude), lng: Number(borehole.longitude)
-        })).filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lng));
-        const pointLayer = L.layerGroup().addTo(map);
-        const renderBoreholes = () => {
-            pointLayer.clearLayers();
-            // Keep the compact province overview readable; show records on zoom.
-            if (map.getZoom() < 10) return;
-            const bounds = map.getBounds();
-            const groups = new Map();
-            for (const point of points) {
-                const location = L.latLng(point.lat, point.lng);
-                if (!bounds.contains(location)) continue;
-                const pixel = map.latLngToContainerPoint(location);
-                const key = `${Math.floor(pixel.x / 48)},${Math.floor(pixel.y / 48)}`;
-                if (!groups.has(key)) groups.set(key, []);
-                groups.get(key).push(point);
-            }
-            for (const group of groups.values()) {
-                if (group.length > 1) {
-                    const center = group.reduce((sum, point) => [sum[0] + point.lat, sum[1] + point.lng], [0, 0]);
-                    const marker = L.marker([center[0] / group.length, center[1] / group.length], {
-                        pane: 'heroPointPane',
-                        icon: L.divIcon({ className: 'hero-borehole-group', html: `<span>${group.length}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] }),
-                        title: `${group.length} boreholes in this area`, keyboard: true
-                    });
-                    if (map.getZoom() < 16) {
-                        marker.on('click', () => map.fitBounds(L.latLngBounds(group.map(point => [point.lat, point.lng])), { padding: [35, 35], maxZoom: 16 }));
-                    } else {
-                        const summary = document.createElement('article');
-                        summary.className = 'hero-borehole-popup';
-                        const count = document.createElement('strong');
-                        count.textContent = `${group.length} boreholes in this area`;
-                        const link = document.createElement('a');
-                        link.href = 'views/gis.php';
-                        link.textContent = 'Explore records on the full map';
-                        summary.append(count, link);
-                        marker.bindPopup(summary);
-                    }
-                    pointLayer.addLayer(marker);
-                } else {
-                    for (const point of group) pointLayer.addLayer(L.circleMarker([point.lat, point.lng], {
-                        pane: 'heroPointPane', renderer: boreholeRenderer, radius: 3.5, weight: 1.5,
-                        color: '#ffffff', fillColor: '#0b6b4f', fillOpacity: .9,
-                        keyboard: true,
-                        title: `${point.borehole.borehole_code || 'Borehole'}: view soil record`
-                    }).bindPopup(popupFor(point.borehole)));
-                }
-            }
-        };
-        map.on('zoomend moveend', renderBoreholes);
-
-        const fit = () => {
-            barangays.clearLayers();
-            selected.clearLayers();
-            map.fitBounds(province.getBounds(), { padding: [14, 14] });
-            status.textContent = result
-                ? 'IDW surface - ' + points.length + ' boreholes - zoom in to view locations.'
-                : 'Interpolation unavailable. Zoom in to view borehole locations.';
-            if (result?.publication_mode === 'qa') status.textContent = 'LOCAL QA — invented measurements. ' + status.textContent;
-            if (tilesUnavailable) status.textContent += ' Background map unavailable.';
-        };
-        reset.disabled = false;
-        reset.addEventListener('click', fit);
-        new ResizeObserver(() => map.invalidateSize()).observe(container);
-        fit();
-        renderBoreholes();
-    } catch (error) {
-        status.textContent = error.message || 'Map unavailable. Please try again.';
+        observer = new MutationObserver(sync);
+        observer.observe(mapReset, { attributes: true, attributeFilter: ['disabled'] });
+        observer.observe(mapStatus, { childList: true, characterData: true, subtree: true });
+        sync();
     }
+    reset.addEventListener('click', () => {
+        if (mapReset && !mapReset.disabled) mapReset.click();
+    });
+    frame.addEventListener('load', connect);
+    if (frame.contentDocument?.readyState === 'complete') connect();
 });
