@@ -321,7 +321,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 else map.removeLayer(availabilityLayer);
             }
         }
-        map.on('zoomend', updateBoreholePinVisibility);
+        // A selection replaces the overview badges with barangay badges. Rebuild
+        // their scope on zoom, rather than reattaching a group with stale contents.
+        map.on('zoomend', renderAvailabilityMarkers);
 
         let viewportRequest = null;
         let viewportTimer = null;
@@ -342,9 +344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const payload = await response.json();
                 renderBoreholes(payload.records, Boolean(payload.truncated));
                 if (selectedDataFeature && !dataModal.hidden) renderAreaData(selectedDataFeature, selectedDataType);
-                if (selectedDataFeature && selectedDataType) renderAvailabilityMarkers(selectedDataType,
-                    selectedDataType === 'barangay' ? selectedDataFeature.properties?.GID_2 : null);
-                else renderAvailabilityMarkers('municipality');
+                renderAvailabilityMarkers();
                 updateBoreholePinVisibility();
                 status.textContent = payload.truncated
                     ? 'Showing the first 2,000 boreholes in this map area. Zoom in for more detail.'
@@ -431,7 +431,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             return point ? [point[1], point[0]] : null;
         }
 
-        function renderAvailabilityMarkers(type, municipalityBoundaryId = null) {
+        function renderAvailabilityMarkers() {
+            const activeMunicipality = municipalitiesByCode.get(municipalitySelect.value);
+            // Use the province's fitted zoom so the overview also works across
+            // different screen sizes. Keep the selected area and its details intact.
+            const provinceOverview = typeof map.getZoom === 'function' && typeof map.getBoundsZoom === 'function'
+                && map.getZoom() <= map.getBoundsZoom(provinceLayer.getBounds());
+            const municipalityBoundaryId = activeMunicipality?.boundaryId;
+            const type = !provinceOverview && municipalityById.has(municipalityBoundaryId) ? 'barangay' : 'municipality';
             availabilityLayer.clearLayers();
             const features = type === 'barangay'
                 ? barangays.features.filter(feature => feature.properties.GID_2 === municipalityBoundaryId)
@@ -664,7 +671,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 fillOpacity: record && candidate.properties.GID_2 !== record.boundaryId ? .01 : .035
             }));
             if (!record) {
-                renderAvailabilityMarkers('municipality');
+                renderAvailabilityMarkers();
                 details('PROVINCE', 'Southern Leyte', directory.municipalities.length + ' municipalities / cities, ' + directory.barangays.length + ' barangays. Click a colored area to check its bearing-capacity range.');
                 if (zoom) fit(provinceLayer);
                 status.textContent = window.SBCIS_RECORDS_AVAILABLE === false ? 'Soil records unavailable. Location search remains available.' :
@@ -675,10 +682,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (feature) {
                 selection.addData(feature);
                 barangayLayer.addData({ type: 'FeatureCollection', features: barangays.features.filter(candidate => candidate.properties.GID_2 === record.boundaryId) }).bringToFront();
-                renderAvailabilityMarkers('barangay', record.boundaryId);
+                renderAvailabilityMarkers();
                 if (zoom) fit(selection);
             } else {
-                renderAvailabilityMarkers('municipality');
+                renderAvailabilityMarkers();
                 if (zoom) fit(provinceLayer);
             }
             details('MUNICIPALITY / CITY', record.name, children.length + ' barangays. Click a colored area to check its bearing-capacity range.');

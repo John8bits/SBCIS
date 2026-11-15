@@ -43,12 +43,15 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     window.SBCIS_BOREHOLES = [{ borehole_code: 'Fixture', latitude: 10.15, longitude:124.85,
         layers: [{ bearing_capacity_kpa: capacity }, { bearing_capacity_kpa: 300 }] }];
     const layers = new Set(), markers = [], featureLayers = [];
-    const makeLayer = () => ({ addTo(parent) { layers.add(this); this.parent = parent; return this; },
-        remove() { layers.delete(this); }, events: {}, on(key, fn) { this.events[key] = fn; return this; }, bindTooltip() {}, bindPopup(html) { this.popup = html; },
-        setStyle() {}, clearLayers() { return this; }, addData() { return this; }, bringToFront() { return this; },
+    const makeLayer = () => ({ children: new Set(), addTo(parent) { layers.add(this); parent.children?.add(this); this.parent = parent; return this; },
+        remove() { layers.delete(this); }, events: {}, on(key, fn) { this.events[key] = fn; return this; }, bindTooltip() {}, bindPopup(html) { this.popup = html; return this; },
+        setStyle() {}, clearLayers() { this.children.clear(); return this; }, addData() { return this; }, bringToFront() { return this; },
         getBounds: () => ({ isValid: () => true }) });
     const map = {
-        fitCount: 0, events: {}, createPane: () => ({ style: {} }), once() {},
+        fitCount: 0, zoom: 10, children: new Set(), events: {}, createPane: () => ({ style: {} }), once() {},
+        getZoom() { return this.zoom; }, getBoundsZoom() { return 10; },
+        addLayer(layer) { this.children.add(layer); }, removeLayer(layer) { this.children.delete(layer); },
+        hasLayer(layer) { return this.children.has(layer); },
         on(name, handler) { this.events[name] = handler; return this; },
         fitBounds() { this.fitCount++; }, invalidateSize() {}
     };
@@ -136,6 +139,27 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     assert.equal(popupFields[4].children[1].textContent, expectedClass);
     const availabilityBadge = markers.find(marker => /borehole.*available/.test(marker.options.title || ''));
     assert.ok(availabilityBadge, 'Area data-availability badge rendered with an accessible count');
+    const badgeGroup = availabilityBadge.parent;
+    assert.equal(map.hasLayer(badgeGroup), true, 'Province overview displays the count layer');
+    for (let cycle = 0; cycle < 3; cycle++) {
+        map.zoom = 11;
+        map.events.zoomend();
+        assert.equal(badgeGroup.children.size, 1, 'Selected municipality displays its barangay count');
+        assert.equal([...badgeGroup.children][0].options.title, 'Test Barangay: 1 borehole available');
+        map.zoom = 12;
+        map.events.zoomend();
+        assert.equal(map.hasLayer(badgeGroup), false, 'Detailed zoom hides badges in favor of individual pins');
+        assert.equal(map.hasLayer(boreholePin.parent), true);
+        assert.equal(boreholePin.options.fillColor, expectedColor, 'Zoom preserves the bearing-capacity marker color');
+        map.zoom = 10;
+        map.events.zoomend();
+        assert.equal(map.hasLayer(badgeGroup), true, 'Zooming out restores the count layer without a refresh');
+        assert.equal(badgeGroup.children.size, 1, 'Repeated zoom cycles do not duplicate counts');
+        assert.equal([...badgeGroup.children][0].options.title, 'Maasin: 1 borehole available',
+            'Province overview restores municipality counts despite the retained barangay selection');
+        assert.match([...badgeGroup.children][0].options.icon.html, /<strong>1<\/strong>/);
+        assert.equal(map.hasLayer(boreholePin.parent), false, 'Overview hides individual pins');
+    }
     const fitBeforeBadge = map.fitCount;
     availabilityBadge.events.click();
     assert.ok(map.fitCount > fitBeforeBadge, 'Borehole badge zooms to its area');
