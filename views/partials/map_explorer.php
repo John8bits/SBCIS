@@ -1,3 +1,7 @@
+<script>
+  window.SBCIS_BEARING_CAPACITY_CLASSES = <?= json_encode(Config\InterpolationConfig::bearingCapacityClasses(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+  window.SBCIS_UNKNOWN_BEARING_CAPACITY = <?= json_encode(Config\InterpolationConfig::UNKNOWN_BEARING_CAPACITY, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+</script>
 <div class="gis-map-shell">
   <?php if (Config\InterpolationConfig::qaPublicationEnabled()): ?>
   <p class="gis-local-qa-notice" role="status">LOCAL QA · Invented measurements. Not a reviewed engineering surface.</p>
@@ -69,6 +73,12 @@
         <p><span class="key-line municipality-key"></span>Municipality / city</p>
         <p><span class="key-line barangay-key"></span>Barangay</p>
         <p><span class="key-line selected-key"></span>Selected area</p>
+        <strong>Soil bearing capacity</strong>
+        <div class="gis-category-legend">
+          <?php foreach (array_merge(Config\InterpolationConfig::bearingCapacityClasses(), [Config\InterpolationConfig::UNKNOWN_BEARING_CAPACITY]) as $band): ?>
+          <div><i style="background-color:<?= htmlspecialchars($band['color'], ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></i><span><?= htmlspecialchars($band['label'] . ': ' . $band['range'] . ($band['key'] === 'unknown' ? '' : ' kPa'), ENT_QUOTES, 'UTF-8') ?></span></div>
+          <?php endforeach; ?>
+        </div>
       </div>
     </details>
   </aside>

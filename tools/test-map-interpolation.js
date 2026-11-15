@@ -3,6 +3,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
+// Read the production palette, as the shared PHP map partial does.
+const palette = JSON.parse(require('node:child_process').execFileSync('php', ['-r',
+    'require "config/InterpolationConfig.php"; echo json_encode([Config\\InterpolationConfig::bearingCapacityClasses(), Config\\InterpolationConfig::UNKNOWN_BEARING_CAPACITY]);'
+], { cwd: path.join(__dirname, '..'), encoding: 'utf8' }));
 class Element {
     constructor() {
         this.value = ''; this.children = []; this.events = {}; this.attrs = {}; this.dataset = {}; this.style = {};
@@ -23,7 +27,7 @@ class Element {
     fire(key) { this.events[key]?.({ target: this }); }
     dispatchEvent(event) { this.events[event.type]?.(event); }
 }
-async function testMap(mobile, base) {
+async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', expectedClass = 'Low') {
     const document = new Element(); document.body = new Element();
     document.getElementById = key => document.querySelector('#' + key);
     document.querySelectorAll = () => [];
@@ -34,7 +38,10 @@ async function testMap(mobile, base) {
     document.getElementById('gisInterpolation').dataset.mode = base === '../../' ? 'admin' : 'public';
     document.getElementById('gisDataModal').hidden = true;
     document.getElementById('gisCapacityCard').hidden = true;
-    window.SBCIS_BOREHOLES = [{ borehole_code: 'Fixture', latitude: 10.15, longitude:124.85, layers: [] }];
+    window.SBCIS_BEARING_CAPACITY_CLASSES = palette[0];
+    window.SBCIS_UNKNOWN_BEARING_CAPACITY = palette[1];
+    window.SBCIS_BOREHOLES = [{ borehole_code: 'Fixture', latitude: 10.15, longitude:124.85,
+        layers: [{ bearing_capacity_kpa: capacity }, { bearing_capacity_kpa: 300 }] }];
     const layers = new Set(), markers = [], featureLayers = [];
     const makeLayer = () => ({ addTo(parent) { layers.add(this); this.parent = parent; return this; },
         remove() { layers.delete(this); }, events: {}, on(key, fn) { this.events[key] = fn; return this; }, bindTooltip() {}, bindPopup(html) { this.popup = html; },
@@ -74,7 +81,7 @@ async function testMap(mobile, base) {
             endpointCalls++;
             assert.ok(url.startsWith(base));
             if (url.endsWith('action=result')) return {status:'current',result:{variable:'bearing_capacity_kpa',method:'IDW fixture',
-                legend:{min:145,max:145,unit:'kPa',classes:[{key:'low',label:'Low',range:'100–150',min:100,max:150,color:'#f46d43'}]},surface:{type:'FeatureCollection',features:[{
+                legend:{min:145,max:145,unit:'kPa',classes:palette[0]},surface:{type:'FeatureCollection',features:[{
                     ...feature, properties:{...feature.properties,value:145}
                 }]}}};
             return {status:'no_data',source_hash:'fixture',eligible_count:0,excluded_count:1,
@@ -90,6 +97,16 @@ async function testMap(mobile, base) {
     for (const file of ['interpolation.js', 'gis.js']) {
         vm.runInContext(fs.readFileSync(path.join(__dirname, '../src/js', file), 'utf8'), context);
     }
+    const classifier = window.SBCIS_BEARING_CAPACITY;
+    for (const [value, color] of [[0, '#E53935'], [99.99, '#E53935'], [100, '#FF7043'],
+        [135, '#FF7043'], [150, '#FF7043'], [150.01, '#FFE082'], [200, '#FFE082'],
+        [200.01, '#8BCF64'], [250, '#8BCF64'], [250.01, '#1B985A'], ['275', '#1B985A']]) {
+        assert.equal(classifier.classify(value)?.color, color, `Capacity boundary ${value}`);
+    }
+    for (const missing of [null, undefined, '', '   ', 'invalid', NaN, Infinity, false]) {
+        assert.equal(classifier.classify(missing), null, 'Missing or invalid capacity stays unknown');
+    }
+    assert.equal(classifier.boreholeClass({ layers: [] }).color, '#9CA3AF');
     await document.events.DOMContentLoaded();
     const get = id => document.getElementById(id);
     assert.equal(get('gisStatus').textContent, '1 source borehole record available through area details');
@@ -110,6 +127,13 @@ async function testMap(mobile, base) {
     const boreholePin = markers.find(marker => marker.options.title === 'Fixture: view soil record');
     assert.ok(boreholePin, 'Borehole point is rendered above the interpolation map');
     assert.ok(boreholePin.popup, 'Borehole point opens a data popup');
+    assert.equal(boreholePin.options.fillColor, expectedColor, 'Marker uses the saved popup measurement');
+    assert.equal(boreholePin.options.radius, 6);
+    assert.equal(boreholePin.options.color, '#ffffff');
+    assert.equal(boreholePin.options.weight, 2);
+    const popupFields = boreholePin.popup.children[2].children;
+    assert.equal(popupFields[3].children[1].textContent, capacity === null ? 'Not recorded' : `${capacity} kPa`);
+    assert.equal(popupFields[4].children[1].textContent, expectedClass);
     const availabilityBadge = markers.find(marker => /borehole.*available/.test(marker.options.title || ''));
     assert.ok(availabilityBadge, 'Area data-availability badge rendered with an accessible count');
     const fitBeforeBadge = map.fitCount;
@@ -128,7 +152,9 @@ async function testMap(mobile, base) {
     assert.equal(get('gisCapacityCard').hidden, false, 'Boundary click opens the bearing-capacity readout');
     assert.equal(get('gisCapacityClass').textContent, 'Low');
     assert.equal(get('gisCapacityValue').textContent, '145 kPa');
-    assert.equal(get('gisCapacitySwatch').style.backgroundColor, '#f46d43');
+    assert.equal(get('gisCapacitySwatch').style.backgroundColor, '#FF7043');
+    assert.equal(get('gisSurfaceGradient').children.length, 6, 'Legend includes missing borehole data');
+    assert.equal(get('gisSurfaceGradient').children[1].children[0].style.backgroundColor, '#FF7043');
     const fitBeforeBarangay = map.fitCount;
     map.events.click({ latlng: { lat: 10.15, lng: 124.85 } });
     assert.ok(map.fitCount > fitBeforeBarangay, 'Barangay map-area click zooms closer to the selected barangay');
@@ -170,5 +196,7 @@ async function testMap(mobile, base) {
     await testMap(false, '../');
     await testMap(true, '../');
     await testMap(false, '../../');
+    await testMap(false, '../', null, '#9CA3AF', 'Unknown');
+    await testMap(false, '../../', 275, '#1B985A', 'Very High');
     console.log('Map integration checks passed: borehole points, area badges, details modal, search, persistent reset, responsive drawers, admin/public paths.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

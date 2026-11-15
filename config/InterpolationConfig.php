@@ -19,12 +19,14 @@ final class InterpolationConfig
     ];
 
     public const BEARING_CAPACITY_CLASSES = [
-        ['key'=>'very_low', 'label'=>'Very low', 'range'=>'< 100', 'min'=>null, 'max'=>100.0, 'color'=>'#d73027'],
-        ['key'=>'low', 'label'=>'Low', 'range'=>'100–150', 'min'=>100.0, 'max'=>150.0, 'color'=>'#f46d43'],
-        ['key'=>'moderate', 'label'=>'Moderate', 'range'=>'> 150–200', 'min'=>150.0, 'max'=>200.0, 'color'=>'#fee08b'],
-        ['key'=>'high', 'label'=>'High', 'range'=>'> 200–250', 'min'=>200.0, 'max'=>250.0, 'color'=>'#91cf60'],
-        ['key'=>'very_high', 'label'=>'Very high', 'range'=>'> 250', 'min'=>250.0, 'max'=>null, 'color'=>'#1a9850'],
+        ['key'=>'very_low', 'label'=>'Very Low', 'range'=>'< 100', 'min'=>null, 'max'=>100.0, 'color'=>'#E53935'],
+        ['key'=>'low', 'label'=>'Low', 'range'=>'100–150', 'min'=>100.0, 'max'=>150.0, 'color'=>'#FF7043'],
+        ['key'=>'moderate', 'label'=>'Moderate', 'range'=>'> 150–200', 'min'=>150.0, 'max'=>200.0, 'color'=>'#FFE082'],
+        ['key'=>'high', 'label'=>'High', 'range'=>'> 200–250', 'min'=>200.0, 'max'=>250.0, 'color'=>'#8BCF64'],
+        ['key'=>'very_high', 'label'=>'Very High', 'range'=>'> 250', 'min'=>250.0, 'max'=>null, 'color'=>'#1B985A'],
     ];
+
+    public const UNKNOWN_BEARING_CAPACITY = ['key'=>'unknown', 'label'=>'Unknown', 'range'=>'No Data', 'color'=>'#9CA3AF'];
 
     // Bearing capacity is the first reviewed publication variable. SPT remains
     // visible in record details but is not mixed into this surface.

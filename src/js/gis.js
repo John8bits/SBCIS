@@ -252,6 +252,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         function boreholePopup(borehole) {
             const firstLayer = Array.isArray(borehole.layers) ? borehole.layers[0] : null;
+            const capacityClass = window.SBCIS_BEARING_CAPACITY.boreholeClass(borehole);
             const popup = document.createElement('article');
             popup.className = 'soil-popup gis-borehole-popup';
             const title = document.createElement('h3');
@@ -264,7 +265,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ['Coordinates', Number(borehole.latitude).toFixed(5) + ', ' + Number(borehole.longitude).toFixed(5)],
                 ['Depth', formatMetric(borehole.borehole_depth_m, 'm')],
                 ['SPT N-value', firstLayer?.spt_n_value ?? 'Not recorded'],
-                ['Bearing capacity', formatMetric(firstLayer?.bearing_capacity_kpa, 'kPa')]
+                ['Bearing capacity', formatMetric(window.SBCIS_BEARING_CAPACITY.boreholeValue(borehole), 'kPa')],
+                ['Classification', capacityClass.label]
             ];
             values.forEach(([label, value]) => {
                 const item = document.createElement('span');
@@ -290,7 +292,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Canvas-backed points avoid one DOM node per borehole.
                 const marker = L.circleMarker([latitude, longitude], {
                     renderer: boreholeRenderer, radius: 6, weight: 2,
-                    color: '#ffffff', fillColor: '#0b6b4f', fillOpacity: 0.95,
+                    color: '#ffffff', fillColor: window.SBCIS_BEARING_CAPACITY.boreholeClass(borehole).color, fillOpacity: 0.95,
                     keyboard: true,
                     title: `${borehole.borehole_code || 'Borehole'}: view soil record`
                 }).addTo(boreholeLayer).bindPopup(boreholePopup(borehole));
@@ -302,7 +304,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderBoreholes(boreholes, window.SBCIS_CATALOGUE_TRUNCATED);
 
         // Wide views use green availability badges; detailed views use only
-        // red borehole pins. Keeping these mutually exclusive prevents marker
+        // capacity-colored borehole pins. Keeping these mutually exclusive prevents marker
         // overlap while preserving both overview and inspection workflows.
         function updateBoreholePinVisibility() {
             if (typeof map.getZoom !== 'function' || typeof map.addLayer !== 'function' || typeof map.removeLayer !== 'function') return;
@@ -333,6 +335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const response = await fetch(`${window.SBCIS_BOREHOLE_ENDPOINT}?bbox=${encodeURIComponent(bbox)}&limit=2000`, {
                     signal: viewportRequest.signal,
+                    cache: 'no-store',
                     headers: { Accept: 'application/json' }
                 });
                 if (!response.ok) throw new Error('Viewport records are unavailable.');
@@ -374,7 +377,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!marker) {
                 marker = L.circleMarker([latitude, longitude], {
                     renderer: boreholeRenderer, radius: 6, weight: 2,
-                    color: '#ffffff', fillColor: '#0b6b4f', fillOpacity: .95
+                    color: '#ffffff', fillColor: window.SBCIS_BEARING_CAPACITY.boreholeClass(borehole).color, fillOpacity: .95
                 }).addTo(boreholeLayer).bindPopup(boreholePopup(borehole));
                 boreholePins.set(key, marker);
             }
@@ -715,7 +718,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 searchTimer = window.setTimeout(async () => {
                     searchRequest = new AbortController();
                     try {
-                        const response = await fetch(`${window.SBCIS_BOREHOLE_ENDPOINT}?bbox=-180,-90,180,90&limit=30&search=${encodeURIComponent(term)}`, { signal: searchRequest.signal });
+                        const response = await fetch(`${window.SBCIS_BOREHOLE_ENDPOINT}?bbox=-180,-90,180,90&limit=30&search=${encodeURIComponent(term)}`, { signal: searchRequest.signal, cache: 'no-store' });
                         if (!response.ok) throw new Error('Search unavailable');
                         const payload = await response.json();
                         if (search.value.trim().toLocaleLowerCase() === term) renderSearch(payload.records || []);

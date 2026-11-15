@@ -1,3 +1,27 @@
+// Server-owned bands are shared by borehole markers, popups, and published surfaces.
+window.SBCIS_BEARING_CAPACITY = {
+    classify(value, classes = window.SBCIS_BEARING_CAPACITY_CLASSES || []) {
+        if (value === null || value === undefined || String(value).trim() === '' ||
+            !['number', 'string'].includes(typeof value)) return null;
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) return null;
+        return classes.find(item =>
+            (item.min === null || (['very_low', 'low'].includes(item.key)
+                ? numeric >= Number(item.min) : numeric > Number(item.min))) &&
+            (item.max === null || (item.key === 'very_low'
+                ? numeric < Number(item.max) : numeric <= Number(item.max)))
+        ) || null;
+    },
+    boreholeValue(borehole) {
+        // Preserve the existing popup's first-layer measurement; do not average
+        // different depths or replace missing measurements with surface estimates.
+        return borehole.layers?.[0]?.bearing_capacity_kpa ?? null;
+    },
+    boreholeClass(borehole) {
+        return this.classify(this.boreholeValue(borehole)) || window.SBCIS_UNKNOWN_BEARING_CAPACITY;
+    }
+};
+
 // Public/embed pages view only published server results. Admin actions remain authenticated server operations.
 class SbcisInterpolation {
     constructor(map, options = {}) {
@@ -201,12 +225,14 @@ class SbcisInterpolation {
         gradient.style.background = 'none';
         gradient.classList.add('gis-category-legend');
         gradient.replaceChildren();
-        for (const band of legend.classes || []) {
+        const bands = [...(legend.classes || [])];
+        if (window.SBCIS_UNKNOWN_BEARING_CAPACITY) bands.push(window.SBCIS_UNKNOWN_BEARING_CAPACITY);
+        for (const band of bands) {
             const row = document.createElement('div');
             const swatch = document.createElement('i');
             swatch.style.backgroundColor = band.color;
             const label = document.createElement('span');
-            label.textContent = `${band.label}: ${band.range} ${legend.unit}`;
+            label.textContent = `${band.label}: ${band.range}${band.key === 'unknown' ? '' : ' ' + legend.unit}`;
             row.append(swatch, label);
             gradient.append(row);
         }
@@ -238,13 +264,7 @@ class SbcisInterpolation {
     }
 
     classification(value, classes = this.legend?.classes || []) {
-        if (value === null || value === undefined || value === '') return null;
-        const numeric = Number(value);
-        if (!Number.isFinite(numeric)) return null;
-        return classes.find(item =>
-            (item.min === null || numeric >= Number(item.min)) &&
-            (item.max === null || (item.key === 'very_low' ? numeric < Number(item.max) : numeric <= Number(item.max)))
-        ) || null;
+        return window.SBCIS_BEARING_CAPACITY.classify(value, classes);
     }
 
     surfaceColor(value) {
