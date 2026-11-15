@@ -69,6 +69,7 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
   <link rel="stylesheet" href="src/css/alerts.css?v=<?= filemtime(__DIR__ . '/src/css/alerts.css') ?>">
   <script src="src/js/modal-origin.js?v=<?= filemtime(__DIR__ . '/src/js/modal-origin.js') ?>"></script>
   <link rel="stylesheet" href="src/css/map-theme.css?v=<?= filemtime(__DIR__ . '/src/css/map-theme.css') ?>">
+  <link rel="stylesheet" href="src/css/home-map-preview.css?v=<?= filemtime(__DIR__ . '/src/css/home-map-preview.css') ?>">
   <script defer src="src/js/hero-map.js?v=<?= filemtime(__DIR__ . '/src/js/hero-map.js') ?>"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5"></script>

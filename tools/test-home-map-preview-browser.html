@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head><meta charset="UTF-8"><base href="../"><title>Homepage preview browser regression</title>
-<link rel="stylesheet" href="src/css/style.css"><link rel="stylesheet" href="src/css/map-theme.css"></head>
+<link rel="stylesheet" href="src/css/style.css"><link rel="stylesheet" href="src/css/map-theme.css">
+<link rel="stylesheet" href="src/css/home-map-preview.css"></head>
 <body>
 <pre id="result">RUNNING</pre>
 <script>
@@ -37,6 +38,10 @@
         // Disable transitions in the harness so virtual-time browser runs can
         // inspect each zoom state without overlapping animation frames.
         map.options.zoomAnimation = false;
+        const fitBounds = map.fitBounds;
+        map.fitBounds = function (bounds, options) {
+            return fitBounds.call(this, bounds, { ...options, animate: false });
+        };
         const layers = () => { const all = []; map.eachLayer(layer => all.push(layer)); return all; };
         const badges = () => layers().filter(layer => layer.options?.icon?.options?.className === 'gis-data-marker-wrap');
         const originalZoom = map.getZoom();

@@ -1,4 +1,4 @@
-/* Presentation for the homepage iframe only. The map runtime stays shared. */
+/* Homepage-only presentation, outside and inside its map iframe. */
 .homepage-map-preview { overflow: hidden; }
 .homepage-map-preview .gis-map-actions,
 .homepage-map-preview .gis-panel-toggle,
@@ -10,12 +10,66 @@
 .homepage-map-preview .gis-status,
 .homepage-map-preview .leaflet-control-scale { display: none !important; }
 
-/* Keep the preview's zoom controls in their existing top-left position. */
+/* The shared runtime puts zoom and attribution in the bottom-right corner.
+   Let just this corner's children anchor to the map independently, so the
+   attribution's width/float cannot displace the preview's zoom buttons. */
 .homepage-map-preview .leaflet-bottom.leaflet-right {
-  top: 0;
-  bottom: auto;
-  right: auto;
-  left: 0;
+  position: static;
 }
-.homepage-map-preview .leaflet-control-zoom { margin: 10px 0 0 10px; }
+.homepage-map-preview .leaflet-control-zoom {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  margin: 0;
+  float: none;
+  border-radius: 7px;
+}
+.homepage-map-preview .leaflet-control-zoom a {
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  font-size: 20px;
+}
+.homepage-map-preview .leaflet-control-attribution {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  max-width: calc(100% - 16px);
+  margin: 0;
+  padding: 1px 4px;
+  float: none;
+  font-size: 8px;
+  line-height: 12px;
+  white-space: normal;
+  text-align: right;
+}
 .homepage-map-preview .leaflet-popup-content { max-width: 260px; }
+
+/* This legend lives in the parent homepage, above the iframe's attribution. */
+.hero-map-card .hero-interpolation-legend {
+  right: 8px;
+  bottom: 28px;
+  width: 124px;
+  max-width: calc(100% - 16px);
+  gap: 3px;
+  padding: 6px 7px;
+  border-radius: 7px;
+}
+.hero-map-card .hero-interpolation-legend > strong {
+  margin-bottom: 1px;
+  font-size: 8px;
+  line-height: 1.4;
+}
+.hero-map-card .hero-interpolation-legend > span {
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  gap: 4px;
+  font-size: 8px;
+  line-height: 1.4;
+}
+.hero-map-card .hero-interpolation-legend i { width: 8px; height: 8px; }
+.hero-map-card .hero-interpolation-legend small {
+  display: inline;
+  font-size: 7px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
