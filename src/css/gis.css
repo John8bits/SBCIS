@@ -1366,6 +1366,20 @@
   background: #fff;
 }
 
+.gis-borehole-popup .gis-popup-soil-types {
+  max-height: 72px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-size: 9px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.gis-borehole-popup .gis-popup-soil-layer + .gis-popup-soil-layer {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #e3e9e5;
+}
+
 .gis-page :where(a, button, summary, [tabindex]):focus-visible,
 .gis-embedded :where(a, button, summary, [tabindex]):focus-visible {
   outline: 3px solid #438caf;

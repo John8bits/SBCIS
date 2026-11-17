@@ -23,6 +23,7 @@ class Element {
     replaceChildren(...children) { this.children = children; this.value = children[0]?.value || ''; }
     add(child) { this.children.push(child); }
     append(...children) { this.children.push(...children); }
+    contains(element) { return element === this || this.children.some(child => child.contains?.(element)); }
     focus() { this.focused = true; }
     fire(key) { this.events[key]?.({ target: this }); }
     dispatchEvent(event) { this.events[event.type]?.(event); }
@@ -34,6 +35,11 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     document.querySelectorAll = () => [];
     document.createElement = () => new Element();
     const window = new Element();
+    const hoverTimers = new Map();
+    let nextHoverTimer = 0;
+    window.setTimeout = callback => { const id = ++nextHoverTimer; hoverTimers.set(id, callback); return id; };
+    window.clearTimeout = id => hoverTimers.delete(id);
+    const flushHoverTimers = () => { const callbacks = [...hoverTimers.values()]; hoverTimers.clear(); callbacks.forEach(callback => callback()); };
     window.matchMedia = () => ({ matches: mobile, addEventListener() {} });
     window.location = { search: '' }; window.SBCIS_MAP_BASE = base;
     document.getElementById('gisInterpolation').dataset.mode = base === '../../' ? 'admin' : 'public';
@@ -42,10 +48,26 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     window.SBCIS_BEARING_CAPACITY_CLASSES = palette[0];
     window.SBCIS_UNKNOWN_BEARING_CAPACITY = palette[1];
     window.SBCIS_BOREHOLES = [{ borehole_code: 'Fixture', latitude: 10.15, longitude:124.85,
-        layers: [{ bearing_capacity_kpa: capacity }, { bearing_capacity_kpa: 300 }] }];
+        layers: capacity === null ? [] : capacity === 275
+            ? [{ bearing_capacity_kpa: capacity, soil_classification: 'OH' }]
+            : [{ bearing_capacity_kpa: capacity, layer_number: 3, soil_type: 'Clay', soil_classification: 'CL', depth_from_m: 0, depth_to_m: 2 },
+                { bearing_capacity_kpa: 300, layer_number: 7, soil_type: 'Sand', soil_classification: 'SP', depth_from_m: 2, depth_to_m: 4 },
+                { layer_number: 9, soil_type: '   ', soil_classification: null }] }];
     const layers = new Set(), markers = [], featureLayers = [];
     const makeLayer = () => ({ children: new Set(), addTo(parent) { layers.add(this); parent.children?.add(this); this.parent = parent; return this; },
-        remove() { layers.delete(this); }, events: {}, on(key, fn) { this.events[key] = fn; return this; }, bindTooltip() {}, bindPopup(html) { this.popup = html; return this; },
+        remove() { layers.delete(this); }, events: {},
+        on(key, fn) { const previous = this.events[key]; this.events[key] = (...args) => { previous?.(...args); return fn(...args); }; return this; },
+        bindTooltip() {},
+        bindPopup(html, options) {
+            this.popup = html;
+            const element = new Element();
+            this.popupObject = { options: { autoPan: true, ...options }, getElement: () => element };
+            this.on('click', () => this.openPopup());
+            return this;
+        },
+        getPopup() { return this.popupObject; },
+        openPopup() { if (!this.popupOpen) { this.popupOpen = true; this.autoPanWhenOpened = this.popupObject.options.autoPan; this.events.popupopen?.(); } return this; },
+        closePopup() { if (this.popupOpen) { this.popupOpen = false; this.events.popupclose?.(); } return this; },
         getLayers() { return [...this.children]; },
         getLatLng() { return Array.isArray(this.position) ? { lat: this.position[0], lng: this.position[1] } : this.position; },
         setStyle() {}, clearLayers() { this.children.clear(); return this; }, addData() { return this; }, bringToFront() { return this; },
@@ -146,6 +168,34 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     const popupFields = boreholePin.popup.children[2].children;
     assert.equal(popupFields[3].children[1].textContent, capacity === null ? 'Not recorded' : `${capacity} kPa`);
     assert.equal(popupFields[4].children[1].textContent, expectedClass);
+    assert.equal(popupFields[4].children[0].textContent, 'Capacity classification');
+    assert.equal(popupFields[5].children[0].textContent, 'Soil type / classification');
+    const soils = popupFields[5].children[1];
+    if (capacity === null) assert.equal(soils.textContent, 'Not recorded', 'Missing layers have a clear fallback');
+    else if (capacity === 275) assert.equal(soils.children[0].textContent, 'OH', 'Recorded soil classification is used when type is absent');
+    else {
+        assert.equal(soils.children.length, 3, 'Every recorded layer is represented');
+        assert.equal(soils.children[0].textContent, 'Layer 3 (0–2 m): Clay (CL)');
+        assert.equal(soils.children[1].textContent, 'Layer 7 (2–4 m): Sand (SP)');
+        assert.equal(soils.children[2].textContent, 'Layer 9: Not recorded');
+    }
+    boreholePin.events.mouseover({ originalEvent: { pointerType: 'mouse' } });
+    assert.equal(boreholePin.popupOpen, true, 'Hover opens the existing popup without a click');
+    assert.equal(boreholePin.autoPanWhenOpened, true, 'Hover preserves Leaflet auto-pan for small previews');
+    assert.equal(boreholePin.getPopup().options.autoPan, true, 'Click/tap retains the normal auto-pan option');
+    boreholePin.events.mouseout();
+    const popupElement = boreholePin.getPopup().getElement();
+    popupElement.fire('mouseenter');
+    flushHoverTimers();
+    assert.equal(boreholePin.popupOpen, true, 'Crossing from marker into popup cancels delayed closing');
+    popupElement.fire('mouseleave');
+    flushHoverTimers();
+    assert.equal(boreholePin.popupOpen, false, 'Popup closes after leaving both marker and popup');
+    boreholePin.events.mouseover({ originalEvent: { pointerType: 'touch' } });
+    assert.equal(boreholePin.popupOpen, false, 'Touch hover emulation does not interfere with tapping');
+    boreholePin.events.click();
+    assert.equal(boreholePin.popupOpen, true, 'Click/tap binding still opens the popup');
+    boreholePin.closePopup();
     const availabilityBadge = markers.find(marker => /borehole.*available/.test(marker.options.title || ''));
     assert.ok(availabilityBadge, 'Area data-availability badge rendered with an accessible count');
     const badgeGroup = availabilityBadge.parent;
@@ -266,6 +316,21 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     measureField('close').fire('click');
     assert.equal(measurePanel.hidden, true);
     assert.equal(get('toggleMeasure').attrs['aria-expanded'], 'false');
+    get('gisSearch').value = 'Second'; get('gisSearch').fire('input');
+    get('gisResults').children[1].fire('click');
+    const secondPin = markers.find(marker => marker.popup?.children[0]?.textContent === 'Second');
+    assert.ok(secondPin, 'Search-created markers use the shared popup binding');
+    assert.equal(secondPin.popupOpen, true);
+    boreholePin.events.mouseover({});
+    assert.equal(secondPin.popupOpen, false, 'Opening a new borehole closes the previous one');
+    secondPin.events.mouseover({});
+    assert.equal(boreholePin.popupOpen, false);
+    assert.equal(secondPin.popupOpen, true, 'Search-created markers also support hover');
+    secondPin.events.mouseout();
+    secondPin.events.mouseover({});
+    flushHoverTimers();
+    assert.equal(secondPin.popupOpen, true, 'Quick re-entry does not flicker or close the popup');
+    secondPin.closePopup();
     get('quickResetMap').fire('click');
     window.SBCIS_BOREHOLES.pop();
 }

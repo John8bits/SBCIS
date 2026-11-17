@@ -254,6 +254,39 @@ document.addEventListener('DOMContentLoaded', async () => {
             return numeric.length ? numeric.reduce((sum, value) => sum + value, 0) / numeric.length : null;
         }
 
+        function boreholeSoils(borehole) {
+            const layers = Array.isArray(borehole.layers) ? borehole.layers : [];
+            const content = document.createElement('div');
+            content.className = 'gis-popup-soil-types';
+            if (!layers.length) content.textContent = 'Not recorded';
+            if (layers.length > 1) {
+                content.setAttribute('role', 'list');
+                content.setAttribute('aria-label', 'Soil types by layer');
+                content.tabIndex = 0;
+            }
+            layers.forEach((layer, index) => {
+                const type = String(layer.soil_type ?? '').trim();
+                const classification = String(layer.soil_classification ?? '').trim();
+                const soil = type && classification && type.toLowerCase() !== classification.toLowerCase()
+                    ? type + ' (' + classification + ')' : type || classification || 'Not recorded';
+                const row = document.createElement('div');
+                row.className = 'gis-popup-soil-layer';
+                let label = '';
+                if (layers.length > 1) {
+                    row.setAttribute('role', 'listitem');
+                    label = 'Layer ' + (layer.layer_number ?? index + 1);
+                    const depths = [layer.depth_from_m, layer.depth_to_m];
+                    if (depths.every(value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value)))) {
+                        label += ' (' + depths.map(value => Number(value).toLocaleString()).join('–') + ' m)';
+                    }
+                    label += ': ';
+                }
+                row.textContent = label + soil;
+                content.append(row);
+            });
+            return content;
+        }
+
         function boreholePopup(borehole) {
             const firstLayer = Array.isArray(borehole.layers) ? borehole.layers[0] : null;
             const capacityClass = window.SBCIS_BEARING_CAPACITY.boreholeClass(borehole);
@@ -270,7 +303,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ['Depth', formatMetric(borehole.borehole_depth_m, 'm')],
                 ['SPT N-value', firstLayer?.spt_n_value ?? 'Not recorded'],
                 ['Bearing capacity', formatMetric(window.SBCIS_BEARING_CAPACITY.boreholeValue(borehole), 'kPa')],
-                ['Classification', capacityClass.label]
+                ['Capacity classification', capacityClass.label]
             ];
             values.forEach(([label, value]) => {
                 const item = document.createElement('span');
@@ -281,8 +314,66 @@ document.addEventListener('DOMContentLoaded', async () => {
                 item.append(heading, content);
                 grid.append(item);
             });
+            const soilItem = document.createElement('span');
+            const soilHeading = document.createElement('strong');
+            soilHeading.textContent = 'Soil type / classification';
+            soilItem.append(soilHeading, boreholeSoils(borehole));
+            grid.append(soilItem);
             popup.append(title, location, grid);
             return popup;
+        }
+
+        let activeBoreholePopup = null;
+        let boreholeCloseTimer = null;
+        function cancelBoreholeClose() {
+            window.clearTimeout(boreholeCloseTimer);
+            boreholeCloseTimer = null;
+        }
+
+        function bindBoreholePopup(marker, borehole) {
+            let overMarker = false, overPopup = false, popupElement = null;
+            const scheduleClose = () => {
+                if (activeBoreholePopup !== marker) return;
+                cancelBoreholeClose();
+                boreholeCloseTimer = window.setTimeout(() => {
+                    if (activeBoreholePopup === marker && !overMarker && !overPopup &&
+                        !popupElement?.contains(document.activeElement)) marker.closePopup();
+                }, 350);
+            };
+            const enterPopup = () => { overPopup = true; cancelBoreholeClose(); };
+            const leavePopup = () => { overPopup = false; scheduleClose(); };
+            marker.bindPopup(boreholePopup(borehole), { autoClose: true });
+            marker.on('popupopen', () => {
+                if (activeBoreholePopup && activeBoreholePopup !== marker) activeBoreholePopup.closePopup();
+                cancelBoreholeClose();
+                activeBoreholePopup = marker;
+                popupElement = marker.getPopup().getElement();
+                popupElement.addEventListener('mouseenter', enterPopup);
+                popupElement.addEventListener('mouseleave', leavePopup);
+                popupElement.addEventListener('focusin', cancelBoreholeClose);
+                popupElement.addEventListener('focusout', scheduleClose);
+            });
+            marker.on('popupclose', () => {
+                if (activeBoreholePopup === marker) { cancelBoreholeClose(); activeBoreholePopup = null; }
+                popupElement?.removeEventListener('mouseenter', enterPopup);
+                popupElement?.removeEventListener('mouseleave', leavePopup);
+                popupElement?.removeEventListener('focusin', cancelBoreholeClose);
+                popupElement?.removeEventListener('focusout', scheduleClose);
+                popupElement = null;
+                overPopup = false;
+            });
+            marker.on('mouseover', event => {
+                const original = event.originalEvent;
+                if (original?.pointerType === 'touch' || original?.type?.startsWith('touch') || original?.sourceCapabilities?.firesTouchEvents) return;
+                overMarker = true;
+                cancelBoreholeClose();
+                // Keep Leaflet's auto-pan so the full popup fits small previews.
+                // The close delay bridges the gap and the default pan animation.
+                marker.openPopup();
+            });
+            marker.on('mouseout', () => { overMarker = false; scheduleClose(); });
+            marker.on('click', () => distanceMeasure?.handleBoreholeClick(borehole));
+            return marker;
         }
 
         function renderBoreholes(records, truncated = false) {
@@ -300,8 +391,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     bubblingMouseEvents: false,
                     keyboard: true,
                     title: `${borehole.borehole_code || 'Borehole'}: view soil record`
-                }).addTo(boreholeLayer).bindPopup(boreholePopup(borehole));
-                marker.on('click', () => distanceMeasure?.handleBoreholeClick(borehole));
+                }).addTo(boreholeLayer);
+                bindBoreholePopup(marker, borehole);
                 boreholePins.set(String(borehole.borehole_code || '').toLocaleLowerCase(), marker);
             });
             document.getElementById('visibleBoreholeCount').textContent = String(boreholes.length) + (truncated ? '+' : '');
@@ -386,8 +477,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     renderer: boreholeRenderer, radius: 6, weight: 2,
                     color: '#ffffff', fillColor: window.SBCIS_BEARING_CAPACITY.boreholeClass(borehole).color, fillOpacity: .95,
                     bubblingMouseEvents: false
-                }).addTo(boreholeLayer).bindPopup(boreholePopup(borehole));
-                marker.on('click', () => distanceMeasure?.handleBoreholeClick(borehole));
+                }).addTo(boreholeLayer);
+                bindBoreholePopup(marker, borehole);
                 boreholePins.set(key, marker);
             }
             marker?.openPopup?.();

@@ -60,8 +60,28 @@
             const record = records[0];
             const circle = circles.find(layer => layer.options.title === `${record.borehole_code}: view soil record`);
             assert(circle?.options.fillColor === runtime.SBCIS_BEARING_CAPACITY.boreholeClass(record).color, 'Borehole capacity color differs');
-            circle.openPopup();
+            circle.fire('mouseover', { originalEvent: { pointerType: 'mouse' } });
             assert(preview.contentDocument.querySelector('.gis-borehole-popup'), 'Borehole popup did not open');
+            const soilList = circle.getPopup().getContent().querySelector('.gis-popup-soil-types');
+            assert(soilList, 'Soil types are missing from the popup');
+            const soilLayers = Array.isArray(record.layers) ? record.layers : [];
+            assert(soilList.children.length === soilLayers.length, 'Popup does not represent every soil layer');
+            soilLayers.forEach((layer, index) => {
+                const soil = String(layer.soil_type || layer.soil_classification || '').trim();
+                assert(soilList.children[index].textContent.includes(soil || 'Not recorded'), 'Popup soil does not match the database record');
+            });
+            circle.fire('mouseout');
+            circle.getPopup().getElement().dispatchEvent(new runtime.MouseEvent('mouseenter'));
+            await wait(450);
+            assert(circle.isPopupOpen(), 'Moving into the popup closes it prematurely');
+            circle.getPopup().getElement().dispatchEvent(new runtime.MouseEvent('mouseleave'));
+            await wait(450);
+            assert(!circle.isPopupOpen(), 'Leaving the marker and popup did not close it');
+            circle.fire('mouseover', { originalEvent: { pointerType: 'touch' } });
+            assert(!circle.isPopupOpen(), 'Emulated touch hover must not replace tap interaction');
+            circle.fire('click');
+            assert(circle.isPopupOpen(), 'Tap/click no longer opens the borehole popup');
+            circle.closePopup();
             map.setZoom(originalZoom, { animate: false });
             await wait(300);
             assert(badges().map(layer => layer.options.title).sort().join('|') === originalCounts,
@@ -74,7 +94,7 @@
         assert(map.getZoom() === originalZoom, 'Reset View did not restore province zoom');
         assert(home.querySelector('.hero-map-actions a').getAttribute('href') === 'views/gis.php', 'Open Full Map link changed');
         assert(!home.getElementById('heroInterpolationLegend').hidden, 'Homepage legend did not appear');
-        result.textContent = 'PASS: homepage iframe, Leaflet, markers, colors, popups, clusters after selection/zoom-out, Reset View, legend, and Open Full Map.';
+        result.textContent = 'PASS: homepage iframe, Leaflet, markers, colors, soil layers, hover/leave/tap popups, clusters after selection/zoom-out, Reset View, legend, and Open Full Map.';
     } catch (error) {
         result.textContent = 'FAIL: ' + error.message;
     }
