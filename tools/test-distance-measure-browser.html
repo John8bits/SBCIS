@@ -40,25 +40,49 @@
         const map = window.SBCIS_INTERPOLATION_VIEWER.map;
         const panel = document.getElementById('gisMeasurePanel');
         const field = name => panel.querySelector('[data-measure="' + name + '"]');
+        const geometry = await (await fetch('../src/qgis/southern_leyte_boundary.geojson')).json();
+        const boundary = new window.SbcisMeasurementBoundary(geometry, point => {
+            const pixel = map.project(point, 0); return [pixel.x, pixel.y];
+        });
+        const record = window.SBCIS_BOREHOLES.find(record => boundary.contains(L.latLng(Number(record.latitude), Number(record.longitude))));
+        assert(record, 'Site/borehole tests require existing public borehole records');
+        const recordPoint = L.latLng(Number(record.latitude), Number(record.longitude));
+        const nearbyPoint = step => [L.latLng(recordPoint.lat + step, recordPoint.lng), L.latLng(recordPoint.lat - step, recordPoint.lng)]
+            .find(point => boundary.containsLine(recordPoint, point));
+        const firstSite = nearbyPoint(.001);
+        assert(firstSite, 'No nearby test location within the provincial boundary');
         document.getElementById('toggleMeasure').click();
         assert(!panel.hidden, 'Measure Distance did not open');
-        map.fire('click', { latlng: L.latLng(10, 125) });
-        map.fire('click', { latlng: L.latLng(10.001, 125) });
+        map.fire('click', { latlng: L.latLng(0, 0) });
+        assert(!field('warning').hidden && field('warning').textContent.includes('only available within'), 'Outside first point was not rejected');
+        map.fire('click', { latlng: recordPoint });
+        map.fire('click', { latlng: L.latLng(0, 0) });
+        assert(field('distance').textContent.includes('—'), 'Outside second point created a measurement');
+        map.fire('click', { latlng: firstSite });
         assert(field('distance').textContent === 'Straight-line distance: 111.2 m', 'Real Leaflet meter calculation is incorrect');
         field('mode').value = 'site'; field('mode').dispatchEvent(new Event('change'));
-        const record = window.SBCIS_BOREHOLES[0];
-        assert(record, 'Site/borehole tests require existing public borehole records');
-        map.fire('click', { latlng: L.latLng(Number(record.latitude) - .001, Number(record.longitude)) });
+        map.fire('click', { latlng: L.latLng(0, 0) });
+        assert(!field('warning').hidden, 'Outside construction site was not rejected');
+        map.fire('click', { latlng: firstSite });
         const layers = () => { const all = []; map.eachLayer(layer => all.push(layer)); return all; };
         const line = () => layers().find(layer => layer.options.pane === 'measurementPane' && layer instanceof L.Polyline);
         const site = layers().find(layer => layer.options.pane === 'measurementSitePane');
         assert(site && line()?.options.dashArray === '7 6', 'Site marker or dashed line is missing');
         assert(line().getTooltip()?.isOpen(), 'Distance label is not visible');
-        site.setLatLng([Number(record.latitude) - .002, Number(record.longitude)]).fire('dragend');
+        const validPosition = site.getLatLng();
+        const validLine = JSON.stringify(line().getLatLngs());
+        site.setLatLng([0, 0]).fire('dragend');
+        assert(site.getLatLng().equals(validPosition), 'Outside drag was not restored');
+        assert(JSON.stringify(line().getLatLngs()) === validLine, 'Outside drag changed the valid measurement line');
+        const nextSite = nearbyPoint(.002) || firstSite;
+        site.setLatLng(nextSite).fire('dragend');
         const choices = field('borehole');
         if (choices.options.length > 1) {
+            const selectedRecord = window.SBCIS_BOREHOLES.find(record => choices.options[1].textContent.startsWith(record.borehole_code + ' · '));
             choices.selectedIndex = 1; choices.dispatchEvent(new Event('change'));
-            assert(field('details').textContent.startsWith(choices.selectedOptions[0].textContent.split(' · ')[0]), 'Borehole selection did not update details');
+            if (boundary.containsLine(nextSite, L.latLng(Number(selectedRecord.latitude), Number(selectedRecord.longitude)))) {
+                assert(field('details').textContent.startsWith(selectedRecord.borehole_code), 'Borehole selection did not update details');
+            } else assert(!field('warning').hidden && field('warning').textContent.includes('crosses outside'), 'Crossing borehole connection was not rejected');
         }
         const beforePan = JSON.stringify(line().getLatLngs());
         map.panBy([20, 20], { animate: false });
@@ -71,10 +95,10 @@
         assert(panel.hidden && !map.getContainer().classList.contains('gis-measuring'), 'Close did not restore normal map mode');
         if (location.search.includes('preview')) {
             document.getElementById('toggleMeasure').click();
-            map.fire('click', { latlng: L.latLng(Number(record.latitude) - .005, Number(record.longitude)) });
+            map.fire('click', { latlng: nextSite });
             map.fitBounds([site.getLatLng(), [record.latitude, record.longitude]], { paddingTopLeft: [340, 80], paddingBottomRight: [40, 40], maxZoom: 15, animate: false });
         }
-        output.textContent = 'PASS: Leaflet distances, two-point measurement, site marker, borehole switching, draggable site, dashed line/label, panning, clear, and close.';
+        output.textContent = 'PASS: provincial boundary validation, outside point/site rejection, drag restoration, Leaflet distances, borehole switching, dashed line/label, panning, clear, and close.';
     } catch (error) { output.textContent = 'FAIL: ' + error.message; }
 })();
 </script>

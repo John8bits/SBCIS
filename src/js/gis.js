@@ -922,6 +922,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 root: document.getElementById('gisMeasurePanel'),
                 toggle: document.getElementById('toggleMeasure'),
                 records: () => boreholes,
+                boundary: province,
                 onOpen: () => {
                     setExplorer(false);
                     setInsights(false);

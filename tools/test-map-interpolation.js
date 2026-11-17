@@ -70,6 +70,7 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
         closePopup() { if (this.popupOpen) { this.popupOpen = false; this.events.popupclose?.(); } return this; },
         getLayers() { return [...this.children]; },
         getLatLng() { return Array.isArray(this.position) ? { lat: this.position[0], lng: this.position[1] } : this.position; },
+        setLatLng(point) { this.position = point; return this; },
         setStyle() {}, clearLayers() { this.children.clear(); return this; }, addData() { return this; }, bringToFront() { return this; },
         getBounds: () => ({ isValid: () => true }) });
     const map = {
@@ -78,6 +79,7 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
         addLayer(layer) { this.children.add(layer); }, removeLayer(layer) { this.children.delete(layer); },
         hasLayer(layer) { return this.children.has(layer); },
         getContainer: () => document.getElementById('gisMap'),
+        project: point => ({ x: point.lng, y: point.lat }),
         distance(a, b) { return Math.hypot(a.lat - b.lat, a.lng - b.lng) * 111000; },
         on(name, handler) { this.events[name] = handler; return this; },
         fitBounds() { this.fitCount++; }, invalidateSize() {}
@@ -119,7 +121,12 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
             return {status:'no_data',source_hash:'fixture',eligible_count:0,excluded_count:1,
                 outside_borehole_count:1,exclusion_reasons:{outside_study_boundary:1},available_variables:[]};
         }
-        return url.includes('locations.php') ? directory : { type: 'FeatureCollection', features: [feature] };
+        if (url.includes('locations.php')) return directory;
+        const provinceFeature = { ...feature, geometry: { ...feature.geometry, coordinates: [
+            ...feature.geometry.coordinates,
+            [[124.82,10.16],[124.84,10.16],[124.84,10.18],[124.82,10.18],[124.82,10.16]]
+        ] } };
+        return { type: 'FeatureCollection', features: [url.includes('_boundary.') ? provinceFeature : feature] };
     } });
     window.fetch = fetcher;
     const context = vm.createContext({ window, document, L, fetch: fetcher, AbortController, URLSearchParams,
@@ -278,8 +285,18 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     get('toggleMeasure').fire('click');
     assert.equal(measurePanel.hidden, false);
     const fitsBeforeMeasurement = map.fitCount;
-    map.events.click({ latlng: { lat: 10, lng: 125 } });
-    map.events.click({ latlng: { lat: 10.001, lng: 125 } });
+    map.events.click({ latlng: { lat: 0, lng: 0 } });
+    assert.equal(measureField('warning').textContent, 'Distance measurement is only available within Southern Leyte.');
+    assert.equal(measureField('distance').textContent, 'Straight-line distance: —');
+    map.events.click({ latlng: { lat: 10.17, lng: 124.81 } });
+    map.events.click({ latlng: { lat: 10.17, lng: 124.86 } });
+    assert.ok(measureField('warning').textContent.includes('crosses outside'), 'Inside endpoints cannot cross a hole');
+    assert.equal(measureField('distance').textContent, 'Straight-line distance: —');
+    measureField('clear').fire('click');
+    map.events.click({ latlng: { lat: 10.12, lng: 124.82 } });
+    map.events.click({ latlng: { lat: 0, lng: 0 } });
+    assert.equal(measureField('warning').hidden, false, 'Outside second point is rejected');
+    map.events.click({ latlng: { lat: 10.121, lng: 124.82 } });
     assert.equal(measureField('distance').textContent, 'Straight-line distance: 111 m');
     assert.equal(map.fitCount, fitsBeforeMeasurement, 'Measurement clicks do not trigger location selection');
     const line = [...layers].find(layer => layer.positions);
@@ -287,8 +304,8 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     assert.equal(line.options.pane, 'measurementPane');
     measureField('clear').fire('click');
     assert.equal(line.parent.children.size, 0, 'Clear removes measurement lines');
-    map.events.click({ latlng: { lat: 10, lng: 125 } });
-    map.events.click({ latlng: { lat: 10.1, lng: 125 } });
+    map.events.click({ latlng: { lat: 10.1, lng: 124.81 } });
+    map.events.click({ latlng: { lat: 10.2, lng: 124.81 } });
     assert.equal(measureField('distance').textContent, 'Straight-line distance: 11.1 km');
     measureField('mode').value = 'site';
     measureField('mode').fire('change');
@@ -297,14 +314,32 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     assert.ok(measureField('details').textContent.includes(expectedClass));
     assert.ok(measureField('details').textContent.includes(capacity === null ? 'Not recorded' : `${capacity} kPa`));
     const siteMarker = markers.find(marker => marker.options.draggable);
+    siteMarker.position = { lat: 0, lng: 0 };
+    siteMarker.events.dragend();
+    assert.equal(siteMarker.getLatLng().lat, 10.149, 'Invalid drag restores the last valid position');
+    assert.equal(measureField('distance').textContent, 'Straight-line distance: 111 m', 'Invalid drag preserves the last valid line');
+    siteMarker.position = { lat: 10.17, lng: 124.81 };
+    siteMarker.events.dragend();
+    assert.equal(siteMarker.getLatLng().lat, 10.149, 'Inside drag that crosses outside also restores the last valid position');
+    assert.ok(measureField('warning').textContent.includes('crosses outside'));
     siteMarker.position = { lat: 10.148, lng: 124.85 };
     siteMarker.events.dragend();
     assert.equal(measureField('distance').textContent, 'Straight-line distance: 222 m', 'Dragging a site updates distance');
+    window.SBCIS_BOREHOLES.push({ borehole_code: 'Outside', latitude: 0, longitude: 0, layers: [] });
+    window.SBCIS_BOREHOLES.push({ borehole_code: 'Crossing', latitude: 10.17, longitude: 124.81, layers: [] });
     window.SBCIS_BOREHOLES.push({ borehole_code: 'Second', latitude: 10.149, longitude: 124.851,
         layers: [{ bearing_capacity_kpa: 275 }] });
     siteMarker.events.dragend();
-    assert.equal(measureField('borehole').children.length, 2);
+    assert.equal(measureField('borehole').children.length, 3);
+    assert.ok(measureField('borehole').children.every(option => !option.text.startsWith('Outside')), 'Outside boreholes cannot be measured to, including on the admin map');
+    const crossingOption = measureField('borehole').children.find(option => option.text.startsWith('Crossing'));
+    assert.equal(crossingOption.disabled, true, 'Cross-boundary borehole connections are unavailable');
+    assert.ok(crossingOption.text.includes('Connection crosses outside'), 'Rejected connections do not display a measured distance');
     assert.ok(measureField('borehole').children[0].text.startsWith('Second'), 'Nearby choices are sorted by distance');
+    measureField('borehole').value = String(measureField('borehole').children.findIndex(option => option.text.startsWith('Crossing')));
+    measureField('borehole').fire('change');
+    assert.ok(measureField('warning').textContent.includes('crosses outside'), 'Borehole choices cannot draw a crossing line');
+    assert.equal(measureField('distance').textContent, 'Straight-line distance: 222 m', 'Rejected borehole preserves the valid measurement');
     measureField('borehole').value = '0';
     measureField('borehole').fire('change');
     assert.equal(measureField('details').textContent, 'Second · 275 kPa · Very High');
@@ -332,6 +367,8 @@ async function testMap(mobile, base, capacity = 135, expectedColor = '#FF7043', 
     assert.equal(secondPin.popupOpen, true, 'Quick re-entry does not flicker or close the popup');
     secondPin.closePopup();
     get('quickResetMap').fire('click');
+    window.SBCIS_BOREHOLES.pop();
+    window.SBCIS_BOREHOLES.pop();
     window.SBCIS_BOREHOLES.pop();
 }
 (async () => {

@@ -47,6 +47,7 @@
       <option value="site">Construction site to borehole</option>
     </select>
     <p data-measure="instruction" role="status">Click the first location on the map.</p>
+    <p data-measure="warning" role="alert" hidden></p>
     <div data-measure="site-fields" hidden>
       <p data-measure="coordinates"></p>
       <label for="gisMeasureBorehole">Borehole (nearest first)</label>
